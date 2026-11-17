@@ -79,8 +79,9 @@ public class BoundaryRelationshipQueryBuilder {
 
             if (!CollectionUtils.isEmpty(boundaryRelationshipSearchCriteria.getCodes())) {
                 QueryUtil.addClauseIfRequired(builder, preparedStmtList);
-                builder.append(" code IN ( ").append(QueryUtil.createQuery(boundaryRelationshipSearchCriteria.getCodes().size())).append(" )");
-                QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getCodes()));
+                Set<String> codesSet = new HashSet<>(boundaryRelationshipSearchCriteria.getCodes());
+                builder.append(" code IN ( ").append(QueryUtil.createQuery(codesSet.size())).append(" )");
+                QueryUtil.addToPreparedStatement(preparedStmtList, codesSet);
             }
         }
 
@@ -91,9 +92,10 @@ public class BoundaryRelationshipQueryBuilder {
 
         if(!CollectionUtils.isEmpty(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes())) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);
-            builder.append(" ARRAY [ ").append(QueryUtil.createQuery(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes().size())).append(" ]").append("::text[] ");
+            Set<String> currentBoundaryCodesSet = new HashSet<>(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes());
+            builder.append(" ARRAY [ ").append(QueryUtil.createQuery(currentBoundaryCodesSet.size())).append(" ]").append("::text[] ");
             builder.append(" && string_to_array(ancestralmaterializedpath, '|') ");
-            QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes()));
+            QueryUtil.addToPreparedStatement(preparedStmtList, currentBoundaryCodesSet);
         }
 
         if (Boolean.TRUE.equals(isCountQuery)) {

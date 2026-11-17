@@ -65,12 +65,10 @@ public class MDMSService {
     /**
      * Calls MDMS service to fetch master data
      * @param requestInfo
+     * @param tenantId
      * @return
      */
-    public Object mDMSCall(RequestInfo requestInfo) {
-        String tenantId = (requestInfo != null && requestInfo.getUserInfo() != null)
-                ? requestInfo.getUserInfo().getTenantId()
-                : workflowConfig.getStateLevelTenantId();
+    public Object mDMSCall(RequestInfo requestInfo, String tenantId) {
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
         return result;
@@ -95,9 +93,8 @@ public class MDMSService {
      */
     private MdmsCriteriaReq getMDMSRequest(RequestInfo requestInfo, String tenantId){
         ModuleDetail escalationDetail = getAutoEscalationConfig();
-        ModuleDetail tenantDetail = getTenants();
 
-        List<ModuleDetail> moduleDetails = new LinkedList<>(Arrays.asList(escalationDetail,tenantDetail));
+        List<ModuleDetail> moduleDetails = new LinkedList<>(Collections.singletonList(escalationDetail));
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails)
                 .tenantId(tenantId)
@@ -162,22 +159,6 @@ public class MDMSService {
         return wfModuleDtls;
     }
 
-    /**
-     * Creates MDMS ModuleDetail object for tenants
-     * @return ModuleDetail for tenants
-     */
-    private ModuleDetail getTenants() {
-
-        // master details for WF module
-        List<MasterDetail> masterDetails = new ArrayList<>();
-
-        masterDetails.add(MasterDetail.builder().name(MDMS_TENANTS).build());
-
-        ModuleDetail wfModuleDtls = ModuleDetail.builder().masterDetails(masterDetails)
-                .moduleName(MDMS_MODULE_TENANT).build();
-
-        return wfModuleDtls;
-    }
 
 
 

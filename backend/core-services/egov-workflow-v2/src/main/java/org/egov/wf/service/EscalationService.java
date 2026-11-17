@@ -55,16 +55,16 @@ public class EscalationService {
      * the applications which have breached the SLA based on the escalation config defined
      * @param requestInfo
      * @param businessService
+     * @param tenantId
      */
-    public void escalateApplications(RequestInfo requestInfo, String businessService){
+    public void escalateApplications(RequestInfo requestInfo, String businessService, String tenantId){
 
-        Object mdmsData = mdmsService.mDMSCall(requestInfo);
+        Object mdmsData = mdmsService.mDMSCall(requestInfo, tenantId);
         List<Escalation> escalations = escalationUtil.getEscalationsFromConfig(businessService, mdmsData);
-        List<String> tenantIds = escalationUtil.getTenantIds(mdmsData);
 
         for(Escalation escalation : escalations){
 
-            processEscalation(requestInfo, escalation, tenantIds);
+            processEscalation(requestInfo, escalation, tenantId);
 
         }
 
@@ -74,48 +74,44 @@ public class EscalationService {
     /**
      * Processes the escalation
      * @param escalation
-     * @param tenantIds
+     * @param tenantId
      */
-    private void processEscalation(RequestInfo requestInfo, Escalation escalation, List<String> tenantIds){
+    private void processEscalation(RequestInfo requestInfo, Escalation escalation, String tenantId){
 
-        for(String tenantId: tenantIds){
+        String stateUUID = escalationUtil.getStatusUUID(escalation.getStatus(), tenantId, escalation.getBusinessService());
 
-
-            String stateUUID = escalationUtil.getStatusUUID(escalation.getStatus(), tenantId, escalation.getBusinessService());
-
-            EscalationSearchCriteria criteria = EscalationSearchCriteria.builder().tenantId(tenantId)
-                                                .status(stateUUID)
-                                                .businessService(escalation.getBusinessService())
-                                                .businessSlaExceededBy(escalation.getBusinessSlaExceededBy())
-                                                .stateSlaExceededBy(escalation.getStateSlaExceededBy())
-                                                .build();
+        EscalationSearchCriteria criteria = EscalationSearchCriteria.builder().tenantId(tenantId)
+                                            .status(stateUUID)
+                                            .businessService(escalation.getBusinessService())
+                                            .businessSlaExceededBy(escalation.getBusinessSlaExceededBy())
+                                            .stateSlaExceededBy(escalation.getStateSlaExceededBy())
+                                            .build();
 
 
 
-            List<String> businessIds = escalationRepository.getBusinessIds(criteria);
-            Integer numberOfBusinessIds = businessIds.size();
-            Integer batchSize = config.getEscalationBatchSize();
+        List<String> businessIds = escalationRepository.getBusinessIds(criteria);
+        Integer numberOfBusinessIds = businessIds.size();
+        Integer batchSize = config.getEscalationBatchSize();
 
-            for(int i = 0; i < numberOfBusinessIds; i = i +1){
+        for(int i = 0; i < numberOfBusinessIds; i = i +1){
 
-                // Processing the businessIds in batches
+            // Processing the businessIds in batches
 //                Integer start = i;
 //                Integer end = ((i + batchSize) < numberOfBusinessIds ? (i + batchSize) : numberOfBusinessIds) ;
 
-                IMEscalationInstance processInstance=new IMEscalationInstance();
-            	processInstance.setBusinessId(businessIds.get(i));
-            	processInstance.setTenantId(tenantId);
-            	processInstance.setAuthToken(requestInfo.getAuthToken());
-            	processInstance.setUserInfo(requestInfo.getUserInfo());
-            	List<IMEscalationInstance> processInstances=new ArrayList<IMEscalationInstance>();
-            	processInstances.add(processInstance);
-            	IMEscalationRequest processInstanceRequest=new IMEscalationRequest();
-            	processInstanceRequest.setImEscalationInstance(processInstances);
-            	log.info("pushing to topic:  "+escalation.getTopic());
-            	producer.push(escalation.getTopic(),processInstanceRequest);
-            }
-
+            IMEscalationInstance processInstance=new IMEscalationInstance();
+        	processInstance.setBusinessId(businessIds.get(i));
+        	processInstance.setTenantId(tenantId);
+        	processInstance.setAuthToken(requestInfo.getAuthToken());
+        	processInstance.setUserInfo(requestInfo.getUserInfo());
+        	List<IMEscalationInstance> processInstances=new ArrayList<IMEscalationInstance>();
+        	processInstances.add(processInstance);
+        	IMEscalationRequest processInstanceRequest=new IMEscalationRequest();
+        	processInstanceRequest.setImEscalationInstance(processInstances);
+        	log.info("pushing to topic:  "+escalation.getTopic());
+        	producer.push(escalation.getTopic(),processInstanceRequest);
         }
+
 
     }
 
@@ -123,18 +119,18 @@ public class EscalationService {
      * Temporary added for testing
      * @param requestInfo
      * @param businessService
+     * @param tenantId
      */
-    public List<String> escalateApplicationsTest(RequestInfo requestInfo, String businessService){
+    public List<String> escalateApplicationsTest(RequestInfo requestInfo, String businessService, String tenantId){
 
-        Object mdmsData = mdmsService.mDMSCall(requestInfo);
+        Object mdmsData = mdmsService.mDMSCall(requestInfo, tenantId);
         List<Escalation> escalations = escalationUtil.getEscalationsFromConfig(businessService, mdmsData);
-        List<String> tenantIds = escalationUtil.getTenantIds(mdmsData);
 
         List<String> ids = new LinkedList<>();
 
         for(Escalation escalation : escalations){
 
-            ids.addAll(getEscalations(requestInfo, escalation, tenantIds));
+            ids.addAll(getEscalations(requestInfo, escalation, tenantId));
 
         }
 
@@ -144,41 +140,37 @@ public class EscalationService {
     /**
      * Temporary added for testing
      * @param escalation
-     * @param tenantIds
+     * @param tenantId
      */
-    private List<String> getEscalations(RequestInfo requestInfo, Escalation escalation, List<String> tenantIds){
+    private List<String> getEscalations(RequestInfo requestInfo, Escalation escalation, String tenantId){
 
         List<String> ids = new LinkedList<>();
 
-        for(String tenantId: tenantIds){
+        String stateUUID = escalationUtil.getStatusUUID(escalation.getStatus(), tenantId, escalation.getBusinessService());
 
-
-            String stateUUID = escalationUtil.getStatusUUID(escalation.getStatus(), tenantId, escalation.getBusinessService());
-
-            EscalationSearchCriteria criteria = EscalationSearchCriteria.builder().tenantId(tenantId)
-                    .status(stateUUID)
-                    .businessService(escalation.getBusinessService())
-                    .businessSlaExceededBy(escalation.getBusinessSlaExceededBy())
-                    .stateSlaExceededBy(escalation.getStateSlaExceededBy())
-                    .build();
+        EscalationSearchCriteria criteria = EscalationSearchCriteria.builder().tenantId(tenantId)
+                .status(stateUUID)
+                .businessService(escalation.getBusinessService())
+                .businessSlaExceededBy(escalation.getBusinessSlaExceededBy())
+                .stateSlaExceededBy(escalation.getStateSlaExceededBy())
+                .build();
 
 
 
-            List<String> businessIds = escalationRepository.getBusinessIds(criteria);
-            Integer numberOfBusinessIds = businessIds.size();
-            Integer batchSize = config.getEscalationBatchSize();
+        List<String> businessIds = escalationRepository.getBusinessIds(criteria);
+        Integer numberOfBusinessIds = businessIds.size();
+        Integer batchSize = config.getEscalationBatchSize();
 
-            for(int i = 0; i < numberOfBusinessIds; i = i + batchSize){
+        for(int i = 0; i < numberOfBusinessIds; i = i + batchSize){
 
-                // Processing the businessIds in batches
-                Integer start = i;
-                Integer end = ((i + batchSize) < numberOfBusinessIds ? (i + batchSize) : numberOfBusinessIds) ;
+            // Processing the businessIds in batches
+            Integer start = i;
+            Integer end = ((i + batchSize) < numberOfBusinessIds ? (i + batchSize) : numberOfBusinessIds) ;
 
-                List<ProcessInstance> processInstances = escalationUtil.getProcessInstances(tenantId, businessIds.subList(start,end), escalation);
-                ids.addAll(processInstances.stream().map(ProcessInstance::getBusinessId).collect(Collectors.toList()));
-            }
-
+            List<ProcessInstance> processInstances = escalationUtil.getProcessInstances(tenantId, businessIds.subList(start,end), escalation);
+            ids.addAll(processInstances.stream().map(ProcessInstance::getBusinessId).collect(Collectors.toList()));
         }
+
 
         return ids;
 
