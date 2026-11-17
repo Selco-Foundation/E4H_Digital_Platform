@@ -1,6 +1,6 @@
 import { CardText, Modal } from "@selco/digit-ui-react-components";
 import React from "react";
-import { useLabel } from "./useLabel";
+import { useLabel } from "../../hooks/useLabel";
 
 /**
  * Small confirmation popup shown before cancelling a PENDING request (criterion 15).

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import DEFAULT_LABELS from "./defaultLabels";
+import DEFAULT_LABELS from "../components/MobileChangeRequest/defaultLabels";
 
 /**
  * Returns a translate function for this feature's labels.

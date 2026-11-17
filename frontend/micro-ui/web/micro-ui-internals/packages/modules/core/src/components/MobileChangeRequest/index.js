@@ -1,7 +1,7 @@
 import { CardLabel, CardLabelError, LabelFieldPair, MobileNumber, SubmitBar, Toast } from "@selco/digit-ui-react-components";
 import React, { useEffect, useState } from "react";
 import CancelRequestModal from "./CancelRequestModal";
-import { useLabel } from "./useLabel";
+import { useLabel } from "../../hooks/useLabel";
 
 const LABEL_WIDTH = "300px"; // same label column width as the other rows on the profile page
 const CONTENT_MAX_WIDTH = "540px"; // same width as the Mobile No. field above
