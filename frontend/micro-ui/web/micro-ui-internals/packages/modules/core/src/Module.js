@@ -10,6 +10,7 @@ import SelectOtp from "./pages/citizen/Login/SelectOtp";
 import { useState } from "react";
 import ErrorBoundary from "./components/ErrorBoundaries";
 import OfflineBanner from "./components/OfflineBanner";
+import IosInstallPrompt from "./components/IosInstallPrompt";
 // Registers the beforeinstallprompt/appinstalled listeners at startup; the employee login opens the saved prompt.
 import "./utilities/pwaInstallPrompt";
 export { validateStoredSession } from "./utilities/validateStoredSession";
@@ -66,6 +67,7 @@ export const DigitUI = ({ stateCode, registry, enabledModules, moduleReducers ,d
   return (
     <div>
       <OfflineBanner />
+      <IosInstallPrompt />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <ComponentProvider.Provider value={registry}>

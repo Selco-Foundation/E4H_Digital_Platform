@@ -1,5 +1,11 @@
 const INSTALLED_KEY = "selco.pwaInstalled";
 const MAX_PROMPTS = 3;
+export const IOS_INSTALL_PROMPT_EVENT = "selco:ios-install-prompt";
+
+// iPadOS reports itself as a Mac, so a touch-capable "Mac" is treated as an iPad.
+const isIos = () =>
+  /iPad|iPhone|iPod/.test(window.navigator.userAgent) ||
+  (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
 
 // beforeinstallprompt fires once, early in the page load, so it is captured when this module loads (imported from Module.js).
 if (typeof window !== "undefined") {
@@ -45,10 +51,21 @@ const isInstalled = () =>
 export const showPwaInstallPromptIfEligible = async (userInfo) => {
   const installEvent = window.deferredPwaInstallPrompt;
   const key = getPromptCountKey(userInfo);
-  if (!installEvent || !key || isInstalled()) return;
+  if (!key || isInstalled()) return;
 
   const timesShown = getPromptCount(key);
   if (timesShown >= MAX_PROMPTS) return;
+
+  // iOS has no install prompt API: show our own instructions instead (IosInstallPrompt, rendered by Module.js).
+  // It is not tied to the login page, so the caller can navigate right away.
+  if (isIos()) {
+    setPromptCount(key, timesShown + 1);
+    window.selcoShowIosInstallPrompt = true; // In case IosInstallPrompt has not mounted yet.
+    window.dispatchEvent(new Event(IOS_INSTALL_PROMPT_EVENT));
+    return;
+  }
+
+  if (!installEvent) return;
 
   try {
     await Promise.resolve(installEvent.prompt());
