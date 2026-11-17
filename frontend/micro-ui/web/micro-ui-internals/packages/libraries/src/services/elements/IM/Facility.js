@@ -23,7 +23,6 @@ export const FacilityService = {
 
 
   /* ------------------------------------------------------------------
-   * Registered mobile number change requests (SEM 4.0, #3209)
    * Backend: health-facility-registry -> MobileChangeRequestController
    *
    * Every call goes through `Request` with userService + auth, which fills
