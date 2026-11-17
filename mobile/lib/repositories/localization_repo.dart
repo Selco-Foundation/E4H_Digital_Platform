@@ -6,7 +6,15 @@ import '../model/localization/localizationModel.dart';
 import '../utils/envConfig.dart';
 
 class LocalizationRepository {
-  final authClient = Dio();
+  final Dio authClient;
+
+  LocalizationRepository({Dio? client})
+      : authClient = client ??
+            Dio(BaseOptions(
+              connectTimeout: const Duration(seconds: 20),
+              receiveTimeout: const Duration(seconds: 20),
+              sendTimeout: const Duration(seconds: 20),
+            ));
 
   Future<LocalizationModel> getLocalizationsList(
       Map<String, String> queryParameters) async {

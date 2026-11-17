@@ -10,7 +10,9 @@ class AppLocalizations {
   final Locale locale;
   final Isar isar;
 
-  AppLocalizations(this.locale, this.isar);
+  AppLocalizations(this.locale, this.isar, {List<Localization>? messages}) {
+    if (messages != null) _setMessages(messages);
+  }
 
   static AppLocalizations of(BuildContext context) {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
@@ -18,14 +20,29 @@ class AppLocalizations {
 
   static LocalizationModel? localizationModel;
 
-  static final List<Localization> _localizedStrings = <Localization>[];
+  Map<String, String> _localizedStrings = const {};
+
+  bool get hasTranslations => _localizedStrings.isNotEmpty;
+
+  bool _setMessages(List<Localization> messages) {
+    final translated = <String, String>{
+      for (final message in messages)
+        if (message.locale == locale.toString() &&
+            message.code.trim().isNotEmpty &&
+            message.message.trim().isNotEmpty)
+          message.code: message.message,
+    };
+    if (translated.isEmpty) return false;
+    _localizedStrings = Map.unmodifiable(translated);
+    return true;
+  }
 
   static LocalizationsDelegate<AppLocalizations> getDelegate(
-          AppConfig config, Isar isar) =>
-      AppLocalizationsDelegate(config, isar);
+          AppConfig config, Isar isar,
+          {List<Localization>? messages}) =>
+      AppLocalizationsDelegate(config, isar, messages: messages);
 
   Future<bool> load() async {
-    _localizedStrings.clear();
     final List<LocalizationWrapper> localizationList = await isar
         .localizationWrappers
         .filter()
@@ -33,22 +50,13 @@ class AppLocalizations {
         .findAll();
 
     if (localizationList.isNotEmpty) {
-      _localizedStrings.addAll(localizationList.first.localization!);
-      return true;
+      final messages = localizationList.first.localization ?? [];
+      return _setMessages(messages);
     }
 
     return false;
   }
 
-  String translate(String localizedValues) {
-    if (_localizedStrings.isEmpty) {
-      return localizedValues;
-    } else {
-      final index = _localizedStrings.indexWhere(
-        (medium) => medium.code == localizedValues,
-      );
-
-      return index != -1 ? _localizedStrings[index].message : localizedValues;
-    }
-  }
+  String translate(String localizedValues) =>
+      _localizedStrings[localizedValues] ?? localizedValues;
 }

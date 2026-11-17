@@ -2,10 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:digit_forms_engine/blocs/app_localization.dart'
-    as forms_localization;
-import 'package:digit_scanner/blocs/app_localization.dart'
-    as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:dio/dio.dart';
@@ -47,6 +43,7 @@ import 'blocs/cache_specification/cache_specification.dart';
 import 'blocs/cache_sync_record/cache_sync_record.dart';
 import 'blocs/localization/app_localization.dart';
 import 'blocs/localization/localization.dart';
+import 'blocs/localization/package_localization_delegates.dart';
 import 'blocs/overall_asset_summary/overall_asset_summary.dart';
 import 'blocs/scheduled_visit_submission/scheduled_visit_submission.dart';
 import 'blocs/user_type/user_type.dart';
@@ -61,6 +58,7 @@ import 'model/data_model.init.dart';
 import 'repositories/app_init_repo.dart';
 import 'router/app_router.dart';
 import 'widgets/app_safe_area.dart';
+import 'widgets/localization_loading_screen.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
 import 'utils/app_logger.dart';
@@ -224,59 +222,70 @@ class _MainAppState extends State<MainApp> {
                 final initialModuleList =
                     appConfig.appConfig!.appConfig?[0].backendInterface;
                 final languages = appConfig.appConfig!.appConfig?[0].languages;
-                var firstLanguage;
-                firstLanguage = languages?.last.value;
+                final defaultLocale = languages?.isNotEmpty == true
+                    ? languages!.last.value
+                    : 'en_IN';
+                final savedLocale = AppSharedPreferences().getSelectedLocale;
+                final initialLocale = languages?.any(
+                            (language) => language.value == savedLocale) ==
+                        true
+                    ? savedLocale!
+                    : defaultLocale;
 
                 return BlocProvider(
                     create: (context) => LocalizationBloc(widget.isar)
                       ..add(LocalizationEvent.onSelect(
-                          locale: firstLanguage,
+                          locale: initialLocale,
                           moduleList: initialModuleList)),
                     child: BlocBuilder<LocalizationBloc, LocalizationState>(
                         builder: (context, state) {
                       final selectedLocale =
-                          AppSharedPreferences().getSelectedLocale ??
-                              firstLanguage;
+                          context.read<LocalizationBloc>().locale ??
+                              initialLocale;
+                      final parts = selectedLocale.split('_');
+                      final locale = Locale(
+                          parts.first, parts.length > 1 ? parts[1] : null);
+                      final messages = state.maybeWhen(
+                        selected: (_, messages) => messages,
+                        orElse: () => const <Localization>[],
+                      );
+                      final translations = AppLocalizations(locale, widget.isar,
+                          messages: messages);
                       syncIntlDefaultLocale(selectedLocale);
 
                       return MaterialApp.router(
                         builder: (context, child) => AppSafeArea(
-                          child: child ?? const SizedBox.shrink(),
+                          child: LocalizationGate(
+                            state: state,
+                            onRetry: () => context.read<LocalizationBloc>().add(
+                                LocalizationEvent.onSelect(
+                                    locale: selectedLocale,
+                                    moduleList: initialModuleList)),
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
                         scaffoldMessengerKey: scaffoldMessengerKey,
                         theme: DigitTheme.instance.mobileTheme,
                         routerDelegate: _approuter.delegate(),
                         routeInformationParser: _approuter.defaultRouteParser(),
-                        supportedLocales: languages != null
-                            ? languages.map((e) {
-                                final results = e.value.split('_');
-
-                                return results.isNotEmpty
-                                    ? Locale(results.first, results.last)
-                                    : firstLanguage;
+                        supportedLocales: languages?.isNotEmpty == true
+                            ? languages!.map((language) {
+                                final parts = language.value.split('_');
+                                return Locale(parts.first,
+                                    parts.length > 1 ? parts[1] : null);
                               })
-                            : [firstLanguage],
+                            : [locale],
                         localizationsDelegates: [
                           AppLocalizations.getDelegate(
-                              appConfig.appConfig!, widget.isar),
+                              appConfig.appConfig!, widget.isar,
+                              messages: messages),
                           GlobalWidgetsLocalizations.delegate,
                           GlobalCupertinoLocalizations.delegate,
                           GlobalMaterialLocalizations.delegate,
-                          scanner_localization.ScannerLocalization.getDelegate(
-                              getLocalizationString(
-                                  widget.isar, selectedLocale),
-                              languages!),
-                          forms_localization.FormLocalization.getDelegate(
-                            getLocalizationString(widget.isar, selectedLocale),
-                            languages!,
-                          ),
+                          ScannerTranslationsDelegate(translations),
+                          FormTranslationsDelegate(translations),
                         ],
-                        locale: languages != null
-                            ? Locale(
-                                selectedLocale!.split("_").first,
-                                selectedLocale.split("_").last,
-                              )
-                            : firstLanguage,
+                        locale: locale,
                       );
                     }));
               }
@@ -285,13 +294,16 @@ class _MainAppState extends State<MainApp> {
                   context.read<AppInitialization>().cachedAppConfig;
 
               return state.maybeWhen(
-                orElse: () =>
-                    const Scaffold(body: Center(child: Text('loading...'))),
+                orElse: () => MaterialApp(
+                    theme: DigitTheme.instance.mobileTheme,
+                    home: const LocalizationLoadingScreen()),
                 loadingMdms: (appConfig) => buildShell(appConfig),
                 defaulted: (appConfig) => buildShell(appConfig),
                 error: (_) => cachedAppConfig != null
                     ? buildShell(cachedAppConfig)
-                    : const Scaffold(body: Center(child: Text('loading...'))),
+                    : MaterialApp(
+                        theme: DigitTheme.instance.mobileTheme,
+                        home: const LocalizationLoadingScreen()),
                 initialized: (
                   appConfig,
                   assetCount,
@@ -308,23 +320,4 @@ class _MainAppState extends State<MainApp> {
           )),
     );
   }
-}
-
-Future<List<dynamic>> getLocalizationString(
-    Isar isar, String selectedLocale) async {
-  List<dynamic> localizationValues = [];
-
-  final List<LocalizationWrapper> localizationList =
-      await isar.localizationWrappers
-          .filter()
-          .localeEqualTo(
-            selectedLocale.toString(),
-          )
-          .findAll();
-
-  if (localizationList.isNotEmpty) {
-    localizationValues.addAll(localizationList.first.localization!);
-  }
-
-  return localizationValues;
 }

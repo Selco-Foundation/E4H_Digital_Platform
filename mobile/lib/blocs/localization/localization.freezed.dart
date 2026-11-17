@@ -263,38 +263,51 @@ mixin _$LocalizationState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(String? locale) selected,
+    required TResult Function(String locale) loading,
+    required TResult Function(String locale, List<Localization> messages)
+        selected,
+    required TResult Function(String locale) failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(String? locale)? selected,
+    TResult? Function(String locale)? loading,
+    TResult? Function(String locale, List<Localization> messages)? selected,
+    TResult? Function(String locale)? failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(String? locale)? selected,
+    TResult Function(String locale)? loading,
+    TResult Function(String locale, List<Localization> messages)? selected,
+    TResult Function(String locale)? failure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_LocaleNotSelectedState value) initial,
+    required TResult Function(_LocaleLoadingState value) loading,
     required TResult Function(_LocaleSelectedState value) selected,
+    required TResult Function(_LocaleFailureState value) failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_LocaleNotSelectedState value)? initial,
+    TResult? Function(_LocaleLoadingState value)? loading,
     TResult? Function(_LocaleSelectedState value)? selected,
+    TResult? Function(_LocaleFailureState value)? failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_LocaleNotSelectedState value)? initial,
+    TResult Function(_LocaleLoadingState value)? loading,
     TResult Function(_LocaleSelectedState value)? selected,
+    TResult Function(_LocaleFailureState value)? failure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -360,7 +373,10 @@ class _$LocaleNotSelectedStateImpl implements _LocaleNotSelectedState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(String? locale) selected,
+    required TResult Function(String locale) loading,
+    required TResult Function(String locale, List<Localization> messages)
+        selected,
+    required TResult Function(String locale) failure,
   }) {
     return initial();
   }
@@ -369,7 +385,9 @@ class _$LocaleNotSelectedStateImpl implements _LocaleNotSelectedState {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(String? locale)? selected,
+    TResult? Function(String locale)? loading,
+    TResult? Function(String locale, List<Localization> messages)? selected,
+    TResult? Function(String locale)? failure,
   }) {
     return initial?.call();
   }
@@ -378,7 +396,9 @@ class _$LocaleNotSelectedStateImpl implements _LocaleNotSelectedState {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(String? locale)? selected,
+    TResult Function(String locale)? loading,
+    TResult Function(String locale, List<Localization> messages)? selected,
+    TResult Function(String locale)? failure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -391,7 +411,9 @@ class _$LocaleNotSelectedStateImpl implements _LocaleNotSelectedState {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_LocaleNotSelectedState value) initial,
+    required TResult Function(_LocaleLoadingState value) loading,
     required TResult Function(_LocaleSelectedState value) selected,
+    required TResult Function(_LocaleFailureState value) failure,
   }) {
     return initial(this);
   }
@@ -400,7 +422,9 @@ class _$LocaleNotSelectedStateImpl implements _LocaleNotSelectedState {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_LocaleNotSelectedState value)? initial,
+    TResult? Function(_LocaleLoadingState value)? loading,
     TResult? Function(_LocaleSelectedState value)? selected,
+    TResult? Function(_LocaleFailureState value)? failure,
   }) {
     return initial?.call(this);
   }
@@ -409,7 +433,9 @@ class _$LocaleNotSelectedStateImpl implements _LocaleNotSelectedState {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_LocaleNotSelectedState value)? initial,
+    TResult Function(_LocaleLoadingState value)? loading,
     TResult Function(_LocaleSelectedState value)? selected,
+    TResult Function(_LocaleFailureState value)? failure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -424,12 +450,160 @@ abstract class _LocaleNotSelectedState implements LocalizationState {
 }
 
 /// @nodoc
+abstract class _$$LocaleLoadingStateImplCopyWith<$Res> {
+  factory _$$LocaleLoadingStateImplCopyWith(_$LocaleLoadingStateImpl value,
+          $Res Function(_$LocaleLoadingStateImpl) then) =
+      __$$LocaleLoadingStateImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String locale});
+}
+
+/// @nodoc
+class __$$LocaleLoadingStateImplCopyWithImpl<$Res>
+    extends _$LocalizationStateCopyWithImpl<$Res, _$LocaleLoadingStateImpl>
+    implements _$$LocaleLoadingStateImplCopyWith<$Res> {
+  __$$LocaleLoadingStateImplCopyWithImpl(_$LocaleLoadingStateImpl _value,
+      $Res Function(_$LocaleLoadingStateImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? locale = null,
+  }) {
+    return _then(_$LocaleLoadingStateImpl(
+      locale: null == locale
+          ? _value.locale
+          : locale // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$LocaleLoadingStateImpl implements _LocaleLoadingState {
+  const _$LocaleLoadingStateImpl({required this.locale});
+
+  @override
+  final String locale;
+
+  @override
+  String toString() {
+    return 'LocalizationState.loading(locale: $locale)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$LocaleLoadingStateImpl &&
+            (identical(other.locale, locale) || other.locale == locale));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, locale);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$LocaleLoadingStateImplCopyWith<_$LocaleLoadingStateImpl> get copyWith =>
+      __$$LocaleLoadingStateImplCopyWithImpl<_$LocaleLoadingStateImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function(String locale) loading,
+    required TResult Function(String locale, List<Localization> messages)
+        selected,
+    required TResult Function(String locale) failure,
+  }) {
+    return loading(locale);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function(String locale)? loading,
+    TResult? Function(String locale, List<Localization> messages)? selected,
+    TResult? Function(String locale)? failure,
+  }) {
+    return loading?.call(locale);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function(String locale)? loading,
+    TResult Function(String locale, List<Localization> messages)? selected,
+    TResult Function(String locale)? failure,
+    required TResult orElse(),
+  }) {
+    if (loading != null) {
+      return loading(locale);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_LocaleNotSelectedState value) initial,
+    required TResult Function(_LocaleLoadingState value) loading,
+    required TResult Function(_LocaleSelectedState value) selected,
+    required TResult Function(_LocaleFailureState value) failure,
+  }) {
+    return loading(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_LocaleNotSelectedState value)? initial,
+    TResult? Function(_LocaleLoadingState value)? loading,
+    TResult? Function(_LocaleSelectedState value)? selected,
+    TResult? Function(_LocaleFailureState value)? failure,
+  }) {
+    return loading?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_LocaleNotSelectedState value)? initial,
+    TResult Function(_LocaleLoadingState value)? loading,
+    TResult Function(_LocaleSelectedState value)? selected,
+    TResult Function(_LocaleFailureState value)? failure,
+    required TResult orElse(),
+  }) {
+    if (loading != null) {
+      return loading(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _LocaleLoadingState implements LocalizationState {
+  const factory _LocaleLoadingState({required final String locale}) =
+      _$LocaleLoadingStateImpl;
+
+  String get locale;
+  @JsonKey(ignore: true)
+  _$$LocaleLoadingStateImplCopyWith<_$LocaleLoadingStateImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
 abstract class _$$LocaleSelectedStateImplCopyWith<$Res> {
   factory _$$LocaleSelectedStateImplCopyWith(_$LocaleSelectedStateImpl value,
           $Res Function(_$LocaleSelectedStateImpl) then) =
       __$$LocaleSelectedStateImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String? locale});
+  $Res call({String locale, List<Localization> messages});
 }
 
 /// @nodoc
@@ -443,13 +617,18 @@ class __$$LocaleSelectedStateImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? locale = freezed,
+    Object? locale = null,
+    Object? messages = null,
   }) {
     return _then(_$LocaleSelectedStateImpl(
-      locale: freezed == locale
+      locale: null == locale
           ? _value.locale
           : locale // ignore: cast_nullable_to_non_nullable
-              as String?,
+              as String,
+      messages: null == messages
+          ? _value._messages
+          : messages // ignore: cast_nullable_to_non_nullable
+              as List<Localization>,
     ));
   }
 }
@@ -457,14 +636,23 @@ class __$$LocaleSelectedStateImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
-  const _$LocaleSelectedStateImpl({required this.locale});
+  const _$LocaleSelectedStateImpl(
+      {required this.locale, required final List<Localization> messages})
+      : _messages = messages;
 
   @override
-  final String? locale;
+  final String locale;
+  final List<Localization> _messages;
+  @override
+  List<Localization> get messages {
+    if (_messages is EqualUnmodifiableListView) return _messages;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_messages);
+  }
 
   @override
   String toString() {
-    return 'LocalizationState.selected(locale: $locale)';
+    return 'LocalizationState.selected(locale: $locale, messages: $messages)';
   }
 
   @override
@@ -472,11 +660,13 @@ class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LocaleSelectedStateImpl &&
-            (identical(other.locale, locale) || other.locale == locale));
+            (identical(other.locale, locale) || other.locale == locale) &&
+            const DeepCollectionEquality().equals(other._messages, _messages));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, locale);
+  int get hashCode => Object.hash(
+      runtimeType, locale, const DeepCollectionEquality().hash(_messages));
 
   @JsonKey(ignore: true)
   @override
@@ -489,29 +679,36 @@ class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(String? locale) selected,
+    required TResult Function(String locale) loading,
+    required TResult Function(String locale, List<Localization> messages)
+        selected,
+    required TResult Function(String locale) failure,
   }) {
-    return selected(locale);
+    return selected(locale, messages);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(String? locale)? selected,
+    TResult? Function(String locale)? loading,
+    TResult? Function(String locale, List<Localization> messages)? selected,
+    TResult? Function(String locale)? failure,
   }) {
-    return selected?.call(locale);
+    return selected?.call(locale, messages);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(String? locale)? selected,
+    TResult Function(String locale)? loading,
+    TResult Function(String locale, List<Localization> messages)? selected,
+    TResult Function(String locale)? failure,
     required TResult orElse(),
   }) {
     if (selected != null) {
-      return selected(locale);
+      return selected(locale, messages);
     }
     return orElse();
   }
@@ -520,7 +717,9 @@ class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_LocaleNotSelectedState value) initial,
+    required TResult Function(_LocaleLoadingState value) loading,
     required TResult Function(_LocaleSelectedState value) selected,
+    required TResult Function(_LocaleFailureState value) failure,
   }) {
     return selected(this);
   }
@@ -529,7 +728,9 @@ class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_LocaleNotSelectedState value)? initial,
+    TResult? Function(_LocaleLoadingState value)? loading,
     TResult? Function(_LocaleSelectedState value)? selected,
+    TResult? Function(_LocaleFailureState value)? failure,
   }) {
     return selected?.call(this);
   }
@@ -538,7 +739,9 @@ class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_LocaleNotSelectedState value)? initial,
+    TResult Function(_LocaleLoadingState value)? loading,
     TResult Function(_LocaleSelectedState value)? selected,
+    TResult Function(_LocaleFailureState value)? failure,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -549,11 +752,161 @@ class _$LocaleSelectedStateImpl implements _LocaleSelectedState {
 }
 
 abstract class _LocaleSelectedState implements LocalizationState {
-  const factory _LocaleSelectedState({required final String? locale}) =
-      _$LocaleSelectedStateImpl;
+  const factory _LocaleSelectedState(
+      {required final String locale,
+      required final List<Localization> messages}) = _$LocaleSelectedStateImpl;
 
-  String? get locale;
+  String get locale;
+  List<Localization> get messages;
   @JsonKey(ignore: true)
   _$$LocaleSelectedStateImplCopyWith<_$LocaleSelectedStateImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$LocaleFailureStateImplCopyWith<$Res> {
+  factory _$$LocaleFailureStateImplCopyWith(_$LocaleFailureStateImpl value,
+          $Res Function(_$LocaleFailureStateImpl) then) =
+      __$$LocaleFailureStateImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String locale});
+}
+
+/// @nodoc
+class __$$LocaleFailureStateImplCopyWithImpl<$Res>
+    extends _$LocalizationStateCopyWithImpl<$Res, _$LocaleFailureStateImpl>
+    implements _$$LocaleFailureStateImplCopyWith<$Res> {
+  __$$LocaleFailureStateImplCopyWithImpl(_$LocaleFailureStateImpl _value,
+      $Res Function(_$LocaleFailureStateImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? locale = null,
+  }) {
+    return _then(_$LocaleFailureStateImpl(
+      locale: null == locale
+          ? _value.locale
+          : locale // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$LocaleFailureStateImpl implements _LocaleFailureState {
+  const _$LocaleFailureStateImpl({required this.locale});
+
+  @override
+  final String locale;
+
+  @override
+  String toString() {
+    return 'LocalizationState.failure(locale: $locale)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$LocaleFailureStateImpl &&
+            (identical(other.locale, locale) || other.locale == locale));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, locale);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$LocaleFailureStateImplCopyWith<_$LocaleFailureStateImpl> get copyWith =>
+      __$$LocaleFailureStateImplCopyWithImpl<_$LocaleFailureStateImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function(String locale) loading,
+    required TResult Function(String locale, List<Localization> messages)
+        selected,
+    required TResult Function(String locale) failure,
+  }) {
+    return failure(locale);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function(String locale)? loading,
+    TResult? Function(String locale, List<Localization> messages)? selected,
+    TResult? Function(String locale)? failure,
+  }) {
+    return failure?.call(locale);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function(String locale)? loading,
+    TResult Function(String locale, List<Localization> messages)? selected,
+    TResult Function(String locale)? failure,
+    required TResult orElse(),
+  }) {
+    if (failure != null) {
+      return failure(locale);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_LocaleNotSelectedState value) initial,
+    required TResult Function(_LocaleLoadingState value) loading,
+    required TResult Function(_LocaleSelectedState value) selected,
+    required TResult Function(_LocaleFailureState value) failure,
+  }) {
+    return failure(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_LocaleNotSelectedState value)? initial,
+    TResult? Function(_LocaleLoadingState value)? loading,
+    TResult? Function(_LocaleSelectedState value)? selected,
+    TResult? Function(_LocaleFailureState value)? failure,
+  }) {
+    return failure?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_LocaleNotSelectedState value)? initial,
+    TResult Function(_LocaleLoadingState value)? loading,
+    TResult Function(_LocaleSelectedState value)? selected,
+    TResult Function(_LocaleFailureState value)? failure,
+    required TResult orElse(),
+  }) {
+    if (failure != null) {
+      return failure(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _LocaleFailureState implements LocalizationState {
+  const factory _LocaleFailureState({required final String locale}) =
+      _$LocaleFailureStateImpl;
+
+  String get locale;
+  @JsonKey(ignore: true)
+  _$$LocaleFailureStateImplCopyWith<_$LocaleFailureStateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
