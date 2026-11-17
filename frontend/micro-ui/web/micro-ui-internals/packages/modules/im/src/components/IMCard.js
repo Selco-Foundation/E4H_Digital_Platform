@@ -97,7 +97,7 @@ const IMCard = () => {
       role: "COMPLAINT_ASSESSOR"
     },
     {
-      // CRM approval queue for registered-mobile-number change requests (SEM 4.0, #3209)
+      // CRM approval queue for registered-mobile-number change requests
       label: tr("MOBILE_CHANGE_CRM_LINK"),
       link: `/${window.contextPath}/employee/im/mobile-change-requests`,
       role: "COMPLAINT_ASSESSOR"
