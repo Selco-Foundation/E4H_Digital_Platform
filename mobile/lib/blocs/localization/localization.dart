@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -10,67 +9,122 @@ import '../../data/nosql/localization.dart';
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../repositories/app_init_repo.dart';
 import '../../repositories/localization_repo.dart';
-import 'app_localization.dart';
+import '../../utils/app_logger.dart';
 
 part 'localization.freezed.dart';
 
 class LocalizationBloc extends Bloc<LocalizationEvent, LocalizationState> {
   final Isar isar;
 
+  final LocalizationRepository _repository;
+  final Duration _requestTimeout;
   String? _locale;
+  int _requestId = 0;
 
-  LocalizationBloc(this.isar) : super(const LocalizationState.initial()) {
+  LocalizationBloc(
+    this.isar, {
+    LocalizationRepository? repository,
+    Duration requestTimeout = const Duration(seconds: 20),
+  })  : _repository = repository ?? LocalizationRepository(),
+        _requestTimeout = requestTimeout,
+        super(const LocalizationState.initial()) {
     on<_LocaleSelectedEvent>(_onLocaleSelected);
   }
 
   String? get locale => _locale;
 
-  FutureOr<void> _onLocaleSelected(
-      _LocaleSelectedEvent event, Emitter<LocalizationState> emit) async {
-    final selectedLocale = event.locale;
-    if (selectedLocale == null || selectedLocale.isEmpty) {
-      emit(LocalizationState.selected(locale: selectedLocale));
+  Future<void> _onLocaleSelected(
+    _LocaleSelectedEvent event,
+    Emitter<LocalizationState> emit,
+  ) async {
+    final requestId = ++_requestId;
+    final selectedLocale = event.locale?.trim() ?? '';
+    _locale = selectedLocale;
+    var hasTranslations = state.maybeWhen(
+      selected: (locale, messages) =>
+          locale == selectedLocale && messages.isNotEmpty,
+      orElse: () => false,
+    );
+    if (!hasTranslations) {
+      emit(LocalizationState.loading(locale: selectedLocale));
+    }
+    if (selectedLocale.isEmpty) {
+      emit(LocalizationState.failure(locale: selectedLocale));
       return;
     }
 
-    _locale = selectedLocale;
-    AppSharedPreferences().setSelectedLocale(selectedLocale);
-
-    final appLocalizations = _appLocalizationsFor(selectedLocale);
-    await appLocalizations.load();
+    try {
+      final cached = await isar.localizationWrappers
+          .filter()
+          .localeEqualTo(selectedLocale)
+          .findFirst();
+      if (requestId != _requestId || emit.isDone) return;
+      final messages =
+          _validMessages(cached?.localization ?? [], selectedLocale);
+      if (messages.isNotEmpty) {
+        hasTranslations = true;
+        emit(LocalizationState.selected(
+            locale: selectedLocale, messages: messages));
+        await _saveLocale(selectedLocale);
+      }
+    } catch (error) {
+      AppLogger.instance.info(error, title: 'Loading cached localization');
+    }
+    if (requestId != _requestId || emit.isDone) return;
 
     try {
-      final localizationsList = await LocalizationRepository()
-          .getLocalizationsList(_queryParamsFor(selectedLocale));
+      final response = await _repository
+          .getLocalizationsList(_queryParamsFor(selectedLocale))
+          .timeout(_requestTimeout);
+      if (requestId != _requestId || emit.isDone) return;
+      final messages = _validMessages(
+          response.messages
+              .map((message) => Localization()
+                ..code = message.code
+                ..message = message.message
+                ..module = message.module
+                ..locale = message.locale)
+              .toList(),
+          selectedLocale);
+      if (messages.isEmpty) {
+        throw const FormatException('No localization messages');
+      }
 
-      await _replaceCachedLocalizations(
-        locale: selectedLocale,
-        localizations: localizationsList.messages
-            .map(
-              (e) => Localization()
-                ..message = e.message
-                ..code = e.code
-                ..locale = e.locale
-                ..module = e.module,
-            )
-            .toList(),
-      );
-
-      await appLocalizations.load();
-    } catch (_) {
-      // Keep startup/offline behavior non-blocking. Cached translations remain
-      // loaded when present; otherwise UI falls back to localization keys.
+      try {
+        await _replaceCachedLocalizations(
+            locale: selectedLocale,
+            localizations: messages,
+            requestId: requestId);
+      } catch (error) {
+        // Fresh server messages remain usable if persisting the cache fails.
+        AppLogger.instance.info(error, title: 'Saving localization cache');
+      }
+      if (requestId != _requestId || emit.isDone) return;
+      emit(LocalizationState.selected(
+          locale: selectedLocale, messages: messages));
+      await _saveLocale(selectedLocale);
+    } catch (error) {
+      AppLogger.instance.info(error, title: 'Loading server localization');
+      if (requestId == _requestId && !emit.isDone && !hasTranslations) {
+        emit(LocalizationState.failure(locale: selectedLocale));
+      }
     }
-
-    emit(LocalizationState.selected(locale: selectedLocale));
   }
 
-  AppLocalizations _appLocalizationsFor(String locale) {
-    final splitLocale = locale.split('_');
-    final languageCode = splitLocale.first;
-    final countryCode = splitLocale.length > 1 ? splitLocale[1] : null;
-    return AppLocalizations(Locale(languageCode, countryCode), isar);
+  Future<void> _saveLocale(String locale) async {
+    try {
+      await AppSharedPreferences().setSelectedLocale(locale);
+    } catch (error) {
+      AppLogger.instance.info(error, title: 'Saving selected locale');
+    }
   }
+
+  List<Localization> _validMessages(
+          List<Localization> messages, String locale) =>
+      List.unmodifiable(messages.where((message) =>
+          message.locale == locale &&
+          message.code.trim().isNotEmpty &&
+          message.message.trim().isNotEmpty));
 
   Map<String, String> _queryParamsFor(String locale) {
     const moduleNameList = ['rainmaker-common'];
@@ -84,13 +138,16 @@ class LocalizationBloc extends Bloc<LocalizationEvent, LocalizationState> {
   Future<void> _replaceCachedLocalizations({
     required String locale,
     required List<Localization> localizations,
+    required int requestId,
   }) async {
     await isar.writeTxn(() async {
+      if (requestId != _requestId || isClosed) return;
       final existing = await isar.localizationWrappers
           .filter()
           .localeEqualTo(locale)
           .findAll();
 
+      if (requestId != _requestId || isClosed) return;
       for (final wrapper in existing) {
         await isar.localizationWrappers.delete(wrapper.id);
       }
@@ -113,7 +170,12 @@ class LocalizationEvent with _$LocalizationEvent {
 @freezed
 class LocalizationState with _$LocalizationState {
   const factory LocalizationState.initial() = _LocaleNotSelectedState;
+  const factory LocalizationState.loading({required String locale}) =
+      _LocaleLoadingState;
   const factory LocalizationState.selected({
-    required String? locale,
+    required String locale,
+    required List<Localization> messages,
   }) = _LocaleSelectedState;
+  const factory LocalizationState.failure({required String locale}) =
+      _LocaleFailureState;
 }

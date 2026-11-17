@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import 'app_localization.dart';
+import '../../data/nosql/localization.dart';
 
 //the aim here is to override methods that are defined by default in the localizations delegate file
 class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   final AppConfig? appConfig;
   final Isar isar;
+  final List<Localization>? messages;
 
-  const AppLocalizationsDelegate(this.appConfig, this.isar);
+  const AppLocalizationsDelegate(this.appConfig, this.isar, {this.messages});
 
   //check from configuration if the language is supported in the app
   @override
@@ -27,9 +30,9 @@ class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
 
   //load localizations from storage
   @override
-  Future<AppLocalizations> load(Locale locale) async {
-    AppLocalizations appLocalizations = AppLocalizations(locale, isar);
-    await appLocalizations.load();
-    return appLocalizations;
+  Future<AppLocalizations> load(Locale locale) {
+    final localization = AppLocalizations(locale, isar, messages: messages);
+    if (messages != null) return SynchronousFuture(localization);
+    return localization.load().then((_) => localization);
   }
 }
