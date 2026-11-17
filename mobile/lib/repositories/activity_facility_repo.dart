@@ -46,7 +46,7 @@ class ActivityFacilityRemoteRepository {
   FutureOr<List<ActivityFacilityWorkflow>> searchByWorkflow(
       {required ActivityFacilitySearchModel body,
       required List<String> workflowStatuses,
-      int limit = 100,
+      int limit = 10,
       offset = 0,
       sortDirection = DEFAULT_SORT_DIRECTION}) async {
     try {
@@ -423,6 +423,20 @@ class ActivityFacilityRepository {
   }
 }
 
+class PendingReportsPage {
+  final List<ActivityFacilityWorkflow> items;
+  final int nextOffset;
+  final bool hasMore;
+  final bool fromCache;
+
+  const PendingReportsPage({
+    required this.items,
+    required this.nextOffset,
+    required this.hasMore,
+    required this.fromCache,
+  });
+}
+
 class UnsubmittedActivityFacilityRepository {
   final Isar _isar;
   final ActivityFacilityRemoteRepository _remote;
@@ -431,56 +445,99 @@ class UnsubmittedActivityFacilityRepository {
       {ActivityFacilityRemoteRepository? remote})
       : _remote = remote ?? ActivityFacilityRemoteRepository();
 
+  // Compatibility entry point: returns only the first server page plus local drafts.
   Future<List<ActivityFacilityWorkflow>> fetchByWorkflowIncludeCache({
     required String userType,
     required List<String> workflowStatuses,
     required ActivityFacilitySearchModel body,
+  }) async =>
+      (await fetchPage(
+        userType: userType,
+        workflowStatuses: workflowStatuses,
+        body: body,
+      ))
+          .items;
+
+  Future<PendingReportsPage> fetchPage({
+    required String userType,
+    required List<String> workflowStatuses,
+    required ActivityFacilitySearchModel body,
+    int offset = 0,
+    String sortDirection = DEFAULT_SORT_DIRECTION,
+    bool? cacheOnly,
   }) async {
+    const limit = ActivityFacilityRepository.defaultPageSize;
     final serverCache = ActivityFacilityRepository(_isar, remote: _remote);
-    final remoteList = <ActivityFacilityWorkflow>[];
-    try {
-      var offset = 0;
-      const pageSize = 100;
-      while (true) {
-        final page = await _remote.searchByWorkflow(
-            body: body,
-            workflowStatuses: workflowStatuses,
-            limit: pageSize,
-            offset: offset);
-        await serverCache._upsertCache(page);
-        remoteList.addAll(page);
-        if (page.length < pageSize) break;
-        offset += page.length;
+    List<ActivityFacilityWorkflow> remoteList;
+    var fromCache = cacheOnly == true;
+    if (!fromCache) {
+      try {
+        remoteList = await _remote.searchByWorkflow(
+          body: body,
+          workflowStatuses: workflowStatuses,
+          limit: limit,
+          offset: offset,
+          sortDirection: sortDirection,
+        );
+        await serverCache._upsertCache(remoteList);
+      } catch (error) {
+        if (isAuthenticationFailure(error) || offset > 0) rethrow;
+        fromCache = true;
+        remoteList = [];
       }
-    } catch (error) {
-      if (isAuthenticationFailure(error)) rethrow;
-      remoteList.addAll(await serverCache.readCache(workflowStatuses));
+    } else {
+      remoteList = [];
     }
-    final col = _isar.cacheUnsubmittedActivityFacilitys;
-    final localEntries = await col.where().userTypeEqualTo(userType).findAll();
+    final localEntries = await _isar.cacheUnsubmittedActivityFacilitys
+        .where()
+        .userTypeEqualTo(userType)
+        .findAll();
+    // Unsynced submissions retain their previous workflow status until upload.
+    // Their presence in this collection, scoped by role, makes them pending.
     final localWorkflows = localEntries
         .map((e) => ActivityFacilityWorkflow(
             activityFacility: e.activityFacility, status: e.status))
         .toList();
-    final byId = <String, ActivityFacilityWorkflow>{};
-    for (final record in remoteList) {
-      byId[record.activityFacility.id] = record;
+    bool hasMore;
+    if (fromCache) {
+      final localIds = localWorkflows.map((e) => e.activityFacility.id).toSet();
+      final cached = (await serverCache._readCacheSorted(
+        statuses: workflowStatuses,
+        sortDirection: sortDirection,
+      ))
+          .where(
+            (e) =>
+                !localIds.contains(e.activityFacility.id) &&
+                matchesFacilityName(
+                  e.activityFacility.facility?.facilityName,
+                  body.facilityName,
+                ),
+          )
+          .toList();
+      remoteList = cached.skip(offset).take(limit).toList();
+      hasMore = offset + remoteList.length < cached.length;
+    } else {
+      hasMore = remoteList.length == limit;
     }
-    for (final record in localWorkflows) {
-      byId[record.activityFacility.id] = record;
-    }
-    // Keep the existing local-first ordering and let unsynced data take precedence.
-    final localIds =
-        localWorkflows.map((record) => record.activityFacility.id).toSet();
-    return [
-      ...localIds.map((id) => byId[id]!),
-      ...byId.entries
-          .where((entry) => !localIds.contains(entry.key))
-          .map((entry) => entry.value),
-    ]
-        .where((record) => matchesFacilityName(
-            record.activityFacility.facility?.facilityName, body.facilityName))
-        .toList();
+    final byId = <String, ActivityFacilityWorkflow>{
+      for (final e in remoteList) e.activityFacility.id: e,
+      for (final e in localWorkflows) e.activityFacility.id: e,
+    };
+    final localIds = localWorkflows.map((e) => e.activityFacility.id).toSet();
+    return PendingReportsPage(
+      items: [
+        ...localIds.map((id) => byId[id]!),
+        ...byId.entries
+            .where((e) => !localIds.contains(e.key))
+            .map((e) => e.value),
+      ]
+          .where((e) => matchesFacilityName(
+              e.activityFacility.facility?.facilityName, body.facilityName))
+          .toList(),
+      nextOffset: offset + remoteList.length,
+      hasMore: hasMore,
+      fromCache: fromCache,
+    );
   }
 
   Future<CacheUnsubmittedActivityFacility> addOrGet(

@@ -61,6 +61,46 @@ class ActivityRemote extends ActivityFacilityRemoteRepository {
       items.length;
 }
 
+class PagedActivityRemote extends ActivityRemote {
+  final requests = <({int offset, int limit, String? query, String sort})>[];
+  @override
+  Future<List<ActivityFacilityWorkflow>> searchByWorkflow({
+    required ActivityFacilitySearchModel body,
+    required List<String> workflowStatuses,
+    int limit = 10,
+    offset = 0,
+    sortDirection = 'DESC',
+  }) async {
+    requests.add((
+      offset: offset as int,
+      limit: limit,
+      query: body.facilityName,
+      sort: sortDirection as String,
+    ));
+    if (error != null) throw error!;
+    final matching = items
+        .where(
+          (e) =>
+              workflowStatuses.contains(e.status) &&
+              (body.facilityName == null ||
+                  e.activityFacility.facility!.facilityName!
+                      .toLowerCase()
+                      .contains(body.facilityName!.trim().toLowerCase())),
+        )
+        .toList();
+    matching.sort(
+      (a, b) => sortDirection == 'ASC'
+          ? a.activityFacility.scheduledAt!.compareTo(
+              b.activityFacility.scheduledAt!,
+            )
+          : b.activityFacility.scheduledAt!.compareTo(
+              a.activityFacility.scheduledAt!,
+            ),
+    );
+    return matching.skip(offset).take(limit).toList();
+  }
+}
+
 class VisitRemote extends ScheduledVisitRemoteRepository {
   List<ScheduledVisit> items = [];
   Object? error;
@@ -243,6 +283,74 @@ void main() {
       remote.error = failure(status);
       await expectLater(search('k'), throwsA(isA<DioException>()));
     }
+  });
+
+  test(
+      'pending reports fetch one page, preserve local precedence and raw offsets',
+      () async {
+    final remote = PagedActivityRemote()
+      ..items = List.generate(
+        23,
+        (i) => activity(
+          '$i',
+          'Facility $i',
+          i + 1,
+          status: 'SUBMITTED_BY_FIELD_STAFF',
+        ),
+      );
+    final repo = UnsubmittedActivityFacilityRepository(isar, remote: remote);
+    await repo.addOrGet(
+      activity('22', 'Unsynced 22', 23, status: 'ASSIGNED_TO_FIELD_STAFF'),
+      'FIELD_STAFF',
+    );
+    Future<PendingReportsPage> page({
+      int offset = 0,
+      String? query,
+      String sort = 'DESC',
+      bool? cacheOnly,
+    }) =>
+        repo.fetchPage(
+          userType: 'FIELD_STAFF',
+          workflowStatuses: ['SUBMITTED_BY_FIELD_STAFF'],
+          body: ActivityFacilitySearchModel(facilityName: query),
+          offset: offset,
+          sortDirection: sort,
+          cacheOnly: cacheOnly,
+        );
+    final first = await page();
+    expect(remote.requests.length, 1);
+    expect(remote.requests.single.limit, 10);
+    expect(first.items.length, 10);
+    expect(
+      first.items.first.activityFacility.facility?.facilityName,
+      'Unsynced 22',
+    );
+    expect(first.nextOffset, 10);
+    expect(first.hasMore, isTrue);
+    final second = await page(offset: first.nextOffset);
+    expect(second.nextOffset, 20);
+    expect(second.hasMore, isTrue);
+    final last = await page(offset: second.nextOffset);
+    expect(last.nextOffset, 23);
+    expect(last.hasMore, isFalse);
+    expect(remote.requests.map((e) => e.offset), [0, 10, 20]);
+    final searched = await page(query: 'Facility 0', sort: 'ASC');
+    expect(searched.items.single.activityFacility.id, '0');
+    expect(remote.requests.last.query, 'Facility 0');
+    expect(remote.requests.last.sort, 'ASC');
+    remote.error = failure();
+    await expectLater(page(offset: 10), throwsA(isA<DioException>()));
+    final offline = await page();
+    expect(offline.fromCache, isTrue);
+    expect(offline.hasMore, isTrue);
+    final requestsBefore = remote.requests.length;
+    final offlineNext = await page(
+      offset: offline.nextOffset,
+      cacheOnly: true,
+    );
+    expect(offlineNext.fromCache, isTrue);
+    expect(remote.requests.length, requestsBefore);
+    expect(offlineNext.nextOffset, 20);
   });
 
   test(

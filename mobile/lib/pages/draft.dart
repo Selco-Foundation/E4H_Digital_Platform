@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
@@ -34,11 +36,23 @@ class _DraftPageState extends State<DraftPage>
     with ReportBookmarksState<DraftPage, ActivityFacilityWorkflow> {
   String _searchQuery = '';
   String? _filter;
-  int _criteriaGeneration = 0;
+  Timer? _searchDebounce;
+  bool _fetchingMore = false;
 
   List<ActivityFacilityWorkflow> _matchingDrafts(
           List<ActivityFacilityWorkflow> drafts) =>
-      filterFacilityList(drafts,
+      filterFacilityList([
+        ...drafts,
+        if (_filter == 'BOOKMARKED')
+          ...bookmarkedItems.where(
+            (item) =>
+                _draftStatusesForUserType().contains(item.status) &&
+                !drafts.any(
+                  (draft) =>
+                      draft.activityFacility.id == item.activityFacility.id,
+                ),
+          ),
+      ],
           query: _searchQuery,
           filter: _filter,
           id: (record) => record.activityFacility.id,
@@ -53,30 +67,58 @@ class _DraftPageState extends State<DraftPage>
       setState(() {
         _visibleCount = _pageSize;
         _isLoadingMore = false;
-        ++_criteriaGeneration;
       });
     }
+  }
+
+  void _fetchDrafts({bool loadMore = false}) {
+    _searchDebounce?.cancel();
+    context.read<ActivityFacilityBloc>().add(
+          ActivityFacilityEvent.loadUnSubmitted(
+            _draftStatusesForUserType(),
+            userType,
+            query: _searchQuery.trim(),
+            sortDirection: _filter == 'ASC' ? 'ASC' : 'DESC',
+            loadMore: loadMore,
+          ),
+        );
   }
 
   Future<void> _refreshDrafts() async {
     final bloc = context.read<ActivityFacilityBloc>();
     final loaded = bloc.stream.firstWhere((state) =>
-        state.maybeWhen(unSubmittedLoaded: (_) => true, orElse: () => false));
-    bloc.add(ActivityFacilityEvent.loadUnSubmitted(
-        _draftStatusesForUserType(), userType));
+        state is ActivityFacilityListFailure ||
+        state.maybeWhen(
+            unSubmittedLoaded: (_, __, ___, ____) => true,
+            orElse: () => false));
+    _fetchDrafts();
     await loaded;
     if (mounted) await _reloadBookmarks();
   }
 
   void _changeCriteria(
       {String? query, String? filter, bool changeFilter = false}) {
+    _searchDebounce?.cancel();
     setState(() {
       if (query != null) _searchQuery = query;
       if (changeFilter) _filter = filter;
       _visibleCount = _pageSize;
       _isLoadingMore = false;
-      ++_criteriaGeneration;
+      _fetchingMore = false;
     });
+    if (query != null) {
+      _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+        if (mounted) _fetchDrafts();
+      });
+    } else {
+      _fetchDrafts();
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   static const _pageSize = 10;
@@ -109,12 +151,7 @@ class _DraftPageState extends State<DraftPage>
             supervisor: () => USER_TYPES.SUPERVISOR.name,
             orElse: () => USER_TYPES.FIELD_STAFF.name,
           );
-      context.read<ActivityFacilityBloc>().add(
-            ActivityFacilityEvent.loadUnSubmitted(
-              _draftStatusesForUserType(),
-              userType,
-            ),
-          );
+      _fetchDrafts();
     });
   }
 
@@ -179,51 +216,56 @@ class _DraftPageState extends State<DraftPage>
           SnackBar(content: Text(context.translate(i18.draft.allDraftsSynced))),
         );
         _reloadBookmarks();
-        context.read<ActivityFacilityBloc>().add(
-              ActivityFacilityEvent.loadUnSubmitted(
-                _draftStatusesForUserType(),
-                userType,
-              ),
-            );
+        _fetchDrafts();
       },
     );
   }
 
   void _handleDraftState(ActivityFacilityState state) {
     state.maybeWhen(
-      unSubmittedLoaded: (drafts) {
+      unSubmittedLoaded: (drafts, hasMore, isLoadingMore, loadFailed) {
         setState(() {
-          _visibleCount = _pageSize;
-          ++_criteriaGeneration;
-          _isLoadingMore = false;
+          if (!isLoadingMore && !_fetchingMore) _visibleCount = _pageSize;
+          if (!isLoadingMore) _fetchingMore = false;
+          _isLoadingMore = isLoadingMore;
         });
       },
+      listFailure: () => setState(() {
+        _fetchingMore = false;
+        _isLoadingMore = false;
+      }),
       orElse: () {},
     );
   }
 
   void _loadMoreDrafts() {
-    if (_isLoadingMore) return;
-
-    final state = context.read<ActivityFacilityBloc>().state;
-    state.maybeWhen(
-      unSubmittedLoaded: (drafts) {
+    if (_isLoadingMore || (_searchDebounce?.isActive ?? false)) return;
+    final bloc = context.read<ActivityFacilityBloc>();
+    bloc.state.maybeWhen(
+      unSubmittedLoaded: (drafts, hasMore, isLoadingMore, loadFailed) {
         final matches = _matchingDrafts(drafts);
-        if (_visibleCount >= matches.length) return;
-        final generation = _criteriaGeneration;
-        setState(() => _isLoadingMore = true);
-        Future<void>.delayed(const Duration(milliseconds: 300), () {
-          if (!mounted || generation != _criteriaGeneration) return;
+        if (_visibleCount < matches.length) {
+          setState(
+            () => _visibleCount =
+                (_visibleCount + _pageSize).clamp(0, matches.length).toInt(),
+          );
+        } else if (hasMore) {
           setState(() {
-            _visibleCount =
-                (_visibleCount + _pageSize).clamp(0, matches.length).toInt();
-            _isLoadingMore = false;
+            _isLoadingMore = true;
+            _fetchingMore = true;
+            _visibleCount += _pageSize;
           });
-        });
+          _fetchDrafts(loadMore: true);
+        }
       },
       orElse: () {},
     );
   }
+
+  Widget _retryDrafts({bool loadMore = false}) => TextButton(
+        onPressed: loadMore ? _loadMoreDrafts : _fetchDrafts,
+        child: Text(context.translate(i18.common.retry)),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -301,20 +343,44 @@ class _DraftPageState extends State<DraftPage>
                             ActivityFacilityState>(
                           builder: (context, state) {
                             return state.maybeWhen(
-                              unSubmittedLoaded: (drafts) {
+                              unSubmittedLoaded: (
+                                drafts,
+                                hasMore,
+                                isLoadingMore,
+                                loadFailed,
+                              ) {
                                 final matches = _matchingDrafts(drafts);
                                 if (matches.isEmpty) {
-                                  return Center(
-                                    child: Text(
-                                      context.translate(_searchQuery
-                                              .trim()
-                                              .isNotEmpty
-                                          ? i18.common.noMatchingFacilitiesFound
-                                          : i18.draft.noUnsyncedReportsFound),
-                                      style: textTheme.bodyL.copyWith(
-                                        color: theme.colorTheme.text.primary,
+                                  return Column(
+                                    children: [
+                                      Center(
+                                        child: Text(
+                                          context.translate(
+                                              _searchQuery.trim().isNotEmpty
+                                                  ? i18.common
+                                                      .noMatchingFacilitiesFound
+                                                  : i18.draft
+                                                      .noUnsyncedReportsFound),
+                                          style: textTheme.bodyL.copyWith(
+                                            color:
+                                                theme.colorTheme.text.primary,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      if (hasMore)
+                                        TextButton(
+                                          onPressed: _isLoadingMore
+                                              ? null
+                                              : _loadMoreDrafts,
+                                          child: _isLoadingMore
+                                              ? const CircularProgressIndicator()
+                                              : Text(
+                                                  context.translate(
+                                                    i18.common.retry,
+                                                  ),
+                                                ),
+                                        ),
+                                    ],
                                   );
                                 }
 
@@ -359,13 +425,7 @@ class _DraftPageState extends State<DraftPage>
                                               if (mounted) {
                                                 await _reloadBookmarks();
                                                 if (!context.mounted) return;
-                                                context
-                                                    .read<
-                                                        ActivityFacilityBloc>()
-                                                    .add(ActivityFacilityEvent
-                                                        .loadUnSubmitted(
-                                                            _draftStatusesForUserType(),
-                                                            userType));
+                                                _fetchDrafts();
                                               }
                                             },
                                             title: project.activityFacility
@@ -385,6 +445,8 @@ class _DraftPageState extends State<DraftPage>
                                         ],
                                       );
                                     }),
+                                    if (loadFailed)
+                                      _retryDrafts(loadMore: true),
                                     if (_isLoadingMore)
                                       const Padding(
                                         padding:
@@ -394,6 +456,7 @@ class _DraftPageState extends State<DraftPage>
                                   ],
                                 );
                               },
+                              listFailure: () => Center(child: _retryDrafts()),
                               loading: () => const Center(
                                   child: CircularProgressIndicator()),
                               initial: () => const Center(

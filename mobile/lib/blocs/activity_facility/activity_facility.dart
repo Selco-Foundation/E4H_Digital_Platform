@@ -18,11 +18,24 @@ class ActivityFacilityBloc
   static const _pageSize = ActivityFacilityRepository.defaultPageSize;
   final Isar isar;
   final ActivityFacilityRepository _listRepository;
+  final UnsubmittedActivityFacilityRepository _pendingRepository;
   // Counts and cache checks share this bloc; retain pagination separately.
   ActivityFacilityPaginatedLoaded? _lastList;
 
-  ActivityFacilityBloc(this.isar, {ActivityFacilityRepository? repository})
-      : _listRepository = repository ?? ActivityFacilityRepository(isar),
+  int _pendingGeneration = 0;
+  int _pendingOffset = 0;
+  List<ActivityFacilityWorkflow> _pendingItems = [];
+  bool _pendingHasMore = false;
+  bool _pendingLoadingMore = false;
+  bool _pendingFromCache = false;
+
+  ActivityFacilityBloc(
+    this.isar, {
+    ActivityFacilityRepository? repository,
+    UnsubmittedActivityFacilityRepository? pendingRepository,
+  })  : _pendingRepository =
+            pendingRepository ?? UnsubmittedActivityFacilityRepository(isar),
+        _listRepository = repository ?? ActivityFacilityRepository(isar),
         super(const ActivityFacilityState.initial()) {
     on<ActivityFacilitySelectEvent>(_selectActivityFacility);
     on<FetchActivityFacilityByWorkflowEvent>(
@@ -66,22 +79,64 @@ class ActivityFacilityBloc
     LoadUnSubmittedEvent event,
     Emitter<ActivityFacilityState> emit,
   ) async {
-    emit(const ActivityFacilityState.loading());
-
-    final repo = UnsubmittedActivityFacilityRepository(isar);
-    final searchBody = ActivityFacilitySearchModel(
-      tenantId: envConfig.variables.tenantId,
-    );
-
-    try {
-      final unSubmitted = await repo.fetchByWorkflowIncludeCache(
-        workflowStatuses: event.statuses,
-        userType: event.userType,
-        body: searchBody,
+    if (event.loadMore && (_pendingLoadingMore || !_pendingHasMore)) return;
+    final generation =
+        event.loadMore ? _pendingGeneration : ++_pendingGeneration;
+    if (event.loadMore) {
+      _pendingLoadingMore = true;
+      emit(
+        ActivityFacilityState.unSubmittedLoaded(
+          List.of(_pendingItems),
+          hasMore: _pendingHasMore,
+          isLoadingMore: true,
+        ),
       );
-      emit(ActivityFacilityState.unSubmittedLoaded(unSubmitted));
+    } else {
+      _pendingHasMore = false;
+      _pendingLoadingMore = false;
+      _pendingOffset = 0;
+      _pendingItems = [];
+      _pendingFromCache = false;
+      emit(const ActivityFacilityState.loading());
+    }
+    try {
+      final page = await _pendingRepository.fetchPage(
+        userType: event.userType,
+        workflowStatuses: event.statuses,
+        body: ActivityFacilitySearchModel(
+          tenantId: envConfig.variables.tenantId,
+          facilityName: event.query,
+        ),
+        offset: _pendingOffset,
+        sortDirection: event.sortDirection ?? DEFAULT_SORT_DIRECTION,
+        cacheOnly: event.loadMore ? _pendingFromCache : null,
+      );
+      if (generation != _pendingGeneration) return;
+      final byId = {for (final e in _pendingItems) e.activityFacility.id: e};
+      for (final e in page.items) {
+        byId.putIfAbsent(e.activityFacility.id, () => e);
+      }
+      _pendingItems = byId.values.toList();
+      _pendingOffset = page.nextOffset;
+      _pendingHasMore = page.hasMore;
+      _pendingFromCache = page.fromCache;
+      _pendingLoadingMore = false;
+      emit(
+        ActivityFacilityState.unSubmittedLoaded(
+          List.of(_pendingItems),
+          hasMore: _pendingHasMore,
+        ),
+      );
     } catch (_) {
-      emit(const ActivityFacilityState.unSubmittedLoaded([]));
+      if (generation != _pendingGeneration) return;
+      _pendingLoadingMore = false;
+      emit(event.loadMore
+          ? ActivityFacilityState.unSubmittedLoaded(
+              List.of(_pendingItems),
+              hasMore: _pendingHasMore,
+              loadFailed: true,
+            )
+          : const ActivityFacilityState.listFailure());
     }
   }
 
@@ -361,7 +416,12 @@ class ActivityFacilityEvent with _$ActivityFacilityEvent {
       ActivityFacilityWorkflow workflow, String userType) = AddUnSubmittedEvent;
 
   const factory ActivityFacilityEvent.loadUnSubmitted(
-      List<String> statuses, String userType) = LoadUnSubmittedEvent;
+    List<String> statuses,
+    String userType, {
+    String? query,
+    String? sortDirection,
+    @Default(false) bool loadMore,
+  }) = LoadUnSubmittedEvent;
 
   const factory ActivityFacilityEvent.deleteUnSubmitted(
       String activityFacilityId, String userType) = DeleteUnSubmittedEvent;
@@ -416,7 +476,11 @@ class ActivityFacilityState with _$ActivityFacilityState {
       ActivityFacilitySelectedState;
 
   const factory ActivityFacilityState.unSubmittedLoaded(
-      List<ActivityFacilityWorkflow> unSubmitted) = _UnSubmittedLoaded;
+    List<ActivityFacilityWorkflow> unSubmitted, {
+    @Default(false) bool hasMore,
+    @Default(false) bool isLoadingMore,
+    @Default(false) bool loadFailed,
+  }) = PendingReportsLoaded;
 
   const factory ActivityFacilityState.unSubmittedAdded(
       CacheUnsubmittedActivityFacility entry) = _UnSubmittedAdded;
