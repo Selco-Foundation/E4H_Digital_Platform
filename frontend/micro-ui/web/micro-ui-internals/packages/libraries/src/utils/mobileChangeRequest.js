@@ -1,8 +1,5 @@
 /**
- * Helpers for the "registered mobile number change request" feature (SEM 4.0, #3209).
- *
- * Kept free of React and of `Digit.*` so it is trivially unit-testable.
- * Exposed to modules as `Digit.Utils.mobileChangeRequest`.
+ * Helpers for the "registered mobile number change request" 
  */
 
 /** Mirrors backend MobileChangeRequestStatus. Only PENDING can still change state. */
