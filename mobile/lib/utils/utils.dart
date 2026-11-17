@@ -2,11 +2,11 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/models/property_schema/property_schema.dart'
     as DigitPropertySchema;
 import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
@@ -22,16 +22,28 @@ import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/auth/authbloc.dart';
+import '../blocs/cache_specification/cache_specification.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/specification/specification.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_specification.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../model/asset_type/asset_type.dart';
 import '../model/document/document.dart';
+import '../model/mdms/mdms.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
+import '../model/solution_design_type/solution_design_type.dart';
+import '../model/system/system.dart';
+import '../model/transaction/transaction.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
+import '../widgets/summary/summary.dart';
+import 'app_logger.dart';
+import 'extensions.dart';
+import 'i18_key_constants.dart' as i18;
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -55,6 +67,95 @@ class IdGen {
   String get identifier => uuid.v1();
 }
 
+Transaction? latestTransactionWithComments(ActivityFacilityWorkflow? workflow) {
+  final transactions = workflow?.transactions;
+  if (transactions == null || transactions.isEmpty) return null;
+
+  for (final transaction in transactions.reversed) {
+    final comments = transaction.comments;
+    if (comments != null && comments.isNotEmpty) return transaction;
+  }
+
+  return null;
+}
+
+void saveCacheSpecification(
+  BuildContext context, {
+  required String activityFacilityId,
+  required ActivityFacilityWorkflow? project,
+  required String selectedAssetType,
+}) {
+  final initState = context.read<AppInitialization>().state;
+
+  final systemList = initState.maybeWhen<List<Mdms<SystemData>>>(
+    initialized: (_, __, ___, system, ____, _____, ______, _______) => system,
+    orElse: () => [],
+  );
+  final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetTypeData>>>(
+    initialized: (_, __, assetType, ____, _____, ______, _______, ________) =>
+        assetType,
+    orElse: () => [],
+  );
+  final solutionDesignList =
+      initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+    initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+        solutionDesign,
+    orElse: () => const [],
+  );
+
+  if (systemList.isEmpty || mdmsAssetTypes.isEmpty) return;
+
+  final selectedSolutionDesignCode = project
+      ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+
+  final matchedSystemCode = solutionDesignList
+      .map((m) => m.data)
+      .firstWhereOrNull((sd) => sd.code == selectedSolutionDesignCode)
+      ?.systemCode;
+
+  final systemCode =
+      matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
+  if (systemCode == null) return;
+
+  final systemName = systemList.first.data.system
+      .firstWhereOrNull((sd) => sd.code == systemCode)
+      ?.name;
+  if (systemName == null) return;
+
+  final assetTypeModel = mdmsAssetTypes.first.data.assetType.firstWhereOrNull(
+    (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase(),
+  );
+
+  final capField = assetTypeModel?.formFields.firstWhereOrNull(
+    (f) => f.key == 'total_capacity' && f.system == systemCode,
+  );
+  final uomField = assetTypeModel?.formFields.firstWhereOrNull(
+    (f) => f.key == 'total_capacity_uom' && f.system == systemCode,
+  );
+
+  final rawCapacity = capField?.options?.firstOrNull ?? '0';
+  final rawCapacityUom = uomField?.options?.firstOrNull ?? '';
+  final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
+
+  final newSpec = CacheSpecification(
+    activityFacilityId: activityFacilityId,
+    assetType: selectedAssetType.toLowerCase(),
+    system: systemCode,
+    totalCapacity: parsedCapacity,
+    totalCapacityUnit: rawCapacityUom,
+  );
+
+  context
+      .read<CacheSpecificationBloc>()
+      .add(CacheSpecificationEvent.add(newSpec));
+
+  context.read<SpecificationBloc>().add(SpecificationEvent.save(
+        systemName: systemName,
+        totalCapacity: parsedCapacity,
+        totalCapacityUom: rawCapacityUom,
+      ));
+}
+
 Future<String> copyFileToLocalDir(File sourceFile) async {
   try {
     final appDocDir = await getApplicationDocumentsDirectory();
@@ -64,7 +165,6 @@ Future<String> copyFileToLocalDir(File sourceFile) async {
     final copied = await sourceFile.copy(dest.path);
     return copied.path;
   } on MissingPluginException catch (e) {
-    AppLogger.instance.info('Storage permission check failed: $e');
     return sourceFile.path;
   }
 }
@@ -86,6 +186,39 @@ Future<File?> resolveFilePath(String path) async {
     final f = File(path);
     return await f.exists() ? f : null;
   }
+}
+
+class BoundaryCodeLocality {
+  final String state;
+  final String district;
+  final String block;
+
+  const BoundaryCodeLocality({
+    this.state = '',
+    this.district = '',
+    this.block = '',
+  });
+}
+
+BoundaryCodeLocality parseBoundaryCodeLocality(String? boundaryCode) {
+  final raw = (boundaryCode ?? '').trim();
+  if (raw.isEmpty) return const BoundaryCodeLocality();
+
+  final parts = raw.split('_').map((e) => e.trim()).where((e) => e.isNotEmpty);
+  final values = parts.toList();
+
+  String valueAt(int index) {
+    if (index < 0 || index >= values.length) return '';
+    final value = values[index];
+    if (value.contains('/')) return '';
+    return value;
+  }
+
+  return BoundaryCodeLocality(
+    state: valueAt(1),
+    district: valueAt(2),
+    block: valueAt(3),
+  );
 }
 
 String truncateText(String text, {int maxLength = 16}) {
@@ -205,6 +338,9 @@ enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 
 enum SYSTEM_TYPE { DC }
 
+const String DEFAULT_SORT_DIRECTION = "DESC";
+const int minFacilitySearchQueryLength = 3;
+
 bool isValidUuid(String value) {
   try {
     return Uuid.parse(value).isNotEmpty;
@@ -285,7 +421,6 @@ Future<String> getFilestoreUrl(String idOrPath) async {
       photoId = await repo.uploadFile(file);
     }
   }
-  AppLogger.instance.info("photoId from return is $photoId");
   return photoId;
 }
 
@@ -601,52 +736,124 @@ String getExtensionFromMime(String mimeType) {
   return map[mimeType] ?? 'dat';
 }
 
-Future<List<PlatformFile>> loadInitialCompletion({
+String initialCompletionDocumentName(Document doc) {
+  final uid = (doc.documentUid ?? '').trim();
+  if (uid.isNotEmpty) return uid;
+
+  final store = (doc.fileStore ?? '').trim();
+  if (store.isNotEmpty) return store;
+
+  return 'installation_report';
+}
+
+Future<List<ExistingReport>> loadInitialCompletion({
   required Isar isar,
   required String projectId,
   required ActivityFacilityWorkflow activityFacilityWorkflow,
+  int maxConcurrent = 5,
 }) async {
   final cachedList = await isar.cacheCompletionReports
       .where()
       .activityFacilityIdEqualTo(projectId)
       .findAll();
 
-  final localFiles = <PlatformFile>[];
+  final localReports = <ExistingReport>[];
+  final localSourceSeen = <String>{};
   for (final cached in cachedList) {
-    if (cached.filePath.isNotEmpty) {
+    if (cached.filePath.isEmpty || !localSourceSeen.add(cached.filePath)) {
+      continue;
+    }
+    try {
       final f = await getCachedFile(cached.filePath);
-      if (f != null) {
-        final pth = await copyFileToLocalDir(f);
-        localFiles.add(PlatformFile(
-          name: p.basename(pth),
-          path: pth,
-          size: File(pth).lengthSync(),
-        ));
-      }
+      if (f == null) continue;
+
+      final path = await copyFileToLocalDir(f);
+      if (path.isEmpty) continue;
+
+      final type = inferFileType(path);
+      localReports.add(
+        ExistingReport(
+          isarId: cached.id,
+          source: path,
+          fileName: cached.fileName?.trim().isNotEmpty == true
+              ? cached.fileName!.trim()
+              : p.basename(path),
+          fileType: type,
+          isRemote: false,
+        ),
+      );
+    } catch (_) {
+      // Ignore individual failures and keep remaining media loadable.
     }
   }
 
   final docs = activityFacilityWorkflow.workflow?.documents ?? [];
+  final installDocs = docs.where((doc) {
+    return (doc.documentType ?? '').contains('INSTALLATION_REPORT') &&
+        (doc.fileStore?.isNotEmpty ?? false);
+  }).toList();
 
-  final serverFiles = <PlatformFile>[];
-  for (final doc in docs) {
-    if (doc.documentType!.contains('INSTALLATION_REPORT') &&
-        (doc.fileStore != null && doc.fileStore!.isNotEmpty)) {
-      final idOrUrl = doc.fileStore ?? '';
-      if (idOrUrl.isEmpty) continue;
-      final f = await getCachedFile(idOrUrl);
-      if (f != null) {
-        final pth = await copyFileToLocalDir(f);
-        serverFiles.add(PlatformFile(
-          name: p.basename(pth),
-          path: pth,
-          size: File(pth).lengthSync(),
-        ));
-      }
+  final remoteImageReports = <ExistingReport>[];
+  final remoteImageSeen = <String>{};
+  final downloadDocs = <Document>[];
+  final downloadDocSeen = <String>{};
+
+  for (final doc in installDocs) {
+    final source = doc.fileStore!;
+    if (isRemoteImageDocument(doc)) {
+      if (!remoteImageSeen.add(source)) continue;
+      remoteImageReports.add(
+        ExistingReport(
+          source: source,
+          fileName: initialCompletionDocumentName(doc),
+          fileType: 'image',
+          isRemote: true,
+        ),
+      );
+      continue;
+    }
+
+    if (downloadDocSeen.add(source)) {
+      downloadDocs.add(doc);
     }
   }
 
-  return [...localFiles, ...serverFiles];
+  final concurrency = maxConcurrent < 1 ? 1 : maxConcurrent;
+  final downloadedReports = <ExistingReport>[];
+  final downloadedSourceSeen = <String>{};
+
+  for (var i = 0; i < downloadDocs.length; i += concurrency) {
+    final batch = downloadDocs.skip(i).take(concurrency).toList();
+
+    final batchResult = await Future.wait(
+      batch.map((doc) async {
+        final source = doc.fileStore ?? '';
+        if (source.isEmpty) return null;
+        try {
+          final f = await getCachedFile(source);
+          if (f == null) return null;
+
+          final path = await copyFileToLocalDir(f);
+          if (path.isEmpty || !downloadedSourceSeen.add(path)) return null;
+
+          final type = inferFileType(path);
+          return ExistingReport(
+            source: path,
+            fileName: p.basename(path),
+            fileType: type,
+            isRemote: false,
+          );
+        } catch (_) {
+          // Keep partial success behavior: one failed file should not abort all.
+          return null;
+        }
+      }),
+    );
+
+    downloadedReports.addAll(batchResult.whereType<ExistingReport>());
+  }
+
+  return [...localReports, ...remoteImageReports, ...downloadedReports];
 }
 
 Future<List<PlatformFile>> copyPickedFilesLocally(
@@ -692,9 +899,42 @@ bool isSessionExpiredMessage(String? message) {
   return msg.contains('session_expired');
 }
 
+String normalizeFriendlyNetworkErrorMessage(
+  String? message, {
+  String fallback = 'Failed.',
+}) {
+  if (isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
+
+  final cleaned =
+      (message ?? '').trim().replaceFirst(RegExp(r'^(Exception:\s*)+'), '');
+  if (cleaned.isEmpty) return fallback;
+
+  final lower = cleaned.toLowerCase();
+
+  if (lower.contains('no network connection')) {
+    return 'No network connection. Connect to Wi-Fi or mobile data and try again.';
+  }
+
+  if (lower.contains('no internet access')) {
+    return "You're offline. Please reconnect to the internet and try again.";
+  }
+
+  if (lower.contains('failed host lookup') ||
+      lower.contains('socketexception') ||
+      lower.contains('software caused connection abort') ||
+      lower.contains('connection error') ||
+      lower.contains('connection reset') ||
+      lower.contains('network is unreachable')) {
+    return 'We could not submit because the internet connection was interrupted. Please try again.';
+  }
+
+  return cleaned;
+}
+
 void handleSessionExpired(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Token expired! Please login again.')),
+    SnackBar(
+        content: Text(context.translate(i18.common.tokenExpiredLoginAgain))),
   );
   context.read<AuthBloc>().add(const AuthEvent.logout());
   context.router.replace(const UnauthenticatedRouteWrapper());
@@ -710,10 +950,20 @@ class DioErrorParser {
       if (errors.isNotEmpty) {
         final firstErr = errors.first as Map<String, dynamic>;
         final msg = firstErr['message'] as String? ?? dioErr.message;
-        return Exception(msg);
+        return Exception(
+          normalizeFriendlyNetworkErrorMessage(
+            msg,
+            fallback: dioErr.message ?? 'Failed.',
+          ),
+        );
       }
     }
 
-    return Exception(dioErr.message);
+    return Exception(
+      normalizeFriendlyNetworkErrorMessage(
+        dioErr.message,
+        fallback: 'Failed.',
+      ),
+    );
   }
 }

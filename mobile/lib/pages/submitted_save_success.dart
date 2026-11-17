@@ -4,6 +4,8 @@ import 'package:digit_ui_components/widgets/molecules/panel_cards.dart';
 import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 
 @RoutePage()
 class SubmittedSaveSuccessPage extends StatelessWidget {
@@ -21,13 +23,14 @@ class SubmittedSaveSuccessPage extends StatelessWidget {
               animate: true,
               repeat: true,
               type: PanelType.success,
-              title: 'Submitted for Approval',
-              description: 'The data has been recorded successfully.',
+              title: context.translate(i18.submittedSaveSuccess.title),
+              description:
+                  context.translate(i18.submittedSaveSuccess.description),
               actions: [
                 DigitButton(
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
-                  label: 'Home',
+                  label: context.translate(i18.common.coreCommonHome),
                   onPressed: () => context.router.push(const HomeRoute()),
                 ),
               ],

@@ -511,6 +511,10 @@ const isCodePresent = (array, codeToCheck) =>{
       statuses: ["PENDING_ASSIGNMENT_OUT_OF_WARRANTY"],
     },
     {
+      code: "OUT_OF_WARRANTY_ON_HOLD",
+      statuses: ["OUT_OF_WARRANTY_ON_HOLD"],
+    },
+    {
       code: "PENDING_RESOLUTION_SPARE_PART_NEEDED",
       statuses: ["PENDING_RESOLUTION_SPARE_PART_NEEDED"],
     },

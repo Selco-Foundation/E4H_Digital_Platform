@@ -42,8 +42,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateCreate(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateCreate method invoked");
-        log.info("Validating incident create request");
+        log.info("serviceRequestValidator::Validating incident create request");
         Map<String,String> errorMap = new HashMap<>();
         validateUserData(request,errorMap);
         //validateSource(request.getService().getSource());
@@ -61,14 +60,14 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateUpdate(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateUpdate method invoked");
-        log.info("Validating incident update request");
+        log.info("serviceRequestValidator::Validating incident update request");
         String id = request.getIncident().getId();
         String tenantId = request.getIncident().getTenantId();
         //validateSource(request.getService().getSource());
         //validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
         validateReOpen(request);
+        validateOnHold(request);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
         List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
@@ -76,7 +75,15 @@ public class ServiceRequestValidator {
         if(CollectionUtils.isEmpty(incidentWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
 
-        // TO DO
+        /*
+         * Preserve existing warrantyStatus for updates when it is not explicitly
+         * provided in the incoming request. This avoids resetting OUT_OF_WARRANTY
+         * tickets back to WITHIN_WARRANTY on subsequent workflow actions.
+         */
+        Incident existingIncident = incidentWrappers.get(0).getIncident();
+        if (request.getIncident().getWarrantyStatus() == null && existingIncident != null) {
+            request.getIncident().setWarrantyStatus(existingIncident.getWarrantyStatus());
+        }
 
     }
 
@@ -86,8 +93,7 @@ public class ServiceRequestValidator {
      * @param errorMap HashMap to capture any errors
      */
     private void validateUserData(IncidentRequest request,Map<String, String> errorMap){
-        log.trace("ServiceRequestValidator::validateUserData method invoked");
-        log.debug("Validating user data");
+        log.info("serviceRequestValidator::Validating user data");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getAccountId();
 
@@ -118,8 +124,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     private void validateMDMS(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateMDMS method invoked");
-        log.debug("Validating MDMS data");
+        log.info("serviceRequestValidator::Validating mdms data");
         String serviceCode = request.getIncident().getIncidentSubType();
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}",serviceCode);
 
@@ -192,8 +197,7 @@ public class ServiceRequestValidator {
      * @param request
      */
     private void validateReOpen(IncidentRequest request){
-        log.trace("ServiceRequestValidator::validateReOpen method invoked");
-        log.debug("Validating incident reopen request");
+        log.info("serviceRequestValidator::Validating incident reopen request");
         if(!request.getWorkflow().getAction().equalsIgnoreCase(IM_WF_REOPEN))
             return;
 
@@ -214,12 +218,45 @@ public class ServiceRequestValidator {
 
 
     /**
+     * Validates the ON_HOLD action: a known reason, the government acknowledgement letter,
+     * and a comment of at most 500 characters that is mandatory when the reason is Other.
+     * @param request The request to update complaint
+     */
+    void validateOnHold(IncidentRequest request){
+        if(!IM_WF_ON_HOLD.equalsIgnoreCase(request.getWorkflow().getAction()))
+            return;
+
+        Map<String,String> errorMap = new HashMap<>();
+        Workflow workflow = request.getWorkflow();
+
+        String reason = workflow.getOnHoldReason() == null ? null : workflow.getOnHoldReason().getReason();
+        if(!ON_HOLD_REASON_FUND_UNAVAILABLE.equals(reason) && !ON_HOLD_REASON_OTHER.equals(reason))
+            errorMap.put("INVALID_ON_HOLD_REASON","On hold reason must be one of "
+                    + ON_HOLD_REASON_FUND_UNAVAILABLE + ", " + ON_HOLD_REASON_OTHER);
+
+        String comments = workflow.getComments();
+        if(ON_HOLD_REASON_OTHER.equals(reason) && StringUtils.isBlank(comments))
+            errorMap.put("ON_HOLD_COMMENT_MANDATORY","Comment is mandatory when the on hold reason is Other");
+        if(comments != null && comments.length() > ON_HOLD_COMMENT_MAX_LENGTH)
+            errorMap.put("ON_HOLD_COMMENT_LENGTH_EXCEEDED","Comment cannot exceed " + ON_HOLD_COMMENT_MAX_LENGTH + " characters");
+
+        boolean hasDocument = !CollectionUtils.isEmpty(workflow.getVerificationDocuments())
+                && workflow.getVerificationDocuments().stream()
+                        .anyMatch(document -> document != null && StringUtils.isNotBlank(document.getFileStoreId()));
+        if(!hasDocument)
+            errorMap.put("ON_HOLD_DOCUMENT_MANDATORY","Government acknowledgement letter is mandatory to put the ticket on hold");
+
+        if(!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
+
+    /**
      *
      * @param criteria
      */
     public void validateSearch(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.trace("ServiceRequestValidator::validateSearch method invoked");
-        log.info("Validating incident search criteria");
+        log.info("serviceRequestValidator::Validating incident search criteria");
         /*
         * Checks if tenatId is provided with the search params
         * */
@@ -240,8 +277,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     private void validateSearchParam(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.trace("ServiceRequestValidator::validateSearchParam method invoked");
-        log.debug("Validating incident search parameters");
+        log.info("serviceRequestValidator::Validating incident search param");
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase("EMPLOYEE" ) && criteria.isEmpty())
             throw new CustomException("INVALID_SEARCH","Search without params is not allowed");
 
@@ -277,10 +313,10 @@ public class ServiceRequestValidator {
 
     }
 
-//    /**
-//     * Validates if the source is in the given list configures in application properties
-//     * @param source
-//     */
+    /**
+     * Validates if the source is in the given list configures in application properties
+     * @param source
+     */
 //    private void validateSource(String source){
 //
 //        List<String> allowedSourceStr = Arrays.asList(config.getAllowedSource().split(","));
@@ -292,8 +328,7 @@ public class ServiceRequestValidator {
 
 
     public void validatePlainSearch(RequestSearchCriteria criteria) {
-        log.trace("ServiceRequestValidator::validatePlainSearch method invoked");
-        log.info("Validating incident plain search criteria");
+        log.info("serviceRequestValidator::Validating incident plain search criteria");
         if(CollectionUtils.isEmpty(criteria.getTenantIds())){
             throw new CustomException("TENANT_ID_LIST_EMPTY", "Tenant ids not provided for searching.");
         }

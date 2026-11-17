@@ -113,6 +113,24 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DataSaveSuccessPage(),
       );
     },
+    DigitScannerRoute.name: (routeData) {
+      final args = routeData.argsAs<DigitScannerRouteArgs>(
+          orElse: () => const DigitScannerRouteArgs());
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: DigitScannerPage(
+          key: args.key,
+          appLocalizations: args.appLocalizations,
+          quantity: args.quantity,
+          isGS1code: args.isGS1code,
+          singleValue: args.singleValue,
+          isEditEnabled: args.isEditEnabled,
+          regex: args.regex,
+          validations: args.validations,
+          enableGalleryScan: args.enableGalleryScan,
+        ),
+      );
+    },
     DraftRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -179,6 +197,16 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const InboxPage(),
       );
     },
+    InstallationImagesRoute.name: (routeData) {
+      final args = routeData.argsAs<InstallationImagesRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InstallationImagesPage(
+          key: args.key,
+          origin: args.origin,
+        ),
+      );
+    },
     InstallationReportRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -218,6 +246,12 @@ abstract class _$AppRouter extends RootStackRouter {
           path: args.path,
           key: args.key,
         ),
+      );
+    },
+    RoleSelectionRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const RoleSelectionPage(),
       );
     },
     SelectAssetTypeRoute.name: (routeData) {
@@ -262,14 +296,9 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     SyncLoadingRoute.name: (routeData) {
-      final args = routeData.argsAs<SyncLoadingRouteArgs>();
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: SyncLoadingPage(
-          key: args.key,
-          completed: args.completed,
-          total: args.total,
-        ),
+        child: const SyncLoadingPage(),
       );
     },
     UnauthenticatedRouteWrapper.name: (routeData) {
@@ -553,6 +582,79 @@ class DataSaveSuccessRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [DigitScannerPage]
+class DigitScannerRoute extends PageRouteInfo<DigitScannerRouteArgs> {
+  DigitScannerRoute({
+    Key? key,
+    ScannerLocalization? appLocalizations,
+    int? quantity = 1,
+    bool? isGS1code = false,
+    bool? singleValue = true,
+    bool isEditEnabled = false,
+    String? regex,
+    List<dynamic>? validations,
+    bool enableGalleryScan = true,
+    List<PageRouteInfo>? children,
+  }) : super(
+          DigitScannerRoute.name,
+          args: DigitScannerRouteArgs(
+            key: key,
+            appLocalizations: appLocalizations,
+            quantity: quantity,
+            isGS1code: isGS1code,
+            singleValue: singleValue,
+            isEditEnabled: isEditEnabled,
+            regex: regex,
+            validations: validations,
+            enableGalleryScan: enableGalleryScan,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'DigitScannerRoute';
+
+  static const PageInfo<DigitScannerRouteArgs> page =
+      PageInfo<DigitScannerRouteArgs>(name);
+}
+
+class DigitScannerRouteArgs {
+  const DigitScannerRouteArgs({
+    this.key,
+    this.appLocalizations,
+    this.quantity = 1,
+    this.isGS1code = false,
+    this.singleValue = true,
+    this.isEditEnabled = false,
+    this.regex,
+    this.validations,
+    this.enableGalleryScan = true,
+  });
+
+  final Key? key;
+
+  final ScannerLocalization? appLocalizations;
+
+  final int? quantity;
+
+  final bool? isGS1code;
+
+  final bool? singleValue;
+
+  final bool isEditEnabled;
+
+  final String? regex;
+
+  final List<dynamic>? validations;
+
+  final bool enableGalleryScan;
+
+  @override
+  String toString() {
+    return 'DigitScannerRouteArgs{key: $key, appLocalizations: $appLocalizations, quantity: $quantity, isGS1code: $isGS1code, singleValue: $singleValue, isEditEnabled: $isEditEnabled, regex: $regex, validations: $validations, enableGalleryScan: $enableGalleryScan}';
+  }
+}
+
+/// generated route for
 /// [DraftPage]
 class DraftRoute extends PageRouteInfo<void> {
   const DraftRoute({List<PageRouteInfo>? children})
@@ -763,6 +865,45 @@ class InboxRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [InstallationImagesPage]
+class InstallationImagesRoute
+    extends PageRouteInfo<InstallationImagesRouteArgs> {
+  InstallationImagesRoute({
+    Key? key,
+    required FormOrigin origin,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InstallationImagesRoute.name,
+          args: InstallationImagesRouteArgs(
+            key: key,
+            origin: origin,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InstallationImagesRoute';
+
+  static const PageInfo<InstallationImagesRouteArgs> page =
+      PageInfo<InstallationImagesRouteArgs>(name);
+}
+
+class InstallationImagesRouteArgs {
+  const InstallationImagesRouteArgs({
+    this.key,
+    required this.origin,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  @override
+  String toString() {
+    return 'InstallationImagesRouteArgs{key: $key, origin: $origin}';
+  }
+}
+
+/// generated route for
 /// [InstallationReportPage]
 class InstallationReportRoute extends PageRouteInfo<void> {
   const InstallationReportRoute({List<PageRouteInfo>? children})
@@ -883,6 +1024,20 @@ class PdfViewerRouteArgs {
 }
 
 /// generated route for
+/// [RoleSelectionPage]
+class RoleSelectionRoute extends PageRouteInfo<void> {
+  const RoleSelectionRoute({List<PageRouteInfo>? children})
+      : super(
+          RoleSelectionRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'RoleSelectionRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [SelectAssetTypePage]
 class SelectAssetTypeRoute extends PageRouteInfo<void> {
   const SelectAssetTypeRoute({List<PageRouteInfo>? children})
@@ -992,45 +1147,16 @@ class SubmittedSaveSuccessRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SyncLoadingPage]
-class SyncLoadingRoute extends PageRouteInfo<SyncLoadingRouteArgs> {
-  SyncLoadingRoute({
-    Key? key,
-    required int completed,
-    required int total,
-    List<PageRouteInfo>? children,
-  }) : super(
+class SyncLoadingRoute extends PageRouteInfo<void> {
+  const SyncLoadingRoute({List<PageRouteInfo>? children})
+      : super(
           SyncLoadingRoute.name,
-          args: SyncLoadingRouteArgs(
-            key: key,
-            completed: completed,
-            total: total,
-          ),
           initialChildren: children,
         );
 
   static const String name = 'SyncLoadingRoute';
 
-  static const PageInfo<SyncLoadingRouteArgs> page =
-      PageInfo<SyncLoadingRouteArgs>(name);
-}
-
-class SyncLoadingRouteArgs {
-  const SyncLoadingRouteArgs({
-    this.key,
-    required this.completed,
-    required this.total,
-  });
-
-  final Key? key;
-
-  final int completed;
-
-  final int total;
-
-  @override
-  String toString() {
-    return 'SyncLoadingRouteArgs{key: $key, completed: $completed, total: $total}';
-  }
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for

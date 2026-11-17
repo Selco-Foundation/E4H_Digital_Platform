@@ -178,6 +178,27 @@ class MDMSClient:
             records.append(mdms.data.model_dump())
         return records
 
+    def fetch_active_mdms_entries(self, request_info: RequestInfo, schema_code: str,
+                                  unique_identifiers: Optional[List[str]] = None,
+                                  limit: int = 500) -> List[MDMS]:
+        """Active MDMS records for a schema, with their uniqueIdentifier.
+
+        MDMS v2 caps a search at 10 records unless a limit is sent, so one is always passed.
+        """
+        criteria: Dict[str, Any] = {"tenantId": "in", "schemaCode": schema_code, "limit": limit}
+        if unique_identifiers:
+            criteria["uniqueIdentifiers"] = list(unique_identifiers)
+        url = f"{self.mdms_url}/egov-mdms-service/v2/_search"
+        payload = {"RequestInfo": {"authToken": request_info.auth_token}, "MdmsCriteria": criteria}
+        headers = {"Accept": "application/json, text/plain, */*"}
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        parsed = IngestionSchemaResponse.model_validate(response.json())
+        return [
+            mdms for mdms in (parsed.mdms or [])
+            if mdms.data and mdms.isActive is not False and self._is_active_mdms_entry(mdms)
+        ]
+
     def get_tenant_mapping(self, request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
         logger.trace(f"Fetching tenant mapping for {len(tenant_ids)} tenants")
         all_tenant_data = {}

@@ -62,6 +62,21 @@ public class FacilityV2ApiController {
     }
 
 
+    /**
+     * Checks HFR ID, NIN ID and POC username of facilities before they are created, with the same
+     * uniqueness rules as {@code /create} (across all three fields, within the request, among
+     * existing facilities and among HRMS usernames). Nothing is created.
+     */
+    @PostMapping("/_validate-identifiers")
+    public ResponseEntity<FacilityIdentifierValidationResponse> validateFacilityIdentifiers(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Identifiers of the facilities to check",
+                    required = true
+            )
+            @Valid @RequestBody FacilityIdentifierValidationRequest identifierValidationRequest) {
+        return ResponseEntity.ok(facilityService.validateIdentifiers(identifierValidationRequest));
+    }
+
     @RequestMapping(value = "/assessment/create", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> createHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data created", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
         log.trace("Entering createHFAssessment endpoint");
@@ -250,6 +265,17 @@ public class FacilityV2ApiController {
     }
 
     /**
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number and re-persists it through the update-facility persister, which encrypts
+     * it on the way through (see FacilityRepository#pushUpdateFacility).
+     */
+    @GetMapping("/encrypt-poc-phone")
+    public ResponseEntity<String> encryptFacilityPocPhone() {
+        String summary = facilityService.encryptFacilityPocPhone();
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
      * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
      * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
      */
@@ -294,6 +320,90 @@ public class FacilityV2ApiController {
         FacilityKibanaReindexResponse result = facilityService.reindexFacilitiesInKibana(request);
         log.info("Kibana reindex finished: scanned={}, reindexed={}, skipped={}, failed={}",
                 result.getScanned(), result.getReindexed(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Operator backfill: scans the health facility index and sets {@code projectName} on each document
+     * from the project service (partial update; other fields untouched).
+     * Requires {@code facility.project-name.backfill.enabled=true}.
+     */
+    @PostMapping("/_backfill-project-name")
+    public ResponseEntity<FacilityProjectNameBackfillResponse> backfillFacilityProjectNames(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (optional tenantId filter; batchSize defaults to 500)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityProjectNameBackfillRequest request) {
+        log.info("Received facility projectName backfill request");
+        FacilityProjectNameBackfillResponse result = facilityService.backfillFacilityProjectNames(request);
+        log.info("projectName backfill finished: scanned={}, updated={}, skipped={}, failed={}",
+                result.getScanned(), result.getUpdated(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Writes one facility's mapped vendor - the facility row and its index document - and nothing
+     * else. Identify the facility by {@code facilityId} or {@code boundaryCode}. Blank name and
+     * username together unmap the facility. Requires FACILITY_ADMIN or SYSTEM_USER.
+     *
+     * <p>Called by vendor-registry when a facility jurisdiction is added to or removed from a
+     * vendor, in place of routing the mapping through the full facility update.
+     */
+    @PostMapping("/_update-mapped-vendor")
+    public ResponseEntity<FacilityMappedVendorUpdateResponse> updateMappedVendor(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Mapped vendor update (tenantId plus facilityId or boundaryCode, "
+                            + "and the vendor name/username to write)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityMappedVendorUpdateRequest request) {
+        log.info("Received mapped vendor update for facilityId={} boundaryCode={}",
+                request.getFacilityId(), request.getBoundaryCode());
+        FacilityMappedVendorUpdateResponse result = facilityService.updateMappedVendor(request);
+        log.info("Mapped vendor update finished for facilityId={}: updated={}, unchanged={}, indexSkipped={}",
+                result.getFacilityId(), result.isUpdated(), result.isUnchanged(), result.isIndexSkipped());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Settles mappedVendorName / mappedVendorUserName from HRMS on facilities that carry none,
+     * writing both the facility row and its index document. Operator endpoint, disabled unless
+     * {@code facility.mapped-vendor.backfill.enabled=true}. Send {@code dryRun: true} first to
+     * size the affected set.
+     */
+    @PostMapping("/_backfill-mapped-vendor")
+    public ResponseEntity<FacilityMappedVendorBackfillResponse> backfillFacilityMappedVendors(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (optional tenantId/facilityIds filters; "
+                            + "onmReadyOnly defaults to true, dryRun to false)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityMappedVendorBackfillRequest request) {
+        log.info("Received facility mappedVendor backfill request");
+        FacilityMappedVendorBackfillResponse result = facilityService.backfillFacilityMappedVendors(request);
+        log.info("mappedVendor backfill finished: scanned={}, updated={}, skipped={}, failed={}, dryRun={}",
+                result.getScanned(), result.getUpdated(), result.getSkipped(),
+                result.getFailed(), result.isDryRun());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Writes a facility's AMC snapshot onto the health facility index only - the facility table is
+     * not touched. Called by amc-scheduler-service, which owns AMC data; see
+     * {@code FacilityAmcIndexUpdateRequest}. Requires FACILITY_ADMIN or SYSTEM_USER.
+     */
+    @PostMapping("/_update-amc-index")
+    public ResponseEntity<FacilityAmcIndexUpdateResponse> updateAmcIndexFields(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Facility AMC index update (facilityId plus the AMC fields to write)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityAmcIndexUpdateRequest request) {
+        log.info("Received AMC index update request for facilityId: {}", request.getFacilityId());
+        FacilityAmcIndexUpdateResponse result = facilityService.updateAmcIndexFields(request);
+        log.info("AMC index update finished for facilityId={}: updated={}",
+                result.getFacilityId(), result.getUpdated());
         return ResponseEntity.ok(result);
     }
 

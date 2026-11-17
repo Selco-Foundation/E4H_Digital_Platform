@@ -42,13 +42,14 @@ class EscalationControllerTest {
     void testProcessTransition() throws Exception {
         when(this.responseInfoFactory.createResponseInfoFromRequestInfo((RequestInfo) any(), (Boolean) any()))
                 .thenReturn(new ResponseInfo());
-        doNothing().when(this.escalationService).escalateApplications((RequestInfo) any(), (String) any());
+        doNothing().when(this.escalationService).escalateApplications((RequestInfo) any(), (String) any(), (String) any());
 
         RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
         requestInfoWrapper.setRequestInfo(new RequestInfo());
         String content = (new ObjectMapper()).writeValueAsString(requestInfoWrapper);
         MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
                 .post("/egov-wf/auto/{businessService}/_escalate", "Business Service")
+                .param("tenantId", "in")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(content);
         MockMvcBuilders.standaloneSetup(this.escalationController)
@@ -64,7 +65,7 @@ class EscalationControllerTest {
     void testProcessTransitionTest() throws Exception {
         when(this.responseInfoFactory.createResponseInfoFromRequestInfo((RequestInfo) any(), (Boolean) any()))
                 .thenReturn(new ResponseInfo());
-        when(this.escalationService.escalateApplicationsTest((RequestInfo) any(), (String) any()))
+        when(this.escalationService.escalateApplicationsTest((RequestInfo) any(), (String) any(), (String) any()))
                 .thenReturn(new ArrayList<>());
 
         RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
@@ -72,6 +73,7 @@ class EscalationControllerTest {
         String content = (new ObjectMapper()).writeValueAsString(requestInfoWrapper);
         MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders
                 .post("/egov-wf/auto/{businessService}/_test", "Business Service")
+                .param("tenantId", "in")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(content);
         MockMvcBuilders.standaloneSetup(this.escalationController)

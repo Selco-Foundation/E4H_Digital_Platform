@@ -45,6 +45,13 @@ public class UserAnalyticsMetrics {
     /** Application -> {@code event_type} -> count, the same breakdown split per application. */
     private Map<String, Map<String, Long>> eventCountsByApplicationAndType;
 
+    /**
+     * Application -> count of events produced by the vendor system role, whatever the event type
+     * was. Filled alongside {@link #eventCountsByApplicationAndType}, so for the state dimension
+     * only; empty everywhere else.
+     */
+    private Map<String, Long> vendorActionsByApplication;
+
     /** An all-zero bucket, for a state or role present in one week but absent in the other. */
     public static UserAnalyticsMetrics empty() {
         return UserAnalyticsMetrics.builder()
@@ -54,6 +61,7 @@ public class UserAnalyticsMetrics {
                 .loginsTotal(0L)
                 .eventCountsByType(Collections.emptyMap())
                 .eventCountsByApplicationAndType(Collections.emptyMap())
+                .vendorActionsByApplication(Collections.emptyMap())
                 .build();
     }
 
@@ -81,6 +89,12 @@ public class UserAnalyticsMetrics {
         return eventCountsByApplicationAndType
                 .getOrDefault(application, Collections.emptyMap())
                 .getOrDefault(eventType, 0L);
+    }
+
+    /** Events the vendor system role produced within one application. */
+    public long vendorActionsFor(String application) {
+        return (vendorActionsByApplication == null) ? 0L
+                : vendorActionsByApplication.getOrDefault(application, 0L);
     }
 
     /** Never null, so callers can iterate the event types this bucket saw without guarding. */

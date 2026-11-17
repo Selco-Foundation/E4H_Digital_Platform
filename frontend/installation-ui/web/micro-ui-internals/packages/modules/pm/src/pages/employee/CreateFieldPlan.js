@@ -75,12 +75,18 @@ const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((
 
 const getNewICCPrepopulationRows = (rows = []) => rows.filter((row) => row?.file && !row.file?.isSavedTemplate);
 
+const isSavedICCPrepopulationTemplate = (row = {}, fieldPlanId) => (
+  !!row.template?.id &&
+  !!row.template?.fieldPlanId &&
+  (!fieldPlanId || row.template.fieldPlanId === fieldPlanId)
+);
+
 const isScheduledFieldPlan = (status) => normalizeICCValue(status) === "scheduled";
 
 const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
   const iccReportsData = new FormData();
   const items = rows.map((row) => ({
-    id: row.template?.id || "",
+    id: isSavedICCPrepopulationTemplate(row, fieldPlanId) ? row.template.id : "",
     systemType: row.systemType?.code,
     totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
     rectificationSite: Boolean(row.isRectification),
@@ -267,10 +273,8 @@ const CreateFieldPlan = () => {
   }, [currentKey, file, persistedFormData?.facilityData?.uploadFacilityData]);
 
   const closeToast = useCallback(() => {
-    setToastQueue((previousQueue) => {
-      setToast(previousQueue[0] || null);
-      return previousQueue.slice(1);
-    });
+    setToast(null);
+    setToastQueue([]);
   }, []);
 
   useEffect(() => {
@@ -1182,16 +1186,17 @@ const CreateFieldPlan = () => {
               return;
             }
 
-            const rowsToCreate = newRows.filter((row) => !row.template?.id);
-            const rowsToUpdate = newRows.filter((row) => row.template?.id);
+            const selectedFieldPlanId = createdFieldPlan?.id || fieldPlanId;
+            const rowsToCreate = newRows.filter((row) => !isSavedICCPrepopulationTemplate(row, selectedFieldPlanId));
+            const rowsToUpdate = newRows.filter((row) => isSavedICCPrepopulationTemplate(row, selectedFieldPlanId));
 
             if (rowsToCreate.length) {
-              const createReportsData = getICCReportsFormData(rowsToCreate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              const createReportsData = getICCReportsFormData(rowsToCreate, selectedFieldPlanId, tenantId);
               await IngestionService.uploadICCReports(createReportsData);
             }
 
             if (rowsToUpdate.length) {
-              const updateReportsData = getICCReportsFormData(rowsToUpdate, createdFieldPlan?.id || fieldPlanId, tenantId);
+              const updateReportsData = getICCReportsFormData(rowsToUpdate, selectedFieldPlanId, tenantId);
               await IngestionService.upsertICCReports(updateReportsData);
             }
           }

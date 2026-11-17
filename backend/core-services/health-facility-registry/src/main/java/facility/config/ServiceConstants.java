@@ -13,6 +13,8 @@ public class ServiceConstants {
 
     public static final String FACILITY_ADMIN = "FACILITY_ADMIN";
     public static final String SYSTEM_USER = "SYSTEM_USER";
+    /** The CRM: approves/rejects facility users' registered-mobile-number change requests. */
+    public static final String ROLE_COMPLAINT_ASSESSOR = "COMPLAINT_ASSESSOR";
     public static final String NO_IDS_FOUND_ERROR = "No ids returned from idgen Service";
 
     public static final String ERROR_WHILE_FETCHING_FROM_MDMS = "Exception occurred while fetching category lists from mdms: ";

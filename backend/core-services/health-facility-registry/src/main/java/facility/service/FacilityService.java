@@ -3,12 +3,15 @@ package facility.service;
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
 import facility.util.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +27,9 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Service
 @Slf4j
 public class FacilityService {
+    /** Serialises additional_details for the mapped-vendor backfill's JSONB write. */
+    private static final ObjectMapper ADDITIONAL_DETAILS_MAPPER = new ObjectMapper();
+
     private static final String CATEGORY_HEALTH = "HEALTH";
     public static final String CATEGORY_ANGANWADI = "ANGANWADI";
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
@@ -42,7 +48,8 @@ public class FacilityService {
     private final BoundaryService boundaryService;
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
-    private EncryptionDecryptionUtil encryptionDecryptionUtil;
+    private final FacilityProjectClient facilityProjectClient;
+    private final PocPhoneCipher pocPhoneCipher;
     private BoundaryUtil boundaryUtil;
 
     private FacilityRowMapperV2 facilityRowMapperV2;
@@ -71,7 +78,8 @@ public class FacilityService {
             BoundaryService boundaryService,
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
-            EncryptionDecryptionUtil encryptionDecryptionUtil,
+            FacilityProjectClient facilityProjectClient,
+            PocPhoneCipher pocPhoneCipher,
             BoundaryUtil boundaryUtil,
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
@@ -89,7 +97,8 @@ public class FacilityService {
         this.boundaryService = boundaryService;
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
-        this.encryptionDecryptionUtil = encryptionDecryptionUtil;
+        this.facilityProjectClient = facilityProjectClient;
+        this.pocPhoneCipher = pocPhoneCipher;
         this.boundaryUtil = boundaryUtil;
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
@@ -219,18 +228,21 @@ public class FacilityService {
                 // HFR/NIN are category-aware: mandatory only for HEALTH.
                 validateCategoryBasedIdentifiers(facility.getFacilityCategory(), facility.getHfrId(), facility.getNinId());
 
-                // Check uniqueness for HFR ID or NIN ID
-                validateHfrOrNinUniqueness(facility, tenantId);
-
                 // Check uniqueness of facility name + boundaryCode
                 validateFacilityNameBoundaryCodeUnique(facility, tenantId);
 
-                validateFacilityPocUsernameUnique(
-                        facility.getFacilityCategory(), facility.getFacilityPocUsername(), tenantId, null
-                );
+                validateAnganwadiPocUsernamePresent(facility.getFacilityCategory(), facility.getFacilityPocUsername(), tenantId);
 
                 tenantFacilities.add(facility);
             }
+
+            // HFR ID, NIN ID and POC username must be unique across all three fields, within this
+            // request, among existing facilities and among HRMS usernames. Checked for the whole
+            // batch at once so every conflict is reported, not just the first.
+            validateIdentifiersUnique(
+                    tenantFacilities.stream().map(FacilityService::identifiersOf).toList(),
+                    tenantId, null, Set.of(), request.getRequestInfo()
+            );
 
             // Validate facilities against MDMS master data
             log.info("Validating {} facilities against MDMS for tenant {}", tenantFacilities.size(), tenantId);
@@ -256,33 +268,63 @@ public class FacilityService {
             // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
             upsertFacilityBoundaryLocalizations(tenantFacilities, request.getRequestInfo());
 
+            // Hand the facility boundaries to the vendor's HRMS user BEFORE the mapped vendor is
+            // resolved and before anything is pushed. The resolution below, and the Kibana mapper's
+            // HRMS-first lookup further down, both read that jurisdiction back - running the
+            // assignment afterwards left them reading an HRMS that did not hold the mapping yet, so
+            // a facility created without a vendor code kept a null mapped vendor on both the row and
+            // the index, with nothing to ever re-resolve it.
+            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
+                vendorOrganisationService.assignFacilityJurisdictionsBulk(
+                        tenantFacilities, tenantId, request.getRequestInfo());
+
+                // Resolve the mapped vendor before anything is pushed, so it is persisted with the
+                // row rather than only reaching the index. Skipped under the same flag as the
+                // assignment above: when the caller owns the vendor mapping, a vendor stamped from
+                // here would name one this service never actually mapped.
+                vendorOrganisationService.applyMappedVendorFromVendorCode(
+                        tenantFacilities, tenantId, request.getRequestInfo());
+            }
+
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
-                // Keep original (unencrypted) POC mobile number for HRMS user creation
+                // Keep original (unencrypted) POC mobile number for HRMS user creation — the push
+                // below encrypts facility.facilityPocPhone in place.
                 String originalPocMobileNumber = facility.getFacilityPocPhone();
-                try {
-                    String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
-                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                        facility.setFacilityPocPhone(encryptedPocMobileNumber);
-                    }
-                }
-                catch (Exception e){}
 
                 Long time = System.currentTimeMillis();
                 facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
 
                 log.trace("Processing facility: {}", facility.getFacilityId());
+
+                // The mapped vendor has no column of its own - it is persisted inside
+                // additional_details - so it has to be folded in before the push below, which
+                // serializes the facility as it stands. Anything set afterwards still reaches the
+                // Kibana document built further down, but never the row.
+                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+                if (FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                    // Only when there is one to write: syncing unconditionally would stamp a null
+                    // mappedVendorName/mappedVendorUserName pair onto every facility created without
+                    // a vendor, and an update payload echoing those keys back reads as a deliberate
+                    // clear rather than as "not supplied" (see mergeMappedVendorFromUpdate).
+                    FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+                }
+
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
-                
-                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
-                FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
 
                 // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
                     log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
-                    // Create POC user if not exists (check by phone number uniqueness)
-                    createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo(), originalPocMobileNumber);
+                    // Create POC user if not exists (check by phone number uniqueness). Swallow
+                    // failures so a transient HRMS/user-service outage doesn't fail the whole
+                    // create request after the facility itself has already been persisted.
+                    try {
+                        createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo(), originalPocMobileNumber);
+                    } catch (Exception e) {
+                        log.error("Error syncing POC user for facility {}: {}",
+                                sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
+                    }
 
                     // Push to Kibana for indexing
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
@@ -292,10 +334,6 @@ public class FacilityService {
                 validatedFacilities.add(facility);
             }
 
-            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
-                vendorOrganisationService.assignFacilityJurisdictionsBulk(
-                        tenantFacilities, tenantId, request.getRequestInfo());
-            }
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
@@ -390,58 +428,176 @@ public class FacilityService {
         log.trace("Exiting validateFacilityNameBoundaryCodeUnique method");
     }
 
-    /**
-     * Checks whether the HFR ID or NIN ID already exists for another facility
-     * in the same tenant. Throws a CustomException if duplicate found.
-     */
-    private void validateHfrOrNinUniqueness(Facility facility, String tenantId) {
-        log.trace("Entering validateHfrOrNinUniqueness method");
-        if (facility != null) {
-            String hfrId = facility.getHfrId();
-            String ninId = facility.getNinId();
+    /** The values of a facility that can become its POC's HRMS username, keyed by field label. */
+    private record FacilityIdentifiers(String facilityLabel, Map<String, String> valuesByField) {
+    }
 
-            if ((hfrId != null && !hfrId.isBlank()) || (ninId != null && !ninId.isBlank())) {
-                log.debug("Checking uniqueness of HFR ID or NIN ID for tenant {}", tenantId);
-                boolean exists = facilityQueryDao.existsByHfrIdOrNinId(hfrId, ninId, tenantId);
-                if (exists) {
-                    log.warn("Duplicate HFR ID or NIN ID found for tenant {}", tenantId);
-                    throw new CustomException("FACILITY_DUPLICATE_ID",
-                            "Facility with same HFR ID or NIN ID already exists in tenant " + tenantId);
-                }
-                log.debug("HFR ID and NIN ID are unique");
-            }
+    private static final String FIELD_HFR_ID = "HFR ID";
+    private static final String FIELD_NIN_ID = "NIN ID";
+    private static final String FIELD_POC_USERNAME = "PoC Username";
+
+    private static FacilityIdentifiers identifiersOf(Facility facility) {
+        HealthFacilityDetails details = facility.getFacilityDetails();
+        return identifiersOf(
+                facility.getFacilityName(),
+                firstNonBlank(facility.getHfrId(), details != null ? details.getHfrId() : null),
+                firstNonBlank(facility.getNinId(), details != null ? details.getNinId() : null),
+                facility.getFacilityPocUsername()
+        );
+    }
+
+    private static FacilityIdentifiers identifiersOf(String facilityName, String hfrId, String ninId, String pocUsername) {
+        Map<String, String> values = new LinkedHashMap<>();
+        putTrimmed(values, FIELD_HFR_ID, hfrId);
+        putTrimmed(values, FIELD_NIN_ID, ninId);
+        putTrimmed(values, FIELD_POC_USERNAME, pocUsername);
+        String label = facilityName == null || facilityName.isBlank() ? "(unnamed)" : facilityName.trim();
+        return new FacilityIdentifiers(label, values);
+    }
+
+    private static void putTrimmed(Map<String, String> values, String field, String value) {
+        if (value != null && !value.isBlank()) {
+            values.put(field, value.trim());
         }
-        log.trace("Exiting validateHfrOrNinUniqueness method");
     }
 
     /**
-     * Validates facility POC username: required for ANGANWADI, unique within tenant when provided.
-     * Throws CustomException if duplicate found.
+     * Validates that HFR ID, NIN ID and POC username are unique across all three fields: any of
+     * them can become the POC's HRMS username (POC username for ANGANWADI, otherwise HFR ID then
+     * NIN ID), and HRMS does not allow two employees with the same username. A value is rejected
+     * when it is used by another facility in the same request, by an existing facility in the
+     * tenant (in any of the three columns), or as the code of an existing HRMS employee.
+     * A facility may repeat a value in its own fields, since that still yields a single user.
+     *
+     * @param facilities        identifiers of the facilities being created or updated
+     * @param excludeFacilityId facility being updated (its own row is not a conflict), or null on create
+     * @param unchangedValues   values the facility already had (update only); they are not
+     *                          re-checked, so an edit is not blocked by a conflict it did not introduce
+     * @throws CustomException FACILITY_DUPLICATE_IDENTIFIER listing every conflict found
      */
-    private void validateFacilityPocUsernameUnique(
-            String facilityCategory, String facilityPocUsername, String tenantId, String excludeFacilityId
+    private void validateIdentifiersUnique(
+            List<FacilityIdentifiers> facilities, String tenantId, String excludeFacilityId,
+            Set<String> unchangedValues, RequestInfo requestInfo
     ) {
-        log.trace("Entering validateFacilityPocUsernameUnique method");
+        List<String> errors = findIdentifierConflicts(facilities, tenantId, excludeFacilityId, unchangedValues, requestInfo)
+                .stream().flatMap(List::stream).toList();
+        if (!errors.isEmpty()) {
+            errors.forEach(error -> log.warn("Duplicate facility identifier in tenant {}: {}", tenantId, error));
+            throw new CustomException("FACILITY_DUPLICATE_IDENTIFIER", String.join("; ", errors));
+        }
+    }
+
+    /**
+     * Checks HFR ID, NIN ID and POC username of facilities that are about to be created, without
+     * creating anything, using the same rules as {@link #createFacility}. Lets bulk ingestion
+     * report each conflicting row before it sends the batch.
+     */
+    public FacilityIdentifierValidationResponse validateIdentifiers(FacilityIdentifierValidationRequest request) {
+        List<FacilityIdentifierCheck> checks = request.getFacilities() == null ? List.of() : request.getFacilities();
+        List<FacilityIdentifiers> facilities = checks.stream()
+                .map(c -> identifiersOf(c.getFacilityName(), c.getHfrId(), c.getNinId(), c.getFacilityPocUsername()))
+                .toList();
+        List<List<String>> errorsByFacility = findIdentifierConflicts(
+                facilities, request.getTenantId(), null, Set.of(), request.getRequestInfo());
+
+        List<FacilityIdentifierConflict> conflicts = new ArrayList<>();
+        for (int i = 0; i < errorsByFacility.size(); i++) {
+            if (!errorsByFacility.get(i).isEmpty()) {
+                conflicts.add(FacilityIdentifierConflict.builder().index(i).errors(errorsByFacility.get(i)).build());
+            }
+        }
+        log.info("Identifier validation for {} facilities in tenant {} found {} with conflicts",
+                facilities.size(), request.getTenantId(), conflicts.size());
+        return FacilityIdentifierValidationResponse.builder().conflicts(conflicts).build();
+    }
+
+    /** Runs the checks described on {@link #validateIdentifiersUnique}; returns the errors of each facility, by position. */
+    private List<List<String>> findIdentifierConflicts(
+            List<FacilityIdentifiers> facilities, String tenantId, String excludeFacilityId,
+            Set<String> unchangedValues, RequestInfo requestInfo
+    ) {
+        log.trace("Entering findIdentifierConflicts method");
+        List<List<String>> errors = new ArrayList<>();
+        for (int i = 0; i < facilities.size(); i++) {
+            errors.add(new ArrayList<>());
+        }
+
+        // 1. Within the request: the same value on two different facilities.
+        Map<String, FacilityIdentifiers> firstOwner = new HashMap<>();
+        Map<String, String> firstOwnerField = new HashMap<>();
+        for (int i = 0; i < facilities.size(); i++) {
+            FacilityIdentifiers facility = facilities.get(i);
+            Set<String> seenOnThisFacility = new HashSet<>();
+            for (Map.Entry<String, String> entry : facility.valuesByField().entrySet()) {
+                String value = entry.getValue();
+                if (!seenOnThisFacility.add(value)) {
+                    continue;
+                }
+                FacilityIdentifiers owner = firstOwner.putIfAbsent(value, facility);
+                if (owner == null) {
+                    firstOwnerField.put(value, entry.getKey());
+                } else {
+                    errors.get(i).add(String.format("%s '%s' of facility '%s' is also the %s of facility '%s' in this upload",
+                            entry.getKey(), value, facility.facilityLabel(), firstOwnerField.get(value), owner.facilityLabel()));
+                }
+            }
+        }
+
+        Set<String> toCheck = new LinkedHashSet<>(firstOwner.keySet());
+        toCheck.removeAll(unchangedValues);
+
+        // 2. Existing facilities in the tenant, matching any of the three columns.
+        Map<String, List<String>> usedByExisting = new HashMap<>();
+        for (FacilityQueryDao.IdentifierOwner owner
+                : facilityQueryDao.findFacilitiesByIdentifiers(tenantId, toCheck, excludeFacilityId)) {
+            String ownerLabel = owner.facilityId() + (owner.facilityName() != null ? " (" + owner.facilityName() + ")" : "");
+            addUse(usedByExisting, toCheck, owner.hfrId(), FIELD_HFR_ID + " of facility " + ownerLabel);
+            addUse(usedByExisting, toCheck, owner.ninId(), FIELD_NIN_ID + " of facility " + ownerLabel);
+            addUse(usedByExisting, toCheck, owner.facilityPocUsername(), FIELD_POC_USERNAME + " of facility " + ownerLabel);
+        }
+
+        // 3. Existing HRMS usernames, for values no facility explains.
+        Set<String> hrmsCandidates = new LinkedHashSet<>(toCheck);
+        hrmsCandidates.removeAll(usedByExisting.keySet());
+        Set<String> usedInHrms = hrmsService.findExistingEmployeeCodes(hrmsCandidates, tenantId, requestInfo);
+
+        for (int i = 0; i < facilities.size(); i++) {
+            FacilityIdentifiers facility = facilities.get(i);
+            Set<String> reportedForThisFacility = new HashSet<>();
+            for (Map.Entry<String, String> entry : facility.valuesByField().entrySet()) {
+                String value = entry.getValue();
+                if (!reportedForThisFacility.add(value) || firstOwner.get(value) != facility) {
+                    continue; // repeated on this facility, or already reported as an in-request duplicate
+                }
+                List<String> uses = usedByExisting.get(value);
+                if (uses != null) {
+                    errors.get(i).add(String.format("%s '%s' of facility '%s' is already used as the %s",
+                            entry.getKey(), value, facility.facilityLabel(), String.join(", ", uses)));
+                } else if (usedInHrms.contains(value)) {
+                    errors.get(i).add(String.format("%s '%s' of facility '%s' is already the username of an HRMS employee",
+                            entry.getKey(), value, facility.facilityLabel()));
+                }
+            }
+        }
+
+        log.trace("Exiting findIdentifierConflicts method");
+        return errors;
+    }
+
+    private static void addUse(Map<String, List<String>> usedBy, Set<String> wanted, String value, String use) {
+        if (value != null && wanted.contains(value)) {
+            usedBy.computeIfAbsent(value, v -> new ArrayList<>()).add(use);
+        }
+    }
+
+    /** POC username is required for ANGANWADI facilities, since it becomes the POC's HRMS username. */
+    private void validateAnganwadiPocUsernamePresent(String facilityCategory, String facilityPocUsername, String tenantId) {
         String normalizedCategory = facilityCategory == null ? "" : facilityCategory.trim().toUpperCase(Locale.ROOT);
         if (CATEGORY_ANGANWADI.equals(normalizedCategory)
                 && (facilityPocUsername == null || facilityPocUsername.isBlank())) {
             log.warn("Missing facility POC username for ANGANWADI facility in tenant {}", tenantId);
             throw new IllegalArgumentException(ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
         }
-        if (facilityPocUsername != null && !facilityPocUsername.isBlank()) {
-            String normalizedUsername = facilityPocUsername.trim();
-            log.debug("Checking uniqueness of facility POC username for tenant {}", tenantId);
-            boolean exists = facilityQueryDao.existsByFacilityPocUsername(
-                    tenantId, normalizedUsername, excludeFacilityId
-            );
-            if (exists) {
-                log.warn("Duplicate facility POC username found for tenant {}", tenantId);
-                throw new CustomException("FACILITY_DUPLICATE_POC_USERNAME",
-                        "A facility with the same POC username already exists in this tenant");
-            }
-            log.debug("Facility POC username is unique");
-        }
-        log.trace("Exiting validateFacilityPocUsernameUnique method");
     }
 
     private String extractVendorCode(Facility facility) {
@@ -468,7 +624,7 @@ public class FacilityService {
         }
     }
 
-    private String firstNonBlank(String primary, String fallback) {
+    private static String firstNonBlank(String primary, String fallback) {
         if (primary != null && !primary.isBlank()) {
             return primary;
         }
@@ -493,9 +649,9 @@ public class FacilityService {
             facilityDetails = HealthFacilityDetails.builder().build();
             facility.setFacilityDetails(facilityDetails);
         }
-
+        
         // Populate facilityDetails from direct fields if missing (trim whitespace)
-        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank())
+        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()) 
                 && facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
             facilityDetails.setHfrId(facility.getHfrId().trim());
         }
@@ -525,7 +681,7 @@ public class FacilityService {
                 : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
         boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
 
-        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR + contact + name)
+        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR or NIN + contact + name)
         if (isAnganwadi) {
             String pocUsername = facility.getFacilityPocUsername() == null
                     ? ""
@@ -541,43 +697,148 @@ public class FacilityService {
                         sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
                 return;
             }
-        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
-                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
-                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
-                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
-                    sanitizeForLog(facility.getFacilityId()),
-                    sanitizeForLog(facilityDetails.getHfrId()),
-                    sanitizeForLog(facilityDetails.getPocContact()),
-                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+        } else {
+            String facilityIdentifier = resolveFacilityIdentifier(facility, facilityDetails);
+            if (facilityIdentifier == null || facilityIdentifier.isBlank()
+                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC user for facility {}: missing facility identifier (HFR or NIN ID), POC contact, or POC name. " +
+                        "HFR ID: {}, NIN ID: {}, POC Contact: {}, POC Name: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facilityDetails.getHfrId()),
+                        sanitizeForLog(facilityDetails.getNinId()),
+                        sanitizeForLog(facilityDetails.getPocContact()),
+                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+                return;
+            }
+        }
+
+        // Find the (at most one, first match taken) employee - active or inactive - assigned to
+        // this facility's boundary. Search is boundary-based (not by identifier) so it's resilient
+        // to the facility's stored HFR/NIN/POC username having drifted out of date, and so an
+        // existing-but-inactive POC employee is found (and reactivated) rather than duplicated.
+        String boundaryCode = facility.getBoundaryCode();
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            log.warn("Cannot sync POC user for facility {}: missing boundary code", sanitizeForLog(facility.getFacilityId()));
             return;
         }
+        Employee matchedEmployee = hrmsUtils.getEmployeeByBoundaryCode(requestInfo, boundaryCode);
 
-        String username;
         if (isAnganwadi) {
-            username = facility.getFacilityPocUsername().trim();
-        } else {
-            username = resolveFacilityIdentifier(facility, facilityDetails);
-        }
-        // Check if employee already exists by mobile number
-        boolean employeeExists = hrmsService.employeeExistsByUsername(
-                username,
-                tenantId,
-                requestInfo
-        );
-
-        if (!employeeExists) {
-            // Create POC user as HRMS employee with COMPLAINANT and EMPLOYEE roles
-            boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
-            if (created) {
-                log.info("Successfully created POC user for facility {} with username {}",
-                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(username));
-            } else {
-                log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
+            String pocUsername = facility.getFacilityPocUsername().trim();
+            if (matchedEmployee == null) {
+                boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
+                if (created) {
+                    log.info("Successfully created POC user for facility {} with username {}",
+                            sanitizeForLog(facility.getFacilityId()), sanitizeForLog(pocUsername));
+                } else {
+                    log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
+                }
+                return;
             }
+            String matchedCode = matchedEmployee.getCode() == null ? "" : matchedEmployee.getCode().trim();
+            if (pocUsername.equals(matchedCode)) {
+                if (isPocEmployeeInactive(matchedEmployee)) {
+                    log.info("POC user {} matches for facility {} but is inactive; reactivating",
+                            sanitizeForLog(pocUsername), sanitizeForLog(facility.getFacilityId()));
+                    activatePocUserAndResetPassword(matchedEmployee, pocUsername, facility.getFacilityId(), requestInfo);
+                } else {
+                    log.info("POC user {} already in sync and active for facility {}, nothing to update",
+                            sanitizeForLog(pocUsername), sanitizeForLog(facility.getFacilityId()));
+                }
+                return;
+            }
+            renamePocEmployeeAndSyncFacility(matchedEmployee, pocUsername, facility, tenantId, requestInfo, true, false);
+            activatePocUserAndResetPassword(matchedEmployee, pocUsername, facility.getFacilityId(), requestInfo);
         } else {
-            log.info("POC user with identifier {} already exists for facility {}, skipping creation",
-                    sanitizeForLog(username), sanitizeForLog(facility.getFacilityId()));
+            String hfr = facilityDetails.getHfrId();
+            String nin = facilityDetails.getNinId();
+            boolean hasHfr = hfr != null && !hfr.isBlank();
+            boolean hasNin = nin != null && !nin.isBlank();
+            String resolvedId = hasHfr ? hfr.trim() : (hasNin ? nin.trim() : null);
+            if (resolvedId == null) {
+                log.warn("Cannot sync POC user for facility {}: both HFR and NIN ID are missing",
+                        sanitizeForLog(facility.getFacilityId()));
+                return;
+            }
+
+            if (matchedEmployee == null) {
+                boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
+                if (created) {
+                    log.info("Successfully created POC user for facility {} with username {}",
+                            sanitizeForLog(facility.getFacilityId()), sanitizeForLog(resolvedId));
+                } else {
+                    log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
+                }
+                return;
+            }
+
+            String matchedCode = matchedEmployee.getCode() == null ? "" : matchedEmployee.getCode().trim();
+            boolean matchesNin = hasNin && matchedCode.equals(nin.trim());
+            boolean matchesHfr = hasHfr && matchedCode.equals(hfr.trim());
+            if (matchesNin || matchesHfr) {
+                if (isPocEmployeeInactive(matchedEmployee)) {
+                    log.info("POC user {} matches for facility {} but is inactive; reactivating",
+                            sanitizeForLog(matchedCode), sanitizeForLog(facility.getFacilityId()));
+                    activatePocUserAndResetPassword(matchedEmployee, matchedCode, facility.getFacilityId(), requestInfo);
+                } else {
+                    log.info("POC user {} already in sync and active for facility {}, nothing to update",
+                            sanitizeForLog(matchedCode), sanitizeForLog(facility.getFacilityId()));
+                }
+                return;
+            }
+            renamePocEmployeeAndSyncFacility(matchedEmployee, resolvedId, facility, tenantId, requestInfo, false, hasHfr);
+            activatePocUserAndResetPassword(matchedEmployee, resolvedId, facility.getFacilityId(), requestInfo);
+        }
+    }
+
+    /**
+     * True when the employee, its user record, or its employeeStatus indicate an inactive POC.
+     */
+    private boolean isPocEmployeeInactive(Employee employee) {
+        boolean employeeInactive = Boolean.FALSE.equals(employee.getIsActive());
+        boolean userInactive = employee.getUser() == null
+                || employee.getUser().getActive() == null || !employee.getUser().getActive();
+        boolean statusInactive = "INACTIVE".equalsIgnoreCase(employee.getEmployeeStatus());
+        return employeeInactive || userInactive || statusInactive;
+    }
+
+    /**
+     * Ensures an existing POC user is active (re-activating it in HRMS when needed) and resets its
+     * credentials to the configured default password. Invoked when a facility is marked ONM ready
+     * and a POC user with the resolved HFR/NIN already exists.
+     */
+    private void activatePocUserAndResetPassword(Employee employee, String username, String facilityId,
+                                                 RequestInfo requestInfo) {
+        try {
+            if (isPocEmployeeInactive(employee)) {
+                employee.getUser().setActive(true);
+                employee.setIsActive(true);
+                employee.setEmployeeStatus("EMPLOYED");
+                employee.setReActivateEmployee(true);
+
+                EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                        .requestInfo(requestInfo)
+                        .employees(List.of(employee))
+                        .build();
+                List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+                if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                    log.info("Activated existing HRMS POC user {} for facility {}",
+                            sanitizeForLog(username), sanitizeForLog(facilityId));
+                } else {
+                    log.warn("Failed to activate existing HRMS POC user {} for facility {}",
+                            sanitizeForLog(username), sanitizeForLog(facilityId));
+                }
+            } else {
+                log.info("Existing HRMS POC user {} is already active for facility {}",
+                        sanitizeForLog(username), sanitizeForLog(facilityId));
+            }
+
+            // Always reset to the default password so the POC lands on known credentials once ONM ready
+            hrmsService.resetUserPasswordToDefault(employee.getUser(), requestInfo);
+        } catch (Exception e) {
+            log.error("Error activating/resetting password for HRMS POC user {} for facility {}: {}",
+                    sanitizeForLog(username), sanitizeForLog(facilityId), e.getMessage(), e);
         }
     }
 
@@ -691,6 +952,11 @@ public class FacilityService {
         if (update.getSolarSystemCapacityKwp() == null) {
             update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
         }
+        // facility_poc_phone is now also set by the persister query; preserve it on payloads that
+        // don't touch it (existingFacility.getFacilityPocPhone() was decrypted above).
+        if (update.getPocContact() == null) {
+            update.setPocContact(existingFacility.getFacilityPocPhone());
+        }
 
         FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
         FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
@@ -703,8 +969,17 @@ public class FacilityService {
         String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
         validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
 
-        validateFacilityPocUsernameUnique(
-                effectiveCategory, facility.getFacilityPocUsername(), update.getTenantId(), update.getFacilityId()
+        validateAnganwadiPocUsernamePresent(effectiveCategory, facility.getFacilityPocUsername(), update.getTenantId());
+
+        // Only values this update introduces are checked: unchanged ones already belong to this
+        // facility (and to its own HRMS user), and re-checking them would block unrelated edits on
+        // facilities saved before this rule existed.
+        Set<String> unchangedIdentifiers = new HashSet<>(
+                identifiersOf(existingFacility).valuesByField().values());
+        validateIdentifiersUnique(
+                List.of(identifiersOf(facility.getFacilityName(), effectiveHfrId, effectiveNinId,
+                        facility.getFacilityPocUsername())),
+                update.getTenantId(), update.getFacilityId(), unchangedIdentifiers, request.getRequestInfo()
         );
 
         // Validate with MDMS and boundary APIs
@@ -720,6 +995,19 @@ public class FacilityService {
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
+        // Keep the persisted payload in sync with the resolved is_active so an update
+        // without isActive does not overwrite the existing value with null.
+        update.setIsActive(facility.getIsActive());
+
+        // If the facility is being deactivated (is_active=false), it can no longer be ONM ready.
+        // Force is_onm_ready=false so it is persisted, and so the update flows through the
+        // non ONM-ready branch (POC/complainant deactivation + Kibana index deletion).
+        if (Boolean.FALSE.equals(facility.getIsActive())) {
+            log.info("Facility {} is being deactivated (is_active=false); forcing is_onm_ready=false",
+                    sanitizeForLog(update.getFacilityId()));
+            facility.setIsOnmReady(false);
+            update.setIsOnmReady(false);
+        }
 
         // If POC details are updated AND facility is isOnmReady=true
         boolean isPocDetailsUpdated = checkPOCDetailsUpdated(existingFacility, facility);
@@ -729,14 +1017,6 @@ public class FacilityService {
 
         // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
         upsertFacilityBoundaryLocalizations(List.of(facility), request.getRequestInfo());
-
-        try {
-            String encryptedPocMobileNumber = encryptMobileNumber(request.getFacilityUpdate().getPocContact());
-            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                request.getFacilityUpdate().setPocContact(encryptedPocMobileNumber);
-            }
-        }
-        catch (Exception e){}
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
@@ -767,6 +1047,8 @@ public class FacilityService {
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true)
+                    .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
+                    .facilityStatus(facility.getFacilityStatus() != null ? facility.getFacilityStatus() : existingFacility.getFacilityStatus())
                     .build();
 
             try{
@@ -778,13 +1060,20 @@ public class FacilityService {
             catch(Exception e){}
 
             // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
-            // This ensures POC user is created if missing, even if facility was already ONM ready
-            createFacilityPOCUserIfNotExists(
-                    facilityForProcessing,
-                    update.getTenantId(),
-                    request.getRequestInfo(),
-                    facilityForProcessing.getFacilityPocPhone()
-            );
+            // This ensures POC user is created if missing, even if facility was already ONM ready.
+            // Swallow failures so a transient HRMS/user-service outage doesn't fail the whole
+            // update request after the facility itself has already been persisted.
+            try {
+                createFacilityPOCUserIfNotExists(
+                        facilityForProcessing,
+                        update.getTenantId(),
+                        request.getRequestInfo(),
+                        facilityForProcessing.getFacilityPocPhone()
+                );
+            } catch (Exception e) {
+                log.error("Error syncing POC user for facility {}: {}",
+                        sanitizeForLog(update.getFacilityId()), e.getMessage(), e);
+            }
 
             // Check if facility already exists in Kibana, if not then push
 //            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
@@ -828,7 +1117,7 @@ public class FacilityService {
                     .build();
 
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                    facilityForKibanaUpdate, request.getRequestInfo());
+                    facilityForKibanaUpdate, request.getRequestInfo(), mappedVendorUpdated);
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
@@ -847,11 +1136,12 @@ public class FacilityService {
                     .facilityCategory(firstNonBlank(facility.getFacilityCategory(), existingFacility.getFacilityCategory()))
                     .mappedVendorName(facility.getMappedVendorName())
                     .mappedVendorUserName(facility.getMappedVendorUserName())
+                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails())
                     .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
                     .build();
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
-                    facilityForKibanaUpdate, request.getRequestInfo());
+                    facilityForKibanaUpdate, request.getRequestInfo(), true);
             if (kibanaIndex != null) {
                 facilityRepository.pushToKibana(kibanaIndex);
                 log.info("Facility {} mapped-vendor fields pushed to Kibana", sanitizeForLog(update.getFacilityId()));
@@ -1365,6 +1655,216 @@ public class FacilityService {
         return response;
     }
 
+    /**
+     * Backfills {@code projectName} on facilities already present in the health facility index.
+     * Scans the index, resolves each facility's project name from the project service (batched),
+     * and patches only {@code Data.projectName} on documents whose value is missing or stale.
+     */
+    public FacilityProjectNameBackfillResponse backfillFacilityProjectNames(FacilityProjectNameBackfillRequest request) {
+        if (!configs.isFacilityProjectNameBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility projectName backfill is disabled. Set facility.project-name.backfill.enabled=true to run.");
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        final int projectFetchBatchSize = 100;
+        String tenantId = request.getTenantId();
+        int pageSize = (request.getBatchSize() != null && request.getBatchSize() > 0) ? request.getBatchSize() : 500;
+
+        List<FacilityKibanaMapper.IndexedFacilityRef> refs =
+                facilityKibanaMapper.fetchAllIndexedFacilities(tenantId, pageSize);
+
+        FacilityProjectNameBackfillResponse response = FacilityProjectNameBackfillResponse.builder()
+                .scanned(refs.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        if (refs.isEmpty()) {
+            return response;
+        }
+
+        // Resolve project names in batches, grouped by tenant (project lookup is tenant-scoped).
+        Map<String, String> projectNamesByFacilityId = new HashMap<>();
+        Map<String, List<String>> facilityIdsByTenant = new LinkedHashMap<>();
+        for (FacilityKibanaMapper.IndexedFacilityRef ref : refs) {
+            String refTenant = ref.getTenantId() != null ? ref.getTenantId() : tenantId;
+            facilityIdsByTenant.computeIfAbsent(refTenant, k -> new ArrayList<>()).add(ref.getFacilityId());
+        }
+        for (Map.Entry<String, List<String>> entry : facilityIdsByTenant.entrySet()) {
+            String batchTenant = entry.getKey();
+            List<String> ids = entry.getValue();
+            for (int i = 0; i < ids.size(); i += projectFetchBatchSize) {
+                List<String> batch = ids.subList(i, Math.min(i + projectFetchBatchSize, ids.size()));
+                projectNamesByFacilityId.putAll(
+                        facilityProjectClient.fetchProjectNamesByFacility(request.getRequestInfo(), batchTenant, batch));
+            }
+        }
+
+        for (FacilityKibanaMapper.IndexedFacilityRef ref : refs) {
+            String projectName = projectNamesByFacilityId.get(ref.getFacilityId());
+            // No mapping found, or projectName already up to date → nothing to write.
+            if (projectName == null || projectName.isBlank() || projectName.equals(ref.getProjectName())) {
+                response.setSkipped(response.getSkipped() + 1);
+                continue;
+            }
+            int updated = facilityKibanaMapper.updateProjectNameByFacilityId(
+                    ref.getFacilityId(), ref.getTenantId(), projectName);
+            if (updated > 0) {
+                response.setUpdated(response.getUpdated() + 1);
+            } else if (updated == 0) {
+                response.setSkipped(response.getSkipped() + 1);
+            } else {
+                response.setFailed(response.getFailed() + 1);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(ref.getFacilityId())
+                        .tenantId(ref.getTenantId())
+                        .message("Elasticsearch _update_by_query failed")
+                        .build());
+            }
+        }
+
+        log.info("projectName backfill complete: scanned={}, updated={}, skipped={}, failed={}",
+                response.getScanned(), response.getUpdated(), response.getSkipped(), response.getFailed());
+        return response;
+    }
+
+    /**
+     * Settles {@code mappedVendorName} / {@code mappedVendorUserName} on facilities that carry
+     * none, reading the mapping back out of HRMS by boundary code.
+     *
+     * <p>Repairs the rows left behind by the two paths that used to drop the vendor: a facility
+     * created before its vendor jurisdiction was assigned, and a vendor jurisdiction added through
+     * vendor-registry whose sync never reached the facility. Both now settle the vendor themselves,
+     * so this exists for the rows already written, not as part of any live flow.
+     *
+     * <p>Writes the row and, for indexed facilities, the Kibana document - the script in
+     * {@code docs/mapVendorFromHrms.py} only ever touched the index, which left the row null and
+     * the next full re-index free to drop the vendor again.
+     */
+    public FacilityMappedVendorBackfillResponse backfillFacilityMappedVendors(
+            FacilityMappedVendorBackfillRequest request) {
+        if (!configs.isFacilityMappedVendorBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility mappedVendor backfill is disabled. "
+                            + "Set facility.mapped-vendor.backfill.enabled=true to run.");
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        boolean onmReadyOnly = request.getOnmReadyOnly() == null || Boolean.TRUE.equals(request.getOnmReadyOnly());
+        boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+
+        List<Facility> candidates = loadFacilitiesForKibanaReindex(
+                request.getTenantId(), request.getFacilityIds(), onmReadyOnly);
+
+        // Only the rows actually missing a vendor: one already mapped is left alone, so a re-run
+        // costs nothing and an operator can repeat it safely.
+        List<Facility> pending = new ArrayList<>();
+        for (Facility facility : candidates) {
+            FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+            if (!FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+                pending.add(facility);
+            }
+        }
+
+        FacilityMappedVendorBackfillResponse response = FacilityMappedVendorBackfillResponse.builder()
+                .scanned(pending.size())
+                .dryRun(dryRun)
+                .errors(new ArrayList<>())
+                .build();
+
+        log.info("mappedVendor backfill: tenantId={}, onmReadyOnly={}, dryRun={}, loaded={}, missing={}",
+                request.getTenantId(), onmReadyOnly, dryRun, candidates.size(), pending.size());
+
+        for (Facility facility : pending) {
+            String boundaryCode = facility.getBoundaryCode();
+            if (boundaryCode == null || boundaryCode.isBlank()) {
+                response.setSkipped(response.getSkipped() + 1);
+                continue;
+            }
+            try {
+                Employee mappedVendor =
+                        hrmsUtils.getMappedVendorByBoundaryCode(request.getRequestInfo(), boundaryCode);
+                if (mappedVendor == null) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+                User vendorUser = mappedVendor.getUser();
+                String vendorUserName = firstNonBlank(
+                        vendorUser != null ? vendorUser.getUserName() : null, mappedVendor.getCode());
+                if (vendorUserName == null || vendorUserName.isBlank()) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+
+                if (dryRun) {
+                    response.setUpdated(response.getUpdated() + 1);
+                    log.info("mappedVendor backfill (dry run): would map {} onto facility {}",
+                            sanitizeForLog(vendorUserName), sanitizeForLog(facility.getFacilityId()));
+                    continue;
+                }
+
+                FacilityMappedVendorHelper.applyMappedVendor(
+                        facility, vendorUser != null ? vendorUser.getName() : null, vendorUserName);
+                persistMappedVendorOnRow(facility);
+
+                // Only indexed facilities have a document to keep in step; a non ONM-ready one has
+                // none, and pushing would create the document its own update path just deletes.
+                if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
+                            facility, request.getRequestInfo(), true);
+                    if (kibanaIndex != null) {
+                        facilityRepository.pushToKibana(kibanaIndex);
+                    }
+                }
+
+                response.setUpdated(response.getUpdated() + 1);
+                log.info("mappedVendor backfill: mapped {} onto facility {}",
+                        sanitizeForLog(vendorUserName), sanitizeForLog(facility.getFacilityId()));
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("mappedVendor backfill failed for facilityId {} boundaryCode {}: {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryCode), message, e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(facility.getFacilityId())
+                        .tenantId(facility.getTenantId())
+                        .boundaryCode(boundaryCode)
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("mappedVendor backfill complete: scanned={}, updated={}, skipped={}, failed={}, dryRun={}",
+                response.getScanned(), response.getUpdated(), response.getSkipped(),
+                response.getFailed(), dryRun);
+        return response;
+    }
+
+    /**
+     * Writes the facility's {@code additional_details} straight to the row.
+     *
+     * <p>Direct rather than through the persister topic: the mapped vendor has no column of its
+     * own, so the update topic would carry a whole facility payload rebuilt from this read, and
+     * every field it failed to echo back would be overwritten. This touches the one column that
+     * changed.
+     */
+    private void persistMappedVendorOnRow(Facility facility) {
+        String additionalDetailsJson;
+        try {
+            additionalDetailsJson = ADDITIONAL_DETAILS_MAPPER.writeValueAsString(facility.getAdditionalDetails());
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(
+                    "Could not serialise additional_details for facility " + facility.getFacilityId(), e);
+        }
+        jdbcTemplate.update(
+                "UPDATE facility SET additional_details = ?::jsonb WHERE id = ? AND tenant_id = ?",
+                additionalDetailsJson, facility.getFacilityId(), facility.getTenantId());
+    }
+
     private List<Facility> loadFacilitiesForKibanaReindex(
             String tenantId,
             List<String> facilityIds,
@@ -1469,12 +1969,14 @@ public class FacilityService {
             facility.setUserId(facilityDB.getUserId());
             facility.setIsOnmReady(facilityDB.getIsOnmReady());
 
+            // Carried over as-is; the update push encrypts it before persisting.
             if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
-                String encryptedMobileNumber = encryptMobileNumber(facilityDB.getFacilityDetails().getPocContact());
-                if (encryptedMobileNumber!=null && !encryptedMobileNumber.isBlank()){
-                    log.info("mobile number {} encrypted to : {}", facilityDB.getFacilityDetails().getPocContact(), encryptedMobileNumber);
-                    facility.setPocContact(encryptedMobileNumber);
-                }
+                facility.setPocContact(facilityDB.getFacilityDetails().getPocContact());
+            } else {
+                // facility_poc_phone is now also set by the persister query; fall back to the
+                // current column value so this migration doesn't null it out. Safe to pass through
+                // as-is even if already encrypted: PocPhoneCipher#encrypt is idempotent.
+                facility.setPocContact(facilityDB.getFacilityPocPhone());
             }
 
             if (details != null) {
@@ -1494,55 +1996,60 @@ public class FacilityService {
         }
     }
 
-    public String encryptMobileNumber(String mobileNumber){
-        String encryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
-            EncryptObject object = EncryptObject.builder()
-                    .mobileNumber(mobileNumber)
-                    .build();
-            Map<String, EncryptObject> userMap = new HashMap<>();
-            userMap.put("userObject", object);
-            EncReqObject encReqObject = EncReqObject.builder()
-                    .tenantId(configs.getEncServiceTenantId())
-                    .type("Normal")
-                    .value(userMap)
-                    .build();
-            EncryptionRequest encryptionRequest = EncryptionRequest.builder()
-                    .encryptionRequests(List.of(encReqObject))
-                    .build();
-            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile crypté : {}", user.getMobileNumber());
-                    encryptedMobileNumber = user.getMobileNumber();
-                }
-            }
+    /**
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number (an encrypted value from egov-enc-service is always much longer) and
+     * re-persists it through the update-facility persister, which encrypts it on the way through
+     * (see FacilityRepository#pushUpdateFacility). Every other column touched by that persister
+     * query is carried over as-is from the current row so nothing else gets overwritten.
+     */
+    public String encryptFacilityPocPhone() {
+        String query = "SELECT fac.*, " +
+                "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
+                "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                "FROM facility fac WHERE LENGTH(fac.facility_poc_phone) = 10";
+        List<Facility> facilities = jdbcTemplate.query(query, facilityRowMapper.rowMapper);
+        log.info("facility_poc_phone encryption script: {} facilities found with a plaintext 10-digit number", facilities.size());
+
+        for (Facility facilityDB : facilities) {
+            FacilityUpdateRequestFacilityUpdate facility = new FacilityUpdateRequestFacilityUpdate();
+            facility.setFacilityId(facilityDB.getFacilityId());
+            facility.setTenantId(facilityDB.getTenantId());
+            facility.setFacilityCategory(facilityDB.getFacilityCategory());
+            facility.setFacilityType(facilityDB.getFacilityType());
+            facility.setFacilitySubtype(facilityDB.getFacilitySubtype());
+            facility.setFacilityName(facilityDB.getFacilityName());
+            facility.setAddress(facilityDB.getAddress());
+            facility.setFacilityDetails(facilityDB.getFacilityDetails());
+            facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
+            facility.setIsOnmReady(facilityDB.getIsOnmReady());
+            facility.setSolarInstallationDate(facilityDB.getSolarInstallationDate());
+            facility.setRmsInstallationDate(facilityDB.getRmsInstallationDate());
+            facility.setSolarSystemCapacityKwp(facilityDB.getSolarSystemCapacityKwp());
+
+            // Plaintext number carried over as-is; the update push encrypts it before persisting.
+            facility.setPocContact(facilityDB.getFacilityPocPhone());
+
+            FacilityUpdateRequest request = FacilityUpdateRequest.builder().facilityUpdate(facility).build();
+            facilityRepository.pushUpdateFacility(request);
         }
-        return encryptedMobileNumber;
+
+        String summary = "Encrypted facility_poc_phone for " + facilities.size() + " facilities";
+        log.info(summary);
+        return summary;
+    }
+
+    /**
+     * For encrypting a search criterion so it can be compared against the stored ciphertext (see
+     * {@code QueryBuilderUtil}). Write paths must not call this — {@link FacilityRepository} encrypts
+     * {@code facility_poc_phone} on every push.
+     */
+    public String encryptMobileNumber(String mobileNumber){
+        return pocPhoneCipher.encrypt(mobileNumber);
     }
 
     public String decryptMobileNumber(String mobileNumber){
-        String decryptedMobileNumber = null;
-        if(mobileNumber!=null && !mobileNumber.isBlank()){
-            EncryptObject object = EncryptObject.builder()
-                    .mobileNumber(mobileNumber)
-                    .build();
-            Map<String, EncryptObject> userMap = new HashMap<>();
-            userMap.put("userObject", object);
-            DecryptionRequest request = DecryptionRequest.builder()
-                    .decryptionRequests(List.of(userMap))
-                    .build();
-            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
-            for (Map<String, EncryptObject> map : response) {
-                EncryptObject user = map.get("userObject"); // clé du JSON
-                if (user != null) {
-                    log.info("Mobile decrypté : {}", user.getMobileNumber());
-                    decryptedMobileNumber = user.getMobileNumber();
-                }
-            }
-        }
-        return decryptedMobileNumber;
+        return pocPhoneCipher.decrypt(mobileNumber);
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
@@ -1652,6 +2159,92 @@ public class FacilityService {
         }
     }
 
+    /**
+     * Renames a mismatched HRMS POC employee (found via boundary code) to {@code newCode}, then
+     * syncs the facility table's corresponding identifier column to the same value via a dedicated
+     * update-facility push (carrying the rest of the facility's current fields forward unchanged so
+     * the blanket persister UPDATE doesn't null out unrelated columns), and finally patches the
+     * Kibana index's {@code code} field.
+     */
+    private void renamePocEmployeeAndSyncFacility(Employee matchedEmployee, String newCode, Facility facility,
+            String tenantId, RequestInfo requestInfo, boolean isAnganwadi, boolean updatingHfr) {
+        log.info("POC identifier mismatch for facility {} (HRMS user code={}, expected={}); renaming HRMS user and syncing facility",
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(matchedEmployee.getCode()), sanitizeForLog(newCode));
+
+        hrmsUtils.updateHrmsUsername(requestInfo, matchedEmployee.getUuid(), newCode, tenantId);
+        // Keep the in-memory Employee consistent with the rename so any subsequent HRMS _update
+        // call using this same object (e.g. activatePocUserAndResetPassword) doesn't push the
+        // stale code back via delete+insert and undo the rename.
+        matchedEmployee.setCode(newCode);
+
+        FacilityUpdateRequestFacilityUpdate updatePayload = FacilityUpdateRequestFacilityUpdate.builder()
+                .tenantId(facility.getTenantId())
+                .facilityId(facility.getFacilityId())
+                .facilityName(facility.getFacilityName())
+                .facilityType(facility.getFacilityType())
+                .facilitySubtype(facility.getFacilitySubtype())
+                .address(facility.getAddress())
+                .facilityDetails(facility.getFacilityDetails())
+                .additionalDetails(facility.getAdditionalDetails())
+                .isOnmReady(facility.getIsOnmReady())
+                .pocName(facility.getFacilityPocName())
+                .pocContact(facility.getFacilityPocPhone())
+                .pocEmail(facility.getFacilityPocEmail())
+                .facilityPocUsername(facility.getFacilityPocUsername())
+                .hfrId(facility.getHfrId())
+                .ninId(facility.getNinId())
+                .userId(facility.getUserId())
+                .status(facility.getFacilityStatus())
+                .isActive(facility.getIsActive())
+                .build();
+
+        if (isAnganwadi) {
+            updatePayload.setFacilityPocUsername(newCode);
+            facility.setFacilityPocUsername(newCode);
+        } else if (updatingHfr) {
+            updatePayload.setHfrId(newCode);
+            facility.setHfrId(newCode);
+        } else {
+            updatePayload.setNinId(newCode);
+            facility.setNinId(newCode);
+        }
+
+        facilityRepository.pushUpdateFacility(FacilityUpdateRequest.builder()
+                .requestInfo(requestInfo)
+                .facilityUpdate(updatePayload)
+                .build());
+
+        FacilityKibanaIndex patch = facilityKibanaMapper.toKibanaIndexPatchCode(facility, newCode, requestInfo);
+        if (patch != null) {
+            facilityRepository.pushToKibana(patch);
+        }
+    }
+
+    /**
+     * Writes a facility's AMC snapshot onto the health facility index, and nowhere else.
+     *
+     * <p>Called by amc-scheduler-service, which owns this data. Deliberately index-only: it does not
+     * touch the facility table and does not go through the indexer Kafka topic, so no AMC field is
+     * ever persisted in {@code additional_details}. Authorization matches the facility edit APIs
+     * (FACILITY_ADMIN or SYSTEM_USER).
+     */
+    public FacilityAmcIndexUpdateResponse updateAmcIndexFields(FacilityAmcIndexUpdateRequest request) {
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+        if (request.getFacilityId() == null || request.getFacilityId().isBlank()) {
+            throw new IllegalArgumentException("facilityId is required");
+        }
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        int updated = facilityKibanaMapper.updateAmcFieldsByFacilityId(
+                request.getFacilityId(), request.getTenantId(), request.getAmcFields());
+        return FacilityAmcIndexUpdateResponse.builder()
+                .facilityId(request.getFacilityId())
+                .updated(Math.max(updated, 0))
+                .build();
+    }
+
     private void validateFacilityEditAuthorization(RequestInfo requestInfo) {
         var userInfo = requestInfo != null ? requestInfo.getUserInfo() : null;
         if (userInfo == null || userInfo.getRoles() == null) {
@@ -1665,6 +2258,124 @@ public class FacilityService {
         if (!isFacilityAdmin && !isSystemUser) {
             throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
         }
+    }
+
+    /**
+     * Writes one facility's mapped vendor - the row and the Kibana document - and nothing else.
+     *
+     * <p>The narrow counterpart to {@link #updateFacility}, for callers that hold only the vendor
+     * mapping. Routing a mapping through the full update meant searching the facility, echoing
+     * every one of its fields back, and running the ONM-ready branching with its POC user creation
+     * and password resets; a jurisdiction being added to a vendor has no business doing any of
+     * that. Cheaper too: the caller passes the boundary code it already holds, so the search that
+     * used to precede every update disappears.
+     *
+     * <p>A blank name and username together are a deliberate unmapping, which is why they are not
+     * rejected as missing.
+     */
+    public FacilityMappedVendorUpdateResponse updateMappedVendor(FacilityMappedVendorUpdateRequest request) {
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+        boolean hasFacilityId = request.getFacilityId() != null && !request.getFacilityId().isBlank();
+        boolean hasBoundaryCode = request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank();
+        if (!hasFacilityId && !hasBoundaryCode) {
+            throw new IllegalArgumentException("One of facilityId or boundaryCode must be provided");
+        }
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        if (request.getTenantId() == null || request.getTenantId().isBlank()) {
+            throw new IllegalArgumentException("tenantId is required");
+        }
+        String tenantId = request.getTenantId().trim();
+
+        Facility facility = hasFacilityId
+                ? getFacilityFromDb(request.getFacilityId().trim(), tenantId)
+                : getFacilityByBoundaryCode(request.getBoundaryCode().trim(), tenantId);
+        if (facility == null) {
+            log.warn("No facility found for mapped-vendor update (facilityId={}, boundaryCode={}, tenantId={})",
+                    sanitizeForLog(request.getFacilityId()), sanitizeForLog(request.getBoundaryCode()),
+                    sanitizeForLog(tenantId));
+            throw new IllegalArgumentException("No facility found for the given facilityId or boundaryCode");
+        }
+
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+        String vendorName = trimToNull(request.getMappedVendorName());
+        String vendorUserName = trimToNull(request.getMappedVendorUserName());
+
+        FacilityMappedVendorUpdateResponse response = FacilityMappedVendorUpdateResponse.builder()
+                .facilityId(facility.getFacilityId())
+                .boundaryCode(facility.getBoundaryCode())
+                .mappedVendorName(vendorName)
+                .mappedVendorUserName(vendorUserName)
+                .build();
+
+        // Nothing to do when the facility already carries exactly this vendor. Worth the check: the
+        // index document is replaced wholesale on every push, so a redundant write is not free - it
+        // races the other writer of that document, and a vendor holding many facilities would
+        // otherwise re-push every one of them on each edit.
+        if (Objects.equals(vendorName, facility.getMappedVendorName())
+                && Objects.equals(vendorUserName, facility.getMappedVendorUserName())) {
+            response.setUnchanged(true);
+            log.info("Mapped vendor already up to date on facility {} (userName={}); nothing written",
+                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(vendorUserName));
+            return response;
+        }
+
+        facility.setMappedVendorName(vendorName);
+        facility.setMappedVendorUserName(vendorUserName);
+        FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+        persistMappedVendorOnRow(facility);
+
+        // Only a facility that is actually indexed has a document to keep in step; pushing for one
+        // that is not would create the document its own update path deletes.
+        if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+            FacilityKibanaIndex kibanaIndex =
+                    facilityKibanaMapper.toKibanaIndexForFacilityUpdate(facility, request.getRequestInfo(), true);
+            if (kibanaIndex != null) {
+                facilityRepository.pushToKibana(kibanaIndex);
+            } else {
+                response.setIndexSkipped(true);
+            }
+        } else {
+            response.setIndexSkipped(true);
+        }
+
+        response.setUpdated(true);
+        log.info("Mapped vendor written on facility {} (name={}, userName={}, indexSkipped={})",
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(vendorName),
+                sanitizeForLog(vendorUserName), response.isIndexSkipped());
+        return response;
+    }
+
+    /** The facility on a boundary code, or null. Mirrors {@link #getFacilityFromDb}. */
+    private Facility getFacilityByBoundaryCode(String boundaryCode, String tenantId) {
+        String sql = "SELECT fac.*, "
+                + " (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                + "   WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                + " FROM facility fac WHERE fac.boundary_code = ? AND fac.tenant_id = ?";
+        try {
+            return jdbcTemplate.queryForObject(
+                    sql, new Object[]{boundaryCode, tenantId}, facilityRowMapper.rowMapper);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        } catch (IncorrectResultSizeDataAccessException e) {
+            // More than one facility on a boundary code is a data problem, not something to resolve
+            // by silently picking one and writing a vendor onto it.
+            log.error("Boundary code {} maps to {} facilities in tenant {}; refusing to guess",
+                    sanitizeForLog(boundaryCode), e.getActualSize(), sanitizeForLog(tenantId));
+            throw new IllegalArgumentException(
+                    "Boundary code " + boundaryCode + " maps to more than one facility");
+        }
+    }
+
+    /** Trimmed, or null when null/blank - a blank vendor is an unmapping, not an empty string. */
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Facility getFacilityFromDb(String facilityId, String tenantId) {
@@ -1936,11 +2647,24 @@ public class FacilityService {
         return segments[segments.length - 1];
     }
 
+    /**
+     * Sort for bulk search, always ending in a unique tiebreaker.
+     *
+     * <p>{@code created_at} / {@code updated_at} are not unique — facilities loaded in the same
+     * import share a timestamp, and rows with a null timestamp all land together under
+     * {@code NULLS LAST}. Postgres may return tied rows in any order, and it need not be the same
+     * order across the separate queries a LIMIT/OFFSET walk issues. A caller paging through the
+     * whole table would then see some facilities twice and miss others entirely, with nothing in
+     * the response to indicate it happened.
+     *
+     * <p>Appending {@code fac.id} makes the total order deterministic, so every row is returned
+     * exactly once across a full scan.
+     */
     private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
         String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
         String column = ("created_at".equals(sortBy) || "createdat".equals(sortBy)) ? "fac.created_at" : "fac.updated_at";
         boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
-        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
+        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST, fac.id ASC ";
     }
 
 }

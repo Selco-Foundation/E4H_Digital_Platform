@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
@@ -13,9 +12,22 @@ import '../data/remote_client.dart';
 import '../model/activity_facility/activity_facility.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
+
+class PaginatedActivityFacilities {
+  final List<ActivityFacilityWorkflow> items;
+  final int totalCount;
+  final bool fromCache;
+
+  PaginatedActivityFacilities({
+    required this.items,
+    required this.totalCount,
+    this.fromCache = false,
+  });
+}
 
 class ActivityFacilityRemoteRepository {
   ActivityFacilityRemoteRepository();
@@ -27,7 +39,7 @@ class ActivityFacilityRemoteRepository {
       required List<String> workflowStatuses,
       int limit = 100,
       offset = 0,
-      sortDirection = 'ASC'}) async {
+      sortDirection = DEFAULT_SORT_DIRECTION}) async {
     try {
       Response response;
       String searchPath = "activity/v1/activities/_search";
@@ -40,10 +52,10 @@ class ActivityFacilityRemoteRepository {
           'offset': offset,
           'includeDescendants': false,
           'includeAncestors': false,
-          'sort_direction': sortDirection
         },
         data: {
           'ActivityFacility': {
+            'sort_direction': sortDirection,
             'statuses': workflowStatuses,
             'tenantId': envConfig.variables.tenantId,
             ...body.toMap(),
@@ -60,7 +72,10 @@ class ActivityFacilityRemoteRepository {
       }
       return activityFacilityList;
     } catch (err) {
-      AppLogger.instance.info(err);
+      AppLogger.instance.error(
+        title: "Activity Search",
+        message: err.toString(),
+      );
       rethrow;
     }
   }
@@ -164,6 +179,8 @@ class ActivityFacilityRemoteRepository {
 }
 
 class ActivityFacilityRepository {
+  static const int defaultPageSize = 10;
+
   final Isar _isar;
   final ActivityFacilityRemoteRepository _remote;
 
@@ -204,7 +221,7 @@ class ActivityFacilityRepository {
   Future<List<ActivityFacilityWorkflow>> fetchByWorkflow(
       {required ActivityFacilitySearchModel body,
       required List<String> workflowStatuses,
-      sortDirection = 'ASC'}) async {
+      sortDirection = DEFAULT_SORT_DIRECTION}) async {
     final userTypes = _resolveUserTypes(workflowStatuses);
     try {
       final remoteList = await _remote.searchByWorkflow(
@@ -213,18 +230,86 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      if (remoteList != null) {
-        await _replaceCache(workflowStatuses, remoteList);
-        final excludedIds = await _excludedIdsFor(userTypes);
-        final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
-        return filteredRemoteList;
-      }
+      await _replaceCache(workflowStatuses, remoteList);
+      final excludedIds = await _excludedIdsFor(userTypes);
+      final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
+      return filteredRemoteList;
     } catch (e) {
       AppLogger.instance.info("error in fetching remote project $e");
     }
     final cachedList = await readCache(workflowStatuses);
     final excludedIds = await _excludedIdsFor(userTypes);
     return _applyExclusion(cachedList, excludedIds);
+  }
+
+  Future<PaginatedActivityFacilities> fetchByWorkflowPaginated({
+    required ActivityFacilitySearchModel body,
+    required List<String> workflowStatuses,
+    int limit = defaultPageSize,
+    int offset = 0,
+    String sortDirection = DEFAULT_SORT_DIRECTION,
+  }) async {
+    final userTypes = _resolveUserTypes(workflowStatuses);
+    try {
+      final remoteList = await _remote.searchByWorkflow(
+        body: body,
+        workflowStatuses: workflowStatuses,
+        limit: limit,
+        offset: offset,
+        sortDirection: sortDirection,
+      );
+
+      if (offset == 0) {
+        await _replaceCache(workflowStatuses, remoteList);
+      } else {
+        await _appendCache(remoteList);
+      }
+
+      final excludedIds = await _excludedIdsFor(userTypes);
+      final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
+      final pageSize = limit;
+
+      int totalCount;
+      if (offset == 0) {
+        try {
+          final remoteCount = await _remote.searchByWorkflowCount(
+            body: body,
+            workflowStatuses: workflowStatuses,
+          );
+          totalCount = (remoteCount - excludedIds.length).clamp(0, remoteCount);
+        } catch (_) {
+          totalCount = offset +
+              filteredRemoteList.length +
+              (remoteList.length == pageSize ? 1 : 0);
+        }
+      } else {
+        totalCount = offset +
+            filteredRemoteList.length +
+            (remoteList.length == pageSize ? 1 : 0);
+      }
+
+      return PaginatedActivityFacilities(
+        items: filteredRemoteList,
+        totalCount: totalCount,
+        fromCache: false,
+      );
+    } catch (e) {
+      AppLogger.instance.info("error in paginated fetch $e");
+    }
+
+    final excludedIds = await _excludedIdsFor(userTypes);
+    final cachedSorted = await _readCacheSorted(
+      statuses: workflowStatuses,
+      sortDirection: sortDirection,
+    );
+    final filteredCache = _applyExclusion(cachedSorted, excludedIds);
+    final paged = filteredCache.skip(offset).take(limit).toList();
+
+    return PaginatedActivityFacilities(
+      items: paged,
+      totalCount: filteredCache.length,
+      fromCache: true,
+    );
   }
 
   Future<void> _replaceCache(
@@ -240,6 +325,24 @@ class ActivityFacilityRepository {
         }
       }
       for (final wf in newList) {
+        await col.put(CacheActivityFacilityWorkflow(
+          activityFacilityId: wf.activityFacility.id,
+          status: wf.status ?? '',
+          activityFacility: wf.activityFacility,
+          transactions: wf.transactions,
+          workflow: wf.workflow,
+        ));
+      }
+    });
+  }
+
+  Future<void> _appendCache(
+    List<ActivityFacilityWorkflow> items,
+  ) async {
+    if (items.isEmpty) return;
+    final col = _isar.cacheActivityFacilityWorkflows;
+    await _isar.writeTxn(() async {
+      for (final wf in items) {
         await col.put(CacheActivityFacilityWorkflow(
           activityFacilityId: wf.activityFacility.id,
           status: wf.status ?? '',
@@ -268,6 +371,21 @@ class ActivityFacilityRepository {
               workflow: c.workflow,
             ))
         .toList();
+  }
+
+  Future<List<ActivityFacilityWorkflow>> _readCacheSorted({
+    required List<String> statuses,
+    required String sortDirection,
+  }) async {
+    final list = await readCache(statuses);
+    list.sort((a, b) {
+      final aDate = a.activityFacility.scheduledAt ?? DateTime(1970);
+      final bDate = b.activityFacility.scheduledAt ?? DateTime(1970);
+      return sortDirection == 'DESC'
+          ? bDate.compareTo(aDate)
+          : aDate.compareTo(bDate);
+    });
+    return list;
   }
 
   Future<String?> getSolutionDesignTypeFromCache(
@@ -355,8 +473,6 @@ class UnsubmittedActivityFacilityRepository {
       final toDelete = await col
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
-          .filter()
-          .userTypeEqualTo(userType)
           .findAll();
       for (final e in toDelete) {
         await col.delete(e.id);
@@ -428,7 +544,7 @@ class PrefilledActivityFacilityRepository {
     final col = _isar.cachePrefilledActivityFacilitys;
     final row = await col
         .where()
-        .activityFacilityIdUserTypeEqualTo(activityFacilityId, userType)
+        .activityFacilityIdEqualToAnyUserType(activityFacilityId)
         .findFirst();
     if (row != null) {
       await _isar.writeTxn(() async {

@@ -80,6 +80,9 @@ public class Configuration {
     @Value("${egov.hrms.create.endpoint}")
     private String hrmsCreateEndPoint;
 
+    @Value("${egov.hrms.update.username.endpoint}")
+    private String hrmsUpdateUsernameEndPoint;
+
 //    @Value("${egov.hrms.create.endpoint}")
 //    private String hrmsCreateEndpoint;
 
@@ -158,6 +161,18 @@ public class Configuration {
     @Value("${facility.kibana.reindex.enabled:false}")
     private boolean facilityKibanaReindexEnabled;
 
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-project-name}. Disabled by default.
+     */
+    @Value("${facility.project-name.backfill.enabled:false}")
+    private boolean facilityProjectNameBackfillEnabled;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-mapped-vendor}. Disabled by default.
+     */
+    @Value("${facility.mapped-vendor.backfill.enabled:false}")
+    private boolean facilityMappedVendorBackfillEnabled;
+
     @Value("${egov.vendor.host:}")
     private String vendorHost;
 
@@ -166,4 +181,15 @@ public class Configuration {
 
     @Value("${egov.vendor.organisation.user.search.path:/vendor/organisation/v1/user/_search}")
     private String vendorOrganisationUserSearchPath;
+
+    /**
+     * Project service base URL (e.g. {@code http://localhost:8081}) used to resolve the
+     * project name mapped to a facility for the health facility index. When blank, the
+     * projectName lookup is skipped.
+     */
+    @Value("${egov.project.host:}")
+    private String projectHost;
+
+    @Value("${egov.project.fetch-by-facilities.path:/project/v1/fetchProjectsByFacilities}")
+    private String projectFetchByFacilitiesPath;
 }

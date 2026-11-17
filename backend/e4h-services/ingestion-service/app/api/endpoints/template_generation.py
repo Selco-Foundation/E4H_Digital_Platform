@@ -36,6 +36,12 @@ from app.utils.assessment_fieldplan_handoff import (
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
+from app.utils.assessment_questionnaire import (
+    CATEGORY_ASSESSMENT_FORM_SCHEMA,
+    QUESTIONNAIRE_HEADERS,
+    QUESTIONNAIRE_PAYLOAD_KEYS,
+    load_questionnaire_options,
+)
 from app.utils.project_category import resolve_project_category, filter_facilities_by_category
 from app.utils.project_service_client import ProjectServiceClient
 import os, tempfile, zipfile, qrcode, shutil
@@ -1430,9 +1436,19 @@ async def get_assessment_plan_include_template(
         plan_facility_response = assessment_client.search_plan_facilities(
             request_info, plan_id, export_all=True
         )
+        plan_facilities = plan_facility_response.get("facilities", []) or []
         plan_facility_ids = {
             _normalize_template_facility_id(f.get("facilityId"))
-            for f in (plan_facility_response.get("facilities", []) or [])
+            for f in plan_facilities
+            if f.get("facilityId")
+        }
+        # Questionnaires already chosen for facilities on the plan, shown again on the sheet.
+        plan_questionnaires = {
+            _normalize_template_facility_id(f.get("facilityId")): {
+                mode: (f.get("additionalDetails") or {}).get(key)
+                for mode, key in QUESTIONNAIRE_PAYLOAD_KEYS.items()
+            }
+            for f in plan_facilities
             if f.get("facilityId")
         }
 
@@ -1538,6 +1554,33 @@ async def get_assessment_plan_include_template(
             facility_service, request_info, boundary_data, all_facilities
         )
 
+        # The questionnaire dropdowns offer the forms of the categories on the sheet; the facilities
+        # of a plan share one category, and validation checks each row against its own anyway.
+        questionnaire_options = load_questionnaire_options(mdms_client, request_info)
+        for facility in all_facilities:
+            fid = _normalize_template_facility_id(facility.get("facility_id") or facility.get("facilityId"))
+            category = facility.get("facility_category") or facility.get("facilityCategory")
+            prefill = {}
+            for mode, code in plan_questionnaires.get(fid, {}).items():
+                label = questionnaire_options.form_label(category, mode, code) if code else None
+                if label:
+                    prefill[QUESTIONNAIRE_HEADERS[mode]] = label
+            facility["template_prefill"] = prefill
+        sheet_categories = {
+            questionnaire_options.category_code(f.get("facility_category") or f.get("facilityCategory"))
+            for f in all_facilities
+        } - {""}
+        if not sheet_categories:
+            sheet_categories = set(questionnaire_options.options)
+        questionnaire_columns = {
+            header: questionnaire_options.labels(mode, sorted(sheet_categories))
+            for mode, header in QUESTIONNAIRE_HEADERS.items()
+        }
+        for header, labels in questionnaire_columns.items():
+            if not labels:
+                logger.error(f"No assessment form configured in {CATEGORY_ASSESSMENT_FORM_SCHEMA} for "
+                             f"'{header}' and categories {sorted(sheet_categories)}")
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
@@ -1550,6 +1593,7 @@ async def get_assessment_plan_include_template(
             type="assessment_include",
             extra_append_rows=0,
             optimize_for_performance=True,
+            mandatory_dropdown_columns=questionnaire_columns,
         )
 
         if excluded_facility_rows:
@@ -1566,6 +1610,72 @@ async def get_assessment_plan_include_template(
     except Exception as e:
         logger.error(f"Error generating assessment plan include template: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+ASSESSMENT_EXPORT_BASE_COLUMNS = (
+    "Plan Facility Id",
+    "Facility Id",
+    "Facility Name",
+    "Category",
+    "Type",
+    "District",
+    "Block",
+    "Remote Status",
+    "On-site Status",
+    "Assessment Result",
+    "Completion Status",
+)
+
+PHONE_ANSWER_PREFIX = "Phone - "
+FIELD_ANSWER_PREFIX = "Field - "
+
+# Excel caps a sheet at 16384 columns; stay well under it even for very wide forms.
+MAX_QUESTION_COLUMNS_PER_PHASE = 400
+
+
+class _OrderedLabels:
+    """Union of question labels across facilities, keeping first-seen (MDMS schema) order."""
+
+    def __init__(self):
+        self._labels = []
+        self._seen = set()
+
+    def add(self, label: str) -> bool:
+        if label in self._seen:
+            return True
+        if len(self._labels) >= MAX_QUESTION_COLUMNS_PER_PHASE:
+            return False
+        self._seen.add(label)
+        self._labels.append(label)
+        return True
+
+    def __iter__(self):
+        return iter(self._labels)
+
+
+def _response_summary_columns(summary, prefix: str, questions: "_OrderedLabels") -> dict:
+    """Turn ["<label>: <answer>", ...] into {"<prefix><label>": "<answer>"}.
+
+    Labels themselves contain no ": ", so splitting on the first occurrence is safe;
+    answers keep any separators they contain (e.g. "Medical Officer, Pharmacist").
+    """
+    columns = {}
+    for entry in summary or []:
+        if not isinstance(entry, str):
+            continue
+        label, separator, answer = entry.partition(": ")
+        if not separator:
+            # No label/answer split (e.g. a bare remark) - keep it in a catch-all column.
+            label, answer = "Other", entry
+        label = label.strip()
+        if not label or not questions.add(label):
+            continue
+        column = prefix + label
+        if column in columns:
+            columns[column] = f"{columns[column]}; {answer}"
+        else:
+            columns[column] = answer
+    return columns
 
 
 @router.post(
@@ -1598,8 +1708,10 @@ async def export_assessment_plan_facilities(
         facilities = search_result.get("facilities", []) or []
 
         rows = []
+        phone_questions = _OrderedLabels()
+        field_questions = _OrderedLabels()
         for facility in facilities:
-            rows.append({
+            row = {
                 "Plan Facility Id": facility.get("planFacilityId", ""),
                 "Facility Id": facility.get("facilityId", ""),
                 "Facility Name": facility.get("facilityName", ""),
@@ -1611,15 +1723,24 @@ async def export_assessment_plan_facilities(
                 "On-site Status": facility.get("fieldStatus", ""),
                 "Assessment Result": facility.get("overallStatus", ""),
                 "Completion Status": facility.get("assessmentCompletionStatus", ""),
-                "Phone Response Summary": "; ".join(facility.get("phoneResponseSummary") or []),
-                "Field Response Summary": "; ".join(facility.get("fieldResponseSummary") or []),
-            })
+            }
+            # Each response-summary entry is one question rendered as "<label>: <answer>".
+            # Spread them into one column per question so answers stay comparable across facilities.
+            row.update(_response_summary_columns(
+                facility.get("phoneResponseSummary"), PHONE_ANSWER_PREFIX, phone_questions))
+            row.update(_response_summary_columns(
+                facility.get("fieldResponseSummary"), FIELD_ANSWER_PREFIX, field_questions))
+            rows.append(row)
+
+        column_order = list(ASSESSMENT_EXPORT_BASE_COLUMNS)
+        column_order += [PHONE_ANSWER_PREFIX + label for label in phone_questions]
+        column_order += [FIELD_ANSWER_PREFIX + label for label in field_questions]
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"assessment_plan_facilities_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
 
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows, columns=column_order).fillna("")
         df.to_excel(output_file_path, index=False, sheet_name="PlanFacilities")
         autofit_columns(file_path=output_file_path, sheet_name="PlanFacilities")
 

@@ -181,7 +181,7 @@ const FacilityDetails = ({t}) => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 10000000,
+            zIndex: 10_000_000,
             backgroundColor: "gray",
             opacity: 0.5,
             position: "fixed",

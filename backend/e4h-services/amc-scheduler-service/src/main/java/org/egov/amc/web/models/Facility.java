@@ -72,6 +72,9 @@ public class Facility {
     @JsonProperty("facility_poc_phone")
     private String facilityPocPhone = null;
 
+    @JsonProperty("facility_poc_username")
+    private String facilityPocUsername = null;
+
     @JsonProperty("facility_poc_email")
     private String facilityPocEmail = null;
 

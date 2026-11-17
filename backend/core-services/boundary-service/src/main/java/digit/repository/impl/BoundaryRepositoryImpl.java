@@ -57,9 +57,7 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      */
     @Override
     public void create(BoundaryRequest boundaryRequest) {
-        log.trace("create method invoked");
-        int boundaryCount = boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0;
-        log.info("Creating boundary entities directly in database, boundary count={}", boundaryCount);
+        log.info("Creating boundary entities directly in database");
         
         String insertQuery = "INSERT INTO boundary (id, tenantId, code, geometry, additionalDetails, " +
                 "lgd_state_code, lgd_district_code, lgd_block_code, lgd_block_tier, " +
@@ -67,7 +65,6 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
                 "VALUES (?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try {
-            log.debug("Executing batch insert query for {} boundaries", boundaryCount);
             jdbcTemplate.batchUpdate(
                     insertQuery, boundaryRequest.getBoundary(),
                     boundaryRequest.getBoundary().size(),
@@ -88,16 +85,15 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
                             ps.setLong(index++, boundary.getAuditDetails().getCreatedTime());
                             ps.setLong(index, boundary.getAuditDetails().getLastModifiedTime());
                         } catch (Exception e) {
-                            log.error("Error setting parameters for boundary insert, code={}: {}", 
-                                    boundary.getCode(), e.getMessage(), e);
+                            log.error("Error setting parameters for boundary insert: {}", e.getMessage(), e);
                             throw new RuntimeException("Error preparing boundary insert statement", e);
                         }
                     }
             );
             
-            log.info("Successfully created {} boundary entities", boundaryCount);
+            log.info("Successfully created {} boundary entities", boundaryRequest.getBoundary().size());
         } catch (Exception e) {
-            log.error("Error creating boundary entities, boundary count={}: {}", boundaryCount, e.getMessage(), e);
+            log.error("Error creating boundary entities: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create boundary entities", e);
         }
     }
@@ -109,18 +105,12 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      */
     @Override
     public List<Boundary> search(BoundarySearchCriteria boundarySearchCriteria) {
-        log.trace("search method invoked");
-        log.debug("Searching boundaries, tenantId={}, codes count={}", 
-                boundarySearchCriteria.getTenantId(),
-                boundarySearchCriteria.getCodes() != null ? boundarySearchCriteria.getCodes().size() : 0);
 
         List<Object> preparedStmtList = new ArrayList<>();
 
         String query = boundaryEntityQueryBuilder.getBoundaryDataSearchQuery(boundarySearchCriteria , preparedStmtList);
-        log.debug("Executing boundary search query");
 
         List<Boundary> boundaryList = jdbcTemplate.query(query , preparedStmtList.toArray() , boundaryEntityRowMapper);
-        log.debug("Boundary search query executed, found {} boundaries", boundaryList.size());
 
         return boundaryList;
     }
@@ -132,12 +122,7 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      */
     @Override
     public void update(BoundaryRequest boundaryRequest) {
-        log.trace("update method invoked");
-        int boundaryCount = boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0;
-        log.debug("Publishing boundary update request to Kafka, boundary count={}, topic={}", 
-                boundaryCount, applicationProperties.getUpdateBoundaryTopic());
         producer.push(applicationProperties.getUpdateBoundaryTopic() , boundaryRequest);
-        log.debug("Boundary update request published to Kafka successfully");
     }
 
     @Override
@@ -158,7 +143,6 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      * @return
      */
     public Set<String> getCodeListByTenantId(String tenantId) {
-        log.trace("getCodeListByTenantId method invoked, tenantId={}", tenantId);
 
         // create a boundary search criteria object with the given tenantId
         BoundarySearchCriteria boundarySearchCriteria = new BoundarySearchCriteria();
@@ -166,12 +150,9 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
 
         // get all the boundary entities for the given tenantId from the database
         List<Boundary> boundaryList = search(boundarySearchCriteria);
-        log.debug("Retrieved {} boundaries for tenantId={}", boundaryList.size(), tenantId);
 
         // return the set of codes from the boundary entities
-        Set<String> codes = boundaryList.stream().map(Boundary::getCode).collect(Collectors.toSet());
-        log.debug("Extracted {} unique codes for tenantId={}", codes.size(), tenantId);
-        return codes;
+        return boundaryList.stream().map(Boundary::getCode).collect(Collectors.toSet());
 
     }
 
@@ -181,15 +162,11 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      * @return JSON string representation or null if jsonNode is null
      */
     private String jsonNodeToString(JsonNode jsonNode) {
-        log.trace("jsonNodeToString method invoked");
         if (jsonNode == null) {
-            log.debug("JsonNode is null, returning null");
             return null;
         }
         try {
-            String result = mapper.writeValueAsString(jsonNode);
-            log.debug("Successfully converted JsonNode to String, length={}", result.length());
-            return result;
+            return mapper.writeValueAsString(jsonNode);
         } catch (JsonProcessingException e) {
             log.error("Error converting JsonNode to String: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to convert JsonNode to String", e);

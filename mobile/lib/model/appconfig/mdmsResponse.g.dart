@@ -9,16 +9,16 @@ part of 'mdmsResponse.dart';
 _$MdmsResponseModelImpl _$$MdmsResponseModelImplFromJson(
         Map<String, dynamic> json) =>
     _$MdmsResponseModelImpl(
-      appConfig: json['HCM-FIELD-APP-CONFIG'] == null
+      appConfig: json['E4H-FIELD-APP-CONFIG'] == null
           ? null
           : AppConfig.fromJson(
-              json['HCM-FIELD-APP-CONFIG'] as Map<String, dynamic>),
+              json['E4H-FIELD-APP-CONFIG'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$MdmsResponseModelImplToJson(
         _$MdmsResponseModelImpl instance) =>
     <String, dynamic>{
-      'HCM-FIELD-APP-CONFIG': instance.appConfig,
+      'E4H-FIELD-APP-CONFIG': instance.appConfig,
     };
 
 _$AppConfigImpl _$$AppConfigImplFromJson(Map<String, dynamic> json) =>

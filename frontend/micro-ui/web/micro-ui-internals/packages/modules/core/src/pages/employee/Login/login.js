@@ -8,6 +8,12 @@ import PolicyConsentModal from "../../../components/PolicyConsentModal";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
 import { hasAcceptedRequiredConsents, rememberRequiredConsents } from "../../../utilities/consentCookies";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
+import { LoginTollFreeHelp } from "../../../components/TollFreeHelp";
+import OtpLogin from "./OtpLogin";
+import { isOtpLoginEnabled } from "../../../utilities/otpLogin";
+
+const LOGIN_MODE_PASSWORD = "password";
+const LOGIN_MODE_OTP = "otp";
 
 const setEmployeeDetail = (userObject, token) => {
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
@@ -120,6 +126,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [activePolicyModal, setActivePolicyModal] = useState(null);
+  const [loginMode, setLoginMode] = useState(LOGIN_MODE_PASSWORD);
+  const otpLoginEnabled = isOtpLoginEnabled();
 
   const history = useHistory();
   const location = useLocation();
@@ -165,8 +173,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     (async () => {
       Digit.SessionStorage.set("citizen.userRequestObject", user);
 
-      const filteredRoles =
-        user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
+      const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
       if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
 
       Digit.UserService.setUser(user);
@@ -174,6 +181,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
       let redirectPath = `/${window.contextPath}/employee`;
 
+      // Audit the successful login; failures here must never block the redirect below.
       try {
         await UserAccessReportService.userLoginReport({
           User: user.info,
@@ -199,7 +207,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           jurisdictionBoundaries = {
             ...jurisdictionBoundaries,
             [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
-          }
+          };
         }
       }
 
@@ -243,12 +251,15 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     };
     delete requestData.city;
     try {
-      const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
+      // OTP login has already authenticated (see onOtpAuthenticated); password login authenticates here.
+      const authResponse = data?.otpAuthResponse || (await Digit.UserService.authenticate(requestData));
+      const { UserRequest: info, ...tokens } = authResponse;
       if (shouldShowConsent) {
         rememberRequiredConsents();
         setHasStoredConsent(true);
       }
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+
       setUser({ info, ...tokens });
 
       try {
@@ -258,7 +269,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         const facilityTranslated = facilityKey ? t(facilityKey) : "";
         const facility = facilityFromUser || facilityTranslated || "unknown";
         Digit?.Utils?.analytics?.setFacilityName(facility);
-        const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+        const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
         Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
       } catch (e) {
         console.warn("analytics: user_login failed", e);
@@ -273,6 +284,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     }
     setDisable(false);
   };
+
+  // OTP login: the token is already issued, so run the same post-login steps as password login
+  // (consent, session, analytics, HRMS lookup and redirect) without authenticating again.
+  const onOtpAuthenticated = (authResponse) => onLogin({ otpAuthResponse: authResponse });
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -326,7 +341,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: userId.name,
             style: {
-              marginBottom: "5px"
+              marginBottom: "5px",
             },
           },
           isMandatory: true,
@@ -337,7 +352,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           populators: {
             name: password.name,
             style: {
-              marginBottom: "25px"
+              marginBottom: "25px",
             },
           },
           isMandatory: true,
@@ -369,6 +384,24 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         <BackButton variant="white" style={{ borderBottom: "none" }} />
       </div>
       <div style={{ backgroundColor: "white" }}>
+        {loginMode === LOGIN_MODE_OTP && (
+          <OtpLogin
+            tf={translateWithFallback}
+            canProceed={!shouldShowConsent || isConsentAccepted}
+            onBlocked={() => {
+              setShowToast("CORE_ACCEPT_PRIVACY_TERMS");
+              setTimeout(closeToast, 5000);
+            }}
+            onAuthenticated={onOtpAuthenticated}
+            header={<Header />}
+            // Same consent checkboxes and state as the password form.
+            consent={<ConsentAcceptance config={config[0].body.find((field) => field.key === "consentAcceptance")} />}
+            className="loginFormStyleEmployee"
+            cardStyle={{ ...(isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }), boxShadow: "none" }}
+            buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
+          />
+        )}
+        {loginMode === LOGIN_MODE_PASSWORD && (
         <FormComposer
           onSubmit={onLogin}
           isDisabled={isDisabled || disable || (shouldShowConsent && !isConsentAccepted)}
@@ -387,7 +420,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         >
           <Header />
         </FormComposer>
+        )}
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
+          {loginMode === LOGIN_MODE_PASSWORD && (
           <button
             onClick={onForgotPassword}
             style={{
@@ -398,8 +433,41 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           >
             {t("CORE_COMMON_FORGOT_PASSWORD")}
           </button>
+          )}
+          {otpLoginEnabled && loginMode === LOGIN_MODE_PASSWORD && (
+            <div style={{ marginTop: "0.75rem" }}>
+              <button
+                type="button"
+                onClick={() => setLoginMode(LOGIN_MODE_OTP)}
+                style={{
+                  color: "blue",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                }}
+              >
+                {translateWithFallback("CORE_LOGIN_WITH_MOBILE_OTP", "Login with mobile number & OTP")}
+              </button>
+            </div>
+          )}
+          {loginMode === LOGIN_MODE_OTP && (
+            <button
+              type="button"
+              onClick={() => setLoginMode(LOGIN_MODE_PASSWORD)}
+              style={{
+                color: "blue",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              {translateWithFallback("CORE_LOGIN_WITH_PASSWORD", "Login with username & password")}
+            </button>
+          )}
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
+
+        {/* "Unable to log in? Call toll-free" link + state-wise CRM numbers popup (shown before login). */}
+        <LoginTollFreeHelp t={t} />
+
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
           {logos.map((logo, index) => (
             <img

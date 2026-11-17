@@ -10,11 +10,22 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
 @Slf4j
 public class VisitWorkflowService {
+
+    /**
+     * Page size asked of the workflow search. Matches egov-workflow-v2's own {@code egov.wf.max.limit}
+     * default (100) - anything larger is silently clamped to it by WorkflowQueryBuilder.
+     */
+    private static final int HISTORY_PAGE_SIZE = 100;
+
+    /** Backstop so a misbehaving search that never returns an empty page cannot loop forever. */
+    private static final int MAX_HISTORY_PAGES = 50;
 
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
@@ -33,8 +44,6 @@ public class VisitWorkflowService {
     }
 
     public ProcessInstance transitionWorkflow(ScheduledVisit activityFacility, String action, List<Document> documents, RequestInfo requestInfo, String workflowComment) {
-        log.trace("Entering transitionWorkflow method for visitId: {}, action: {}", activityFacility.getId(), action);
-        log.info("Transitioning workflow for visitId: {}, action: {}", activityFacility.getId(), action);
         ProcessInstance instance = ProcessInstance.builder()
                 .businessId(activityFacility.getId())
                 .tenantId(activityFacility.getTenantId())
@@ -51,23 +60,17 @@ public class VisitWorkflowService {
                 .build();
 
         String url = configuration.getWfHost() + configuration.getWfTransitionPath();
-        log.debug("Calling workflow service at URL: {} for visitId: {}", url, activityFacility.getId());
         Object response = repository.fetchResult(new StringBuilder(url), wfRequest);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
         if (wfResponse == null || wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty()) {
-            log.error("Empty response from workflow transition for visitId: {}, action: {}", activityFacility.getId(), action);
             throw new CustomException("WORKFLOW_ERROR", "Empty response from workflow transition");
         }
-        ProcessInstance result = wfResponse.getProcessInstances().get(0);
-        log.info("Workflow transition successful for visitId: {}, new state: {}", activityFacility.getId(), 
-                result.getState() != null ? result.getState().getState() : "N/A");
-        return result;
+        return wfResponse.getProcessInstances().get(0);
     }
 
 
      public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
-        log.trace("Entering getProcessInstanceById method for businessId: {}, tenantId: {}", businessId, tenantId);
         String url = configuration.getWfHost() + configuration.getWfSearchPath()
             + "?tenantId=" + tenantId
             + "&businessIds=" + businessId
@@ -78,15 +81,54 @@ public class VisitWorkflowService {
         requestInfoWrapper.setRequestInfo(requestInfo);
 
         // POST with requestInfoWrapper as body, query params in URL
-        log.debug("Calling workflow search service at URL: {} for businessId: {}", url, businessId);
         Object response = repository.fetchResult(new StringBuilder(url), requestInfoWrapper);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
-        List<ProcessInstance> result = (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
+        return (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
             ? null
             : wfResponse.getProcessInstances();
-        log.debug("Retrieved {} process instance(s) for businessId: {}", 
-                result != null ? result.size() : 0, businessId);
-        return result;
+    }
+
+    /**
+     * Fetch the complete transition history (history=true) of several visits in one shot.
+     *
+     * <p>egov-workflow-v2 always applies a LIMIT to this search - {@code egov.wf.default.limit} (10) when
+     * none is sent, clamped to {@code egov.wf.max.limit} (100) otherwise - and with history=true it returns
+     * one entry per transition rather than per visit, so a batch of visits overflows a single page easily.
+     * This pages until the service returns nothing, advancing the offset by the number of entries actually
+     * received instead of by the requested page size, so an environment configured with a smaller max limit
+     * still yields the full history rather than a silently truncated one.
+     */
+    public List<ProcessInstance> getProcessInstanceHistory(List<String> businessIds, String tenantId, RequestInfo requestInfo) {
+        if (businessIds == null || businessIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
+        requestInfoWrapper.setRequestInfo(requestInfo);
+
+        List<ProcessInstance> history = new ArrayList<>();
+        int offset = 0;
+        for (int page = 0; page < MAX_HISTORY_PAGES; page++) {
+            String url = configuration.getWfHost() + configuration.getWfSearchPath()
+                    + "?tenantId=" + tenantId
+                    + "&businessIds=" + String.join(",", businessIds)
+                    + "&history=" + true
+                    + "&limit=" + HISTORY_PAGE_SIZE
+                    + "&offset=" + offset;
+
+            Object response = repository.fetchResult(new StringBuilder(url), requestInfoWrapper);
+            ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
+            List<ProcessInstance> pageInstances = (wfResponse == null) ? null : wfResponse.getProcessInstances();
+            if (pageInstances == null || pageInstances.isEmpty()) {
+                return history;
+            }
+            history.addAll(pageInstances);
+            offset += pageInstances.size();
+        }
+
+        log.warn("Stopped reading workflow history after {} pages ({} transitions) for {} businessIds in tenantId={}. "
+                        + "History may be incomplete.", MAX_HISTORY_PAGES, history.size(), businessIds.size(), tenantId);
+        return history;
     }
 }

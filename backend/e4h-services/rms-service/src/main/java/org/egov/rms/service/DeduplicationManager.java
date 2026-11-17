@@ -16,6 +16,7 @@ import java.util.List;
 public class DeduplicationManager {
 
     private final AlertRepository alertRepository;
+    private final OpenIncidentChecker openIncidentChecker;
     private final RMSConfiguration config;
 
     /**
@@ -28,15 +29,11 @@ public class DeduplicationManager {
         List<Alert> uniqueAlerts = new ArrayList<>();
 
         for (Alert alert : alerts) {
-            // Check if alert already has an open ticket in eg_incident_v2 table
-            // This checks both active_alerts and eg_incident_v2 to see if ticket is still open
-            // If ticket is closed or doesn't exist, we allow creating a new ticket
+            // Skip while the facility has an open ticket of this type/sub-type from any source (RMS or HCR).
+            // Checked before the alert is persisted so it is not suppressed once that ticket closes.
             // Note: We don't skip alerts with ticket_id set because they might have closed tickets
-            if (alertRepository.hasOpenTicket(
-                    alert.getFacilityId(),
-                    alert.getAlertType(),
-                    alert.getAlertSubType())) {
-                log.info("Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}",
+            if (openIncidentChecker.hasOpenTicket(alert)) {
+                log.info("Skipping alert {} - open ticket already exists for facility: {}, type: {}, subType: {}",
                         alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 continue;
             }

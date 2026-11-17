@@ -52,4 +52,34 @@ public class RestCallRepository {
 
 	}
 
+	/**
+	 * Fetches results from egov-enc-service. Uses Object as the target type since
+	 * the encryption service returns a JSON array at the root, not an object.
+	 *
+	 * @param uri
+	 * @param request
+	 * @return Object
+	 */
+	public Object fetchEncServiceResult(StringBuilder uri, Object request) {
+		log.trace("RestCallRepository.fetchEncServiceResult invoked for URI: {}", uri.toString());
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+		Object response = null;
+		try {
+			log.debug("Calling encryption service endpoint: {}", uri.toString());
+			response = restTemplate.postForObject(uri.toString(), request, Object.class);
+			log.debug("Encryption service call completed successfully for endpoint: {}", uri.toString());
+		} catch (HttpClientErrorException e) {
+			log.error("Encryption service returned HTTP error for endpoint: {}, status: {}",
+					uri.toString(), e.getStatusCode(), e);
+			throw new CustomException("EXTERNAL_SERVICE_EXCEPTION", e.getResponseBodyAsString());
+		} catch (Exception e) {
+			log.error("Exception while calling encryption service endpoint: {}", uri.toString(), e);
+			throw new CustomException("EXTERNAL_SERVICE_EXCEPTION", "Exception while calling encryption service");
+		}
+
+		return response;
+
+	}
+
 }

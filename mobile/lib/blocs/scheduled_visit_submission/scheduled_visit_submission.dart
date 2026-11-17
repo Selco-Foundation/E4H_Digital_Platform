@@ -1,15 +1,18 @@
 import 'dart:async';
 
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:isar/isar.dart';
 
+import '../../repositories/scheduled_visit_repo.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/background_service.dart'
     show
         BackgroundServiceController,
         kEvtScheduleVisitDone,
         kEvtScheduleVisitError;
+import '../../utils/utils.dart';
 
 part 'scheduled_visit_submission.freezed.dart';
 
@@ -17,8 +20,11 @@ class ScheduleVisitSubmitBloc
     extends Bloc<ScheduleVisitSubmitEvent, ScheduleVisitSubmitState> {
   StreamSubscription? _doneSub;
   StreamSubscription? _errSub;
+  final ScheduledVisitRepository _scheduledVisitRepository;
 
-  ScheduleVisitSubmitBloc() : super(const ScheduleVisitSubmitState.initial()) {
+  ScheduleVisitSubmitBloc(Isar isar)
+      : _scheduledVisitRepository = ScheduledVisitRepository(isar),
+        super(const ScheduleVisitSubmitState.initial()) {
     on<_Submit>(_onSubmit);
     on<_BgDone>(_onBgDone);
     on<_BgError>(_onBgError);
@@ -68,8 +74,7 @@ class ScheduleVisitSubmitBloc
 
   String _normalizeErrorMessage(String? message) {
     if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
-    final m = (message ?? '').trim();
-    return m.isEmpty ? 'Failed.' : m;
+    return normalizeFriendlyNetworkErrorMessage(message);
   }
 
   Future<void> _onSubmit(
@@ -89,6 +94,10 @@ class ScheduleVisitSubmitBloc
               '[ScheduleVisitSubmitBloc] enqueueScheduleVisitSubmission failed',
           message: e.toString(),
           stackTrace: st);
+      try {
+        await _scheduledVisitRepository.addFailedScheduledVisitToCache(
+            scheduledVisitId: event.scheduledVisitId);
+      } catch (_) {}
       await BackgroundServiceController.I.stopNow();
       emit(
         const ScheduleVisitSubmitState.failure(
@@ -102,6 +111,10 @@ class ScheduleVisitSubmitBloc
     _BgDone event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
+    try {
+      await _scheduledVisitRepository.removeFailedScheduledVisitFromCache(
+          scheduledVisitId: event.scheduledVisitId);
+    } catch (_) {}
     await BackgroundServiceController.I.stopNow();
     emit(const ScheduleVisitSubmitState.success());
   }
@@ -110,6 +123,10 @@ class ScheduleVisitSubmitBloc
     _BgError event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
+    try {
+      await _scheduledVisitRepository.addFailedScheduledVisitToCache(
+          scheduledVisitId: event.scheduledVisitId);
+    } catch (_) {}
     await BackgroundServiceController.I.stopNow();
     emit(
       ScheduleVisitSubmitState.failure(

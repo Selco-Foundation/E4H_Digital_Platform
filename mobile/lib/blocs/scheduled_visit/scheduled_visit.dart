@@ -29,6 +29,8 @@ class ScheduledVisitBloc
     try {
       final result = await repository.fetchByWorkflowStatus(
         statuses: event.statuses,
+        facilityName: event.query,
+        sortDirection: event.sortDirection,
         limit: _pageSize,
         offset: 0,
       );
@@ -60,6 +62,8 @@ class ScheduledVisitBloc
     try {
       final result = await repository.fetchByWorkflowStatus(
         statuses: event.statuses,
+        facilityName: event.query,
+        sortDirection: event.sortDirection,
         limit: _pageSize,
         offset: offset,
       );
@@ -87,6 +91,8 @@ class ScheduledVisitBloc
   ) async {
     add(ScheduledVisitEvent.loadInitial(
       statuses: event.statuses,
+      query: event.query,
+      sortDirection: event.sortDirection,
     ));
   }
 }
@@ -95,14 +101,20 @@ class ScheduledVisitBloc
 class ScheduledVisitEvent with _$ScheduledVisitEvent {
   const factory ScheduledVisitEvent.loadInitial({
     required List<String> statuses,
+    String? query,
+    String? sortDirection,
   }) = _LoadInitial;
 
   const factory ScheduledVisitEvent.loadMore({
     required List<String> statuses,
+    String? query,
+    String? sortDirection,
   }) = _LoadMore;
 
   const factory ScheduledVisitEvent.refresh({
     required List<String> statuses,
+    String? query,
+    String? sortDirection,
   }) = _Refresh;
 }
 

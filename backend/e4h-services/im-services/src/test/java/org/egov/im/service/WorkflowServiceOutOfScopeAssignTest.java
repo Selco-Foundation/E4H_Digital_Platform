@@ -81,7 +81,7 @@ class WorkflowServiceOutOfScopeAssignTest {
         when(imConfiguration.getWfHost()).thenReturn("http://workflow");
         when(imConfiguration.getWfProcessInstanceSearchPath()).thenReturn("/egov-wf/process/_search");
         workflowService = new WorkflowService(imConfiguration, repository, mapper, notificationService,
-                mdmsUtils, slaService, imUtils, vendorOrganisationUtil);
+                mdmsUtils, slaService, null, imUtils, vendorOrganisationUtil);
     }
 
     @Test

@@ -108,14 +108,11 @@ public class ProjectFacilityService {
     }
 
     public ProjectFacility create(ProjectFacilityRequest request) {
-        log.trace("Entering create (single facility)");
-        log.info("Received request to create project facility");
+        log.info("received request to create project facility");
         ProjectFacilityBulkRequest bulkRequest = ProjectFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectFacilities(Collections.singletonList(request.getProjectFacility())).build();
-        log.debug("Creating bulk request");
-        ProjectFacility result = create(bulkRequest, false).get(0);
-        log.trace("Exiting create (single facility)");
-        return result;
+        log.info("creating bulk request");
+        return create(bulkRequest, false).get(0);
     }
 
 
@@ -131,8 +128,7 @@ public class ProjectFacilityService {
         log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
-                log.info("Processing {} valid entities", validEntities.size());
-                log.debug("Enriching facilities before save");
+                log.info("processing {} valid entities", validEntities.size());
                 enrichmentService.create(validEntities, request);
                 Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
                 log.debug("Saving facilities to repository");
@@ -147,13 +143,14 @@ public class ProjectFacilityService {
                 log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
+                log.info("successfully created project facility");
                 refreshProjectNamesAfterFacilityCreate(validEntities, request.getRequestInfo(), facilityCountBeforeSave);
                 log.info("Successfully created {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to create after validation");
             }
         } catch (Exception exception) {
-            log.error("Error occurred while creating project facilities", exception);
+            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_PROJECT_FACILITIES);
         }
 
@@ -164,26 +161,21 @@ public class ProjectFacilityService {
 
 
     public ProjectFacility update(ProjectFacilityRequest request) {
-        log.trace("Entering update (single facility)");
-        log.info("Received request to update project facility");
+        log.debug("received request to update project facility");
         ProjectFacilityBulkRequest bulkRequest = ProjectFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectFacilities(Collections.singletonList(request.getProjectFacility())).build();
-        log.debug("Creating bulk request");
-        ProjectFacility result = update(bulkRequest, false).get(0);
-        log.trace("Exiting update (single facility)");
-        return result;
+        log.info("creating bulk request");
+        return update(bulkRequest, false).get(0);
     }
 
     public List<ProjectFacility> update(ProjectFacilityBulkRequest request, boolean isBulk) {
-        log.trace("Entering update (bulk facilities)");
-        log.info("Received request to update bulk project facilities");
+        log.info("received request to update bulk project facility");
         Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> tuple = validate(validators,
                 isApplicableForUpdate, request,
                 isBulk);
 
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectFacility> validEntities = tuple.getX();
-        log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
                 log.info("Processing {} valid entities", validEntities.size());
@@ -206,7 +198,7 @@ public class ProjectFacilityService {
                 log.warn("No valid facilities to update after validation");
             }
         } catch (Exception exception) {
-            log.error("Error occurred while updating project facilities", exception);
+            log.error("error occurred while updating project facility", ExceptionUtils.getStackTrace(exception));
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_PROJECT_FACILITIES);
         }
 
@@ -216,14 +208,11 @@ public class ProjectFacilityService {
     }
 
     public ProjectFacility delete(ProjectFacilityRequest request) {
-        log.trace("Entering delete (single facility)");
-        log.info("Received request to delete a project facility");
+        log.info("received request to delete a project facility");
         ProjectFacilityBulkRequest bulkRequest = ProjectFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectFacilities(Collections.singletonList(request.getProjectFacility())).build();
-        log.debug("Creating bulk request");
-        ProjectFacility result = delete(bulkRequest, false).get(0);
-        log.trace("Exiting delete (single facility)");
-        return result;
+        log.info("creating bulk request");
+        return delete(bulkRequest, false).get(0);
     }
 
     public List<ProjectFacility> delete(ProjectFacilityBulkRequest request, boolean isBulk) {
@@ -250,7 +239,7 @@ public class ProjectFacilityService {
                 log.warn("No valid facilities to delete after validation");
             }
         } catch (Exception exception) {
-            log.error("Error occurred while deleting project facilities", exception);
+            log.error("error occurred while deleting entities: {}", ExceptionUtils.getStackTrace(exception));
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_PROJECT_FACILITIES);
         }
 

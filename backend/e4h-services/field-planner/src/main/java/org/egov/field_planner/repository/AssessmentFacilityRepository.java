@@ -288,6 +288,8 @@ public class AssessmentFacilityRepository {
         putIfPresent(details, "facilityType", metadata.getFacilityType());
         putIfPresent(details, "district", metadata.getDistrict());
         putIfPresent(details, "block", metadata.getBlock());
+        putIfPresent(details, AssessmentConstants.DETAIL_ON_SITE_QUESTIONNAIRE, metadata.getOnSiteQuestionnaire());
+        putIfPresent(details, AssessmentConstants.DETAIL_ON_REMOTE_QUESTIONNAIRE, metadata.getOnRemoteQuestionnaire());
         return details;
     }
 

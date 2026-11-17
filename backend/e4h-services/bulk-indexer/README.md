@@ -80,9 +80,20 @@ deliberately not `metrics`, not `info`, never `*`. Both sit under the `/bulk-ind
   `max.request.size=10MB` and this service sets `max.partition.fetch.bytes=10MB`, but the
   **broker's `max.message.bytes` must be raised to match** — the 1MB default leaves only ~7x
   headroom and a longer lifecycle or wider document would start silently failing sends.
-- **TLS.** Certificate verification is left at the JVM default. For an ES8 cluster with a
-  self-signed certificate, mount the CA and set `javax.net.ssl.trustStore` via `JAVA_TOOL_OPTIONS`
-  rather than disabling verification.
+- **TLS.** This service follows `im-services-analytics`: TLS trust comes from the JVM default
+  `SSLContext`, which that service overrides at startup in `Main.trustSelfSignedSSL()` so the ES8
+  cluster's self-signed certificate is accepted. Without an equivalent override here, `_bulk` calls
+  fail with `PKIX path building failed: unable to find valid certification path to requested
+  target`, because the cluster CA is not in the default trust store.
+
+  Note what that override costs: it calls `SSLContext.setDefault` and
+  `setDefaultHostnameVerifier`, so certificate *and* hostname verification are disabled for every
+  outbound HTTPS call the JVM makes — not only Elasticsearch. The ES credentials travel on that
+  connection as a Basic auth header. The narrower alternative is to mount the cluster CA and trust
+  that issuer specifically for the ES client only.
+
+- **Timeouts.** `ES_CONNECT_TIMEOUT_MS` (5s) and `ES_READ_TIMEOUT_MS` (60s). Unrelated to TLS;
+  without them an unresponsive cluster stalls the Kafka consumer thread indefinitely.
 - **Secrets.** `ES_PASSWORD` must come from the ES secret, not the properties file.
 
 ## Cutover

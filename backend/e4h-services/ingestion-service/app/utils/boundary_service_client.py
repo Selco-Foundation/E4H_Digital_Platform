@@ -86,11 +86,18 @@ class BoundaryServiceClient:
             logger.error(f"Unexpected request error during boundary creation: {e}")
             raise
 
-    def search_boundaries(self, request_info: RequestInfo, tenant_id: str, codes: List[str]) -> Dict[str, Any]:
+    def search_boundaries(self, request_info: RequestInfo, tenant_id: str, codes: List[str],
+                          page_size: int = 300) -> Dict[str, Any]:
+        """
+        Search boundaries by codes (case-insensitive), paging through all results.
+        The boundary service applies a default LIMIT (50) and, with ignoreCase, one code can
+        match several case-variant rows, so a single unpaged call can silently drop codes.
+        page_size must not exceed the service's boundary.max.default.limit (300).
+        """
         codes_param = "%2C".join(codes)
-        url = (
+        base_url = (
             f"{self.boundary_service_url}/boundary-service/boundary/_search"
-            f"?tenantId={tenant_id}&codes={codes_param}&ignoreCase=true"
+            f"?tenantId={tenant_id}&codes={codes_param}&ignoreCase=true&limit={page_size}"
         )
         headers = {'Content-Type': 'application/json'}
         payload = {
@@ -98,9 +105,21 @@ class BoundaryServiceClient:
         }
 
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=time_out)
-            response.raise_for_status()
-            return response.json()
+            result: Dict[str, Any] = {}
+            boundaries: List[Dict[str, Any]] = []
+            offset = 0
+            while True:
+                response = requests.post(f"{base_url}&offset={offset}", headers=headers,
+                                         json=payload, timeout=time_out)
+                response.raise_for_status()
+                result = response.json() or {}
+                page = result.get("Boundary") or []
+                boundaries.extend(page)
+                if len(page) < page_size:
+                    break
+                offset += page_size
+            result["Boundary"] = boundaries
+            return result
 
         except HTTPError as e:
             logger.error(f"HTTP error during boundary search: {e}")

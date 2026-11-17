@@ -196,10 +196,10 @@ public class ActivityService {
     }
 
     /**
-     * Splits activityFacilities into Kafka messages bounded by serialized byte size rather than
-     * item count, since each item's additionalDetails carries a BOM template copy whose size varies
-     * by systemType - a fixed item count can't guarantee staying under the producer's
-     * max.request.size (default 1 MiB) for every template.
+     * Splits activityFacilities into consecutive runs whose combined serialized size stays under
+     * {@link ActivityConfiguration#getCreateActivityFacilityBatchMaxBytes()}, and pushes one Kafka
+     * message per run. A single item that alone exceeds the threshold is still pushed alone
+     * (best effort) rather than dropped - that item's own producer.push failure surfaces normally.
      */
     private void pushActivityFacilitiesInSizeBatches(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
         int maxBatchBytes = activityConfiguration.getCreateActivityFacilityBatchMaxBytes();
@@ -216,7 +216,6 @@ public class ActivityService {
             currentBatch.add(activityFacility);
             currentBatchBytes += itemBytes;
         }
-
         if (!currentBatch.isEmpty()) {
             pushActivityFacilityBatch(currentBatch, requestInfo);
         }
@@ -227,15 +226,15 @@ public class ActivityService {
                 .requestInfo(requestInfo)
                 .activityFacilities(batch)
                 .build();
-        log.debug("Pushing batch of {} activity facilities to topic: {}", batch.size(), activityConfiguration.getCreateActivityFacilityTopic());
         producer.push(activityConfiguration.getCreateActivityFacilityTopic(), batchRequest);
+        log.info("Pushed activity facility batch of {} items", batch.size());
     }
 
-    private long estimateSerializedSize(Object object) {
+    private long estimateSerializedSize(ActivityFacility activityFacility) {
         try {
-            return mapper.writeValueAsBytes(object).length;
-        } catch (Exception exception) {
-            log.warn("Unable to estimate serialized size, falling back to 0", exception);
+            return mapper.writeValueAsBytes(activityFacility).length;
+        } catch (Exception e) {
+            log.warn("Could not estimate serialized size for activityFacility {}, assuming 0 bytes", activityFacility.getId(), e);
             return 0;
         }
     }
@@ -583,6 +582,7 @@ public class ActivityService {
                     activityEnrichment.enrichActivityFacilityRequestOnUpdate(activityFacility, activityFacilities.get(0), request.getRequestInfo());
                     log.debug("Pushing delete request to topic: {}", activityConfiguration.getDeleteActivityFacilityTopic());
                     producer.push(activityConfiguration.getDeleteActivityFacilityTopic(), request);
+                    log.info("successfully updated bulk project staff");
                 }
                 log.info("Successfully marked {} activity facilities as deleted", deleteCount);
             }

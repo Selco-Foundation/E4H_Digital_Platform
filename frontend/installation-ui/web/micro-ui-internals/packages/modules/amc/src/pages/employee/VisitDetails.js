@@ -102,12 +102,10 @@ const VisitDetails = ({t}) => {
       <Summary
         t={t}
         section="AMC_INSTALLATION_REPORT"
-        report={
-          reportDocumentAggregation?.amcInstallationForm ? {
-            ...reportDocumentAggregation?.amcInstallationForm,
-            name: `${facilityDetails.facilityName}.pdf`
-          } : undefined
-        }
+        report={reportDocumentAggregation?.amcInstallationForm ? {
+          ...reportDocumentAggregation.amcInstallationForm,
+          name: `${facilityDetails.facilityName}.pdf`
+        } : null}
         supportingDocuments={[]}
         isDocument={true}
       />

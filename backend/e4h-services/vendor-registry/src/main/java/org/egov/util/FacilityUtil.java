@@ -8,21 +8,11 @@ import org.egov.common.contract.request.User;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
 import org.egov.web.models.*;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -34,9 +24,6 @@ public class FacilityUtil {
     private static final String FACILITY_BOUNDARY_TYPE = "Facility";
     private static final String EMPLOYEE_ROLE_CODE = "EMPLOYEE";
     private static final String SYSTEM_USER_ROLE_CODE = "SYSTEM_USER";
-    private static final String MAPPED_VENDOR_NAME_KEY = "mappedVendorName";
-    private static final String MAPPED_VENDOR_USER_NAME_KEY = "mappedVendorUserName";
-
     // System RequestInfo for facility-service update (docs/cron/run_visit_scheduling.py)
     private static final String INTERNAL_REQUEST_API_ID = "Rainmaker";
     private static final String INTERNAL_REQUEST_AUTH_TOKEN = "cronjob-token";
@@ -49,13 +36,11 @@ public class FacilityUtil {
     private static final String INTERNAL_SYSTEM_USER_EMAIL = "cronjob@e4h.com";
     private static final String INTERNAL_SYSTEM_USER_TYPE = "SYSTEM";
 
-    private final RestTemplate restTemplate;
     private final Configuration configuration;
     private final ServiceRequestRepository serviceRequestRepository;
 
-    public FacilityUtil(RestTemplate restTemplate, Configuration configuration,
+    public FacilityUtil(Configuration configuration,
                         ServiceRequestRepository serviceRequestRepository) {
-        this.restTemplate = restTemplate;
         this.configuration = configuration;
         this.serviceRequestRepository = serviceRequestRepository;
     }
@@ -142,12 +127,7 @@ public class FacilityUtil {
                 continue;
             }
             try {
-                Facility facility = searchFacilityByBoundaryCode(requestInfo, effectiveTenantId, boundaryCode);
-                if (facility == null) {
-                    log.warn("No facility found for removed boundaryCode: {}", boundaryCode);
-                    continue;
-                }
-                updateFacilityMappedVendor(facility, null, null);
+                updateFacilityMappedVendor(effectiveTenantId, boundaryCode, null, null);
             } catch (Exception e) {
                 log.error("Failed to clear mapped vendor for boundaryCode: {}", boundaryCode, e);
             }
@@ -170,101 +150,43 @@ public class FacilityUtil {
                 continue;
             }
             try {
-                Facility facility = searchFacilityByBoundaryCode(requestInfo, effectiveTenantId, boundaryCode);
-                if (facility == null) {
-                    log.warn("No facility found for boundaryCode: {}", boundaryCode);
-                    continue;
-                }
-                updateFacilityMappedVendor(facility, vendorName, vendorUserName);
+                updateFacilityMappedVendor(effectiveTenantId, boundaryCode, vendorName, vendorUserName);
             } catch (Exception e) {
                 log.error("Failed to sync mapped vendor for boundaryCode: {}", boundaryCode, e);
             }
         }
     }
 
-    public Facility searchFacilityByBoundaryCode(RequestInfo requestInfo, String tenantId, String boundaryCode) {
+    /**
+     * Writes one facility's mapped vendor through facility-service's dedicated endpoint.
+     *
+     * <p>Addresses the facility by the boundary code this vendor's jurisdiction already names, so
+     * no search is needed first. This used to search the facility and then echo its entire record
+     * back through {@code /v2/facility/update}, which made a vendor mapping run the ONM-ready
+     * branching - POC user creation, password resets, index deletion - and rewrite every field it
+     * had just read.
+     *
+     * <p>A null name and username unmap the facility.
+     */
+    public void updateFacilityMappedVendor(String tenantId, String boundaryCode,
+                                           String vendorName, String vendorUserName) {
         if (StringUtils.isBlank(boundaryCode)) {
-            return null;
-        }
-        String url = UriComponentsBuilder
-                .fromHttpUrl(configuration.getFacilityHost() + configuration.getFacilitySearchPath())
-                .queryParam("tenantId", tenantId)
-                .queryParam("boundaryCode", boundaryCode.trim())
-                .queryParam("limit", 1)
-                .queryParam("offset", 0)
-                .toUriString();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        if (requestInfo != null && StringUtils.isNotBlank(requestInfo.getAuthToken())) {
-            headers.set("auth-token", requestInfo.getAuthToken());
-        }
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<FacilitySearchResponse> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                entity,
-                new ParameterizedTypeReference<>() {}
-        );
-
-        FacilitySearchResponse body = response.getBody();
-        if (body == null || body.getFacilities() == null || body.getFacilities().isEmpty()) {
-            return null;
-        }
-        return body.getFacilities().get(0);
-    }
-
-    public void updateFacilityMappedVendor(Facility existingFacility, String vendorName, String vendorUserName) {
-        if (existingFacility == null || StringUtils.isBlank(existingFacility.getFacilityId())) {
             return;
         }
+        String effectiveTenantId = StringUtils.isNotBlank(tenantId) ? tenantId : configuration.getGlobalTenantId();
 
-        String facilityTenantId = StringUtils.isNotBlank(existingFacility.getTenantId())
-                ? existingFacility.getTenantId()
-                : configuration.getGlobalTenantId();
-        RequestInfo systemRequestInfo = buildFacilityServiceSystemRequestInfo(facilityTenantId);
-
-        Map<String, Object> additionalDetails = new HashMap<>();
-        if (existingFacility.getAdditionalDetails() != null) {
-            additionalDetails.putAll(existingFacility.getAdditionalDetails());
-        }
-        additionalDetails.put(MAPPED_VENDOR_NAME_KEY, vendorName);
-        additionalDetails.put(MAPPED_VENDOR_USER_NAME_KEY, vendorUserName);
-
-        FacilityUpdatePayload payload = FacilityUpdatePayload.builder()
-                .tenantId(existingFacility.getTenantId())
-                .facilityId(existingFacility.getFacilityId())
-                .facilityCategory(existingFacility.getFacilityCategory())
-                .facilityType(existingFacility.getFacilityType())
-                .facilitySubtype(existingFacility.getFacilitySubtype())
-                .facilityName(existingFacility.getFacilityName())
-                .boundaryCode(existingFacility.getBoundaryCode())
-                .address(existingFacility.getAddress())
-                .facilityDetails(existingFacility.getFacilityDetails())
-                .facilityPocName(existingFacility.getFacilityPocName())
-                .facilityPocPhone(existingFacility.getFacilityPocPhone())
-                .facilityPocEmail(existingFacility.getFacilityPocEmail())
-                .facilityPocUsername(existingFacility.getFacilityPocUsername())
-                .hfrId(existingFacility.getHfrId())
-                .ninId(existingFacility.getNinId())
-                .facilityStatus(existingFacility.getFacilityStatus())
-                .isActive(existingFacility.getIsActive())
-                .isOnmReady(existingFacility.getIsOnmReady())
+        FacilityMappedVendorUpdateRequest updateRequest = FacilityMappedVendorUpdateRequest.builder()
+                .requestInfo(buildFacilityServiceSystemRequestInfo(effectiveTenantId))
+                .tenantId(effectiveTenantId)
+                .boundaryCode(boundaryCode.trim())
                 .mappedVendorName(vendorName)
                 .mappedVendorUserName(vendorUserName)
-                .additionalDetails(additionalDetails)
                 .build();
 
-        FacilityUpdateRequest updateRequest = FacilityUpdateRequest.builder()
-                .requestInfo(systemRequestInfo)
-                .facilityUpdate(payload)
-                .build();
-
-        String url = configuration.getFacilityHost() + configuration.getFacilityUpdatePath();
+        String url = configuration.getFacilityHost() + configuration.getFacilityMappedVendorUpdatePath();
         serviceRequestRepository.fetchResult(new StringBuilder(url), updateRequest);
-        log.info("Updated mapped vendor on facility {} for boundaryCode {}",
-                existingFacility.getFacilityId(), existingFacility.getBoundaryCode());
+        log.info("Requested mapped vendor update for boundaryCode {} (userName={})",
+                boundaryCode, vendorUserName);
     }
 
     public static boolean isFacilityBoundaryType(String boundaryType) {

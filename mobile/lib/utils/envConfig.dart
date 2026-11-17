@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;
@@ -25,11 +24,6 @@ class EnvironmentConfiguration {
       await _dotEnv.load();
       _variables = Variables(dotEnv: _dotEnv);
     } catch (error) {
-      AppLogger.instance.error(
-        title: runtimeType.toString(),
-        message: 'Error while accessing .env file. Using fallback values',
-      );
-
       _variables = Variables(useFallbackValues: true, dotEnv: _dotEnv);
     } finally {
       _initialized = true;
@@ -99,6 +93,11 @@ class Variables {
     'egov-mdms-service/v1/_search',
   );
 
+  static const _mobileAppGlobal = EnvEntry(
+    'MOBILE_APP_GLOBAL',
+    '',
+  );
+
   static const _tenantId = EnvEntry(
     'TENANT_ID',
     'default',
@@ -123,6 +122,13 @@ class Variables {
       : _dotEnv.get(_mdmsApi.key, fallback: _mdmsApi.value);
 
   String get completeMdmsApiUrl => '${baseUrl}${mdmsApiPath}';
+
+  String get mobileAppGlobalUrl => useFallbackValues
+      ? _mobileAppGlobal.value
+      : _dotEnv.get(
+          _mobileAppGlobal.key,
+          fallback: _mobileAppGlobal.value,
+        );
 
   String get actionMapApiPath => useFallbackValues
       ? _actionMapUrl.value

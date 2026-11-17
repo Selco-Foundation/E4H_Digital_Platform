@@ -21,25 +21,23 @@ class OrganizationServiceClient:
             "Content-Type": "application/json"
         }
         payload = vendor_payload
-        logger.trace(f"Creating vendor in organization service: {url}")
         try:
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
-            logger.info("Vendor saved successfully in organization service")
-            logger.debug(f"Vendor creation response status: {response.status_code}")
+            print(f"Vendor save successfully: {response}")
             return response.json()
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating vendor: {http_err}", exc_info=True)
+            print(f"HTTP error occurred: {http_err}")
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating vendor: {conn_err}", exc_info=True)
+            print(f"Connection error occurred: {conn_err}")
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating vendor: {timeout_err}", exc_info=True)
+            print(f"Timeout error occurred: {timeout_err}")
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating vendor: {req_err}", exc_info=True)
+            print(f"An error occurred: {req_err}")
             raise req_err
 
     def normalize_facility_vendor_code(self, val) -> str:

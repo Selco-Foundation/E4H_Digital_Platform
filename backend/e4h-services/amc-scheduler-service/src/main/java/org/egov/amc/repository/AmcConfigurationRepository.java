@@ -44,7 +44,6 @@ public class AmcConfigurationRepository extends GenericRepository<AmcConfigurati
     }
 
     public List<AmcConfiguration> getAmcConfiguration(AmcConfigurationSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        log.trace("Entering getAmcConfiguration method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         //Fetch assetAMC based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         AmcConfigurationSearchCriteria criteria = request.getSearchCriteria();
@@ -52,26 +51,21 @@ public class AmcConfigurationRepository extends GenericRepository<AmcConfigurati
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
         String query = queryBuilder.getAmcConfigurationSearchQuery(criteria, urlParams, preparedStmtList);
-        log.debug("Executing AMC configuration search query for tenantId: {}", tenantId);
         List<AmcConfiguration> amcConfigurationList = jdbcTemplate.query(query, amcConfigurationRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched {} AMC configuration(s) based on search criteria", amcConfigurationList.size());
+        log.info("Fetched amc configuration list based on given search criteria");
         return amcConfigurationList;
     }
 
     public Integer getAmcConfigurationCount(AmcConfigurationSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
-        log.trace("Entering getAmcConfigurationCount method, tenantId: {}", tenantId);
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
-        if (query == null) {
-            log.debug("Count query is null, returning 0");
+        if (query == null)
             return 0;
-        }
 
-        log.debug("Executing AMC configuration count query for tenantId: {}", tenantId);
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total AMC configuration count: {}", count);
+        log.info("Total assetAMC count is : " + count);
         return count;
     }
     

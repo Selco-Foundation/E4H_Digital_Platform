@@ -1,6 +1,6 @@
 # services/facility_service.py
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 import pandas as pd
 import requests
@@ -127,7 +127,8 @@ class FacilityTemplateService:
                                facility_data: List[Dict[str, Any]],
                                extra_append_rows: int,
                                type: str = None,
-                               optimize_for_performance: bool = False
+                               optimize_for_performance: bool = False,
+                               mandatory_dropdown_columns: Optional[Dict[str, List[str]]] = None
                                ) -> None:
         """
             Generates FacilityIngestionTemplate.xlsx with:
@@ -217,6 +218,16 @@ class FacilityTemplateService:
                     editable_columns.append(include_column)
                     allow_blank_map[include_column] = False
                     logger.info(f"Added assessment include column: {include_column}")
+
+            # Columns the caller adds after the schema ones (e.g. the assessment questionnaires).
+            for header_name, options in (mandatory_dropdown_columns or {}).items():
+                if header_name in output_list:
+                    continue
+                output_list.append(header_name)
+                if options:
+                    dropdowns_map[header_name] = options
+                editable_columns.append(header_name)
+                allow_blank_map[header_name] = False
 
             if type != "assessment_include":
                 existing_include_column = None

@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.service.ScheduledVisitService;
 import org.egov.amc.web.models.*;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.utils.ResponseInfoFactory;
@@ -37,10 +38,7 @@ public class ScheduledVisitController {
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> createScheduledVisit(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ScheduledVisitRequest request) {
-        log.trace("Entering createScheduledVisit controller method");
-        log.info("Received request to create {} scheduled visit(s)", request.getScheduledVisits().size());
         ScheduledVisitRequest enrichedScheduledVisitRequest = scheduledVisitService.createScheduledVisit(request);
-        log.info("Successfully created {} scheduled visit(s)", enrichedScheduledVisitRequest.getScheduledVisits().size());
         ScheduledVisitResponse response = ScheduledVisitResponse.builder()
                 .scheduledVisits(enrichedScheduledVisitRequest.getScheduledVisits())
                 .responseInfo(ResponseInfoFactory
@@ -52,20 +50,14 @@ public class ScheduledVisitController {
     @RequestMapping(value = "/configuration/_generate", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> generateVisits(@Validated @RequestBody VisitGenerationRequest request
     ) {
-        log.trace("Entering generateVisits controller method");
-        log.info("Received request to generate visits for configuration: {}", request.getConfigurationId());
+        log.info("Received request to generate visits for configuration: {}", request);
         ScheduledVisitResponse response = scheduledVisitService.generateScheduledVisits(request);
-        log.info("Successfully generated {} visit(s) for configuration: {}", 
-                response.getTotalCount(), request.getConfigurationId());
         return ResponseEntity.accepted().body(response);
     }
 
     @RequestMapping(value = "/workflow/_update", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> updateScheduledVisit(@ApiParam(value = "Details for the updated workflow visit.", required = true) @Valid @RequestBody VisitReportSubmissionRequest request) throws Exception {
-        log.trace("Entering updateScheduledVisit workflow controller method");
-        log.info("Received workflow update request for visitId: {}", request.getVisitId());
         List<ScheduledVisit> enrichedScheduledVisit = scheduledVisitService.updateVisitWorkflow(request);
-        log.info("Successfully updated workflow for visitId: {}", request.getVisitId());
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ScheduledVisitResponse visitResponse = ScheduledVisitResponse.builder().responseInfo(responseInfo).scheduledVisits(enrichedScheduledVisit).build();
@@ -77,8 +69,6 @@ public class ScheduledVisitController {
             @ApiParam(value = "Details for the visit.", required = true) @Valid @RequestBody ScheduledVisitSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
-        log.trace("Entering searchScheduledVisit controller method");
-        log.info("Received search request for scheduled visits, tenantId: {}", urlParams.getTenantId());
         List<ScheduledVisit> scheduledVisits = scheduledVisitService.searchScheduledVisit(
                 request,
                 urlParams.getLimit(),
@@ -108,7 +98,6 @@ public class ScheduledVisitController {
         }
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ScheduledVisitResponse visitResponse = ScheduledVisitResponse.builder().responseInfo(responseInfo).scheduledVisits(scheduledVisits).totalCount(count).build();
-        log.info("Scheduled visit search completed, found {} visit(s), total count: {}", scheduledVisits.size(), count);
         return new ResponseEntity<ScheduledVisitResponse>(visitResponse, HttpStatus.OK);
     }
 
@@ -136,15 +125,28 @@ public class ScheduledVisitController {
     public ResponseEntity<ScheduledVisitResponse> updateScheduledVisits(
             @ApiParam(value = "Details for the updated scheduled visits.", required = true)
             @Valid @RequestBody ScheduledVisitRequest request) {
-        log.trace("Entering updateScheduledVisits controller method");
-        log.info("Received request to update {} scheduled visit(s)", request.getScheduledVisits().size());
+        log.info("Received request to update scheduled visits");
         ScheduledVisitRequest enrichedScheduledVisitRequest = scheduledVisitService.updateScheduledVisit(request);
-        log.info("Successfully updated {} scheduled visit(s)", enrichedScheduledVisitRequest.getScheduledVisits().size());
         ScheduledVisitResponse response = ScheduledVisitResponse.builder()
                 .scheduledVisits(enrichedScheduledVisitRequest.getScheduledVisits())
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(enrichedScheduledVisitRequest.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/index/_reindex", method = RequestMethod.POST)
+    public ResponseEntity<ReindexResponse> reindexNonDraftVisits(
+            @ApiParam(value = "RequestInfo for the reindex trigger.", required = true) @Valid @RequestBody RequestInfoWrapper request,
+            @RequestParam(name = "tenantId") String tenantId
+    ) {
+        log.info("Received request to reindex non-DRAFT scheduled visits for tenantId={}", tenantId);
+        int totalIndexed = scheduledVisitService.reindexNonDraftVisits(request.getRequestInfo(), tenantId);
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        ReindexResponse response = ReindexResponse.builder()
+                .responseInfo(responseInfo)
+                .totalVisitsIndexed(totalIndexed)
+                .build();
+        return new ResponseEntity<ReindexResponse>(response, HttpStatus.OK);
     }
 }
