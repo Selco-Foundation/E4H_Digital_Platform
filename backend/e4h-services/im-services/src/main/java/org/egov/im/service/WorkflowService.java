@@ -217,6 +217,11 @@ public class WorkflowService {
      */
     public SlaSnapshot computeSla(List<ProcessInstance> processInstances, ProcessInstance current,
                                   List<State> states, List<Map<String, Object>> businessHourList) {
+        // Leaving On Hold restarts the SLA, so only the history after the most recent hold counts
+        processInstances = slaService.getCurrentSlaCycle(processInstances);
+        if (processInstances.isEmpty()) {
+            processInstances.add(current);
+        }
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
         long definedTotalSla = slaService.computeTotalSla(current.getState().getApplicationStatus(), states, processInstances);

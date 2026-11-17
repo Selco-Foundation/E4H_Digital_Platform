@@ -10,6 +10,7 @@ public final class EscalationWorkflowStates {
     public static final String OUT_OF_WARRANTY_PENDING_TECH_POC = "OUT_OF_WARRANTY_PENDING_TECH_POC";
     public static final String OUT_OF_SCOPE = "OUT_OF_SCOPE";
     public static final String PENDING_ASSIGNMENT_OUT_OF_WARRANTY = "PENDING_ASSIGNMENT_OUT_OF_WARRANTY";
+    public static final String OUT_OF_WARRANTY_ON_HOLD = "OUT_OF_WARRANTY_ON_HOLD";
     public static final String PENDING_RESOLUTION = "PENDINGRESOLUTION";
     public static final String PENDING_RESOLUTION_SPARE_PART_NEEDED = "PENDING_RESOLUTION_SPARE_PART_NEEDED";
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";

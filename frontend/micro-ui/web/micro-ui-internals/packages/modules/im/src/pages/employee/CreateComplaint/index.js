@@ -355,6 +355,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                   "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
                   "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
                   "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                  "OUT_OF_WARRANTY_ON_HOLD",
                   "PENDING_RESOLUTION_OUT_OF_SCOPE",
                   "PENDING_RESOLUTION_SPARE_PART_NEEDED",
                   "PENDING_RESOLUTION_OUT_OF_WARRANTY",

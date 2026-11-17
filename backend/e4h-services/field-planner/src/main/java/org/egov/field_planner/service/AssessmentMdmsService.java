@@ -9,6 +9,7 @@ import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.util.AssessmentConstants;
 import org.egov.field_planner.web.models.AssessmentFormSchema;
 import org.egov.field_planner.web.models.AssessmentOutcomeRule;
+import org.egov.field_planner.web.models.PlanFacility;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
 import org.egov.mdms.model.MdmsCriteriaReq;
@@ -45,6 +46,22 @@ public class AssessmentMdmsService {
             return AssessmentConstants.CATEGORY_HEALTH.equals(category) ? "HF_PHONE" : "AWC_PHONE";
         }
         return AssessmentConstants.CATEGORY_HEALTH.equals(category) ? "HF_FIELD" : "AWC_FIELD";
+    }
+
+    /**
+     * The form a plan facility uses for a phase: the questionnaire chosen for it when it was included
+     * (additionalDetails onRemoteQuestionnaire / onSiteQuestionnaire), else the category default.
+     */
+    public String resolveFormType(PlanFacility facility, String facilityCategory, String assessmentPhase) {
+        String detailKey = AssessmentConstants.PHASE_PHONE.equals(assessmentPhase)
+                ? AssessmentConstants.DETAIL_ON_REMOTE_QUESTIONNAIRE
+                : AssessmentConstants.DETAIL_ON_SITE_QUESTIONNAIRE;
+        Map<String, Object> details = facility != null ? facility.getAdditionalDetails() : null;
+        Object chosen = details != null ? details.get(detailKey) : null;
+        if (chosen != null && StringUtils.isNotBlank(chosen.toString())) {
+            return chosen.toString().trim();
+        }
+        return resolveFormType(facilityCategory, assessmentPhase);
     }
 
     public AssessmentFormSchema getFormSchema(RequestInfo requestInfo, String tenantId, String formType) {

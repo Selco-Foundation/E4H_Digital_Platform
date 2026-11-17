@@ -44,7 +44,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -315,8 +317,45 @@ public class EmployeeService {
 	}
 
 	/**
+	 * Keeps a single active jurisdiction per boundary, preferring the one that is already persisted (has an id).
+	 * Duplicate boundaries make every boundary search built from the employee's jurisdictions fail.
+	 *
+	 * @param employee
+	 */
+	private void removeDuplicateJurisdictions(Employee employee) {
+		if (CollectionUtils.isEmpty(employee.getJurisdictions()))
+			return;
+
+		Map<String, Jurisdiction> activeByBoundary = new LinkedHashMap<>();
+		List<Jurisdiction> deduped = new ArrayList<>();
+		for (Jurisdiction jurisdiction : employee.getJurisdictions()) {
+			if (jurisdiction == null)
+				continue;
+			boolean isActive = !Boolean.FALSE.equals(jurisdiction.getIsActive());
+			if (!isActive || StringUtils.isBlank(jurisdiction.getBoundary())) {
+				deduped.add(jurisdiction);
+				continue;
+			}
+			String key = jurisdiction.getBoundary().trim().toLowerCase(Locale.ROOT);
+			Jurisdiction kept = activeByBoundary.get(key);
+			if (kept == null) {
+				activeByBoundary.put(key, jurisdiction);
+				deduped.add(jurisdiction);
+			} else if (kept.getId() == null && jurisdiction.getId() != null) {
+				deduped.set(deduped.indexOf(kept), jurisdiction);
+				activeByBoundary.put(key, jurisdiction);
+			}
+		}
+
+		if (deduped.size() != employee.getJurisdictions().size())
+			log.info("Removed {} duplicate jurisdiction(s) for employee {}",
+					employee.getJurisdictions().size() - deduped.size(), employee.getCode());
+		employee.setJurisdictions(deduped);
+	}
+
+	/**
 	 * Enriches employee object by setting parent ids to all the child objects
-	 * 
+	 *
 	 * @param employee
 	 * @param requestInfo
 	 */
@@ -326,7 +365,8 @@ public class EmployeeService {
 				.createdBy(requestInfo.getUserInfo().getUuid())
 				.createdDate(new Date().getTime())
 				.build();
-		
+
+		removeDuplicateJurisdictions(employee);
 		employee.getJurisdictions().stream().forEach(jurisdiction -> {
 			jurisdiction.setId(UUID.randomUUID().toString());
 			jurisdiction.setAuditDetails(auditDetails);
@@ -447,6 +487,7 @@ public class EmployeeService {
 		else
 			employee.getUser().setActive(true);
 
+		removeDuplicateJurisdictions(employee);
 		employee.getJurisdictions().stream().forEach(jurisdiction -> {
 
 			if(null == jurisdiction.getIsActive())

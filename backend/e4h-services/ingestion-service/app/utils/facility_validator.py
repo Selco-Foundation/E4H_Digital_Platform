@@ -202,12 +202,14 @@ def assessment_plan_include_validation(
     facility_id_col: str,
     linked_ids: Set[str],
     availability_exclusions: Optional[Dict[str, str]] = None,
+    row_checks: Optional[Callable[[pd.Series], List[str]]] = None,
 ):
     """
     Validate assessment plan include Excel rows marked Include in Assessment Plan = Yes.
     Availability exclusions (ongoing assessment, etc.) are reported as EXCLUDED, not FAILED.
     Facility snapshot columns (PoC name, address, etc.) are not re-validated — include only
     selects existing project facilities; apply does not create facilities.
+    row_checks returns the extra errors of a Yes row (e.g. its questionnaire choices).
     """
     df = df.reset_index(drop=True)
     errors: List[List[str]] = [[] for _ in range(len(df))]
@@ -234,6 +236,9 @@ def assessment_plan_include_validation(
         include_val_normalized = str(row.get(include_col, "")).strip().lower()
         if include_val_normalized and include_val_normalized not in {"yes", "no"}:
             errors[pos].append(f"{include_col} must be Yes or No")
+
+        if row_checks:
+            errors[pos].extend(row_checks(row))
 
     if yes_row_count == 0:
         raise HTTPException(
