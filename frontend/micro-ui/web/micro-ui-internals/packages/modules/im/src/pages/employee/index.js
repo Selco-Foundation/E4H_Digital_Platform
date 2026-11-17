@@ -97,7 +97,7 @@ const Complaint = () => {
           <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
           {isCRMUser && <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />}
           {isCRMUser && <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />}
-          {/* CRM-only approval queue for registered-mobile-number change requests (SEM 4.0, #3209) */}
+          {/* CRM-only approval queue for registered-mobile-number change requests */}
           {isCRMUser && <Route path={match.url + Employee.MobileChangeRequests} component={() => <MobileChangeRequests />} />}
           <Route path={match.url + Employee.ComplaintFeedback + ":incidentId/:tenantId"} component={() => <ComplaintFeedback parentRoute={match.url} />} />
           <Route path={match.url + Employee.ComplaintDetails + ":incidentId/:tenantId"} component={() => <ComplaintDetails />} />
