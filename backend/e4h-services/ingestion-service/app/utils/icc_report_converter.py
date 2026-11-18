@@ -795,14 +795,25 @@ def align_bom_rows(template_entries, excel_instances, section, unmatched):
 
 
 def zip_section(template_entries, excel_instances, section, unmatched):
+    """
+    Map each template placeholder key to the Excel cell(s) it reads from.
+
+    A template cell can hold several placeholders while the Excel row only has one value cell
+    for it - e.g. RMS "{{rms_type_installed}} : {{rms_type_description}}" over the single merged
+    "Installation Description" N:W cell. In those RMS rows the first key (rms_type_installed,
+    rms_installation_status, rms_meter_status, rms_airtel_network_available, rms_type) is
+    filled from the mobile app, so only the last key (the *_description / *_notes one) reads the
+    Excel value; the others are listed with no cell (null by default).
+    """
     output = {}
     for _label, value_keys, excel_cells in align_bom_rows(template_entries, excel_instances, section, unmatched):
         for col_idx, keys in enumerate(value_keys):
             if col_idx >= len(excel_cells) or not keys:
                 continue
             row_no, col_no = excel_cells[col_idx]
-            for key in keys:
-                output.setdefault(key, []).append((row_no, col_no))
+            output.setdefault(keys[-1], []).append((row_no, col_no))
+            for mobile_key in keys[:-1]:
+                output.setdefault(mobile_key, [])
     return output
 
 
@@ -1026,6 +1037,10 @@ def convert_icc_report(wb, detected_type):
         template_entries = extract_bom_entries(rows)
         key_cells = zip_section(template_entries, section_instances, section, unmatched_excel_fields)
         for key, cell_list in key_cells.items():
+            if not cell_list:
+                # Mobile-filled placeholder of a multi-key template cell: no Excel cell, null by default.
+                output.setdefault(key, None)
+                continue
             row_no, col_no = cell_list[-1]
             output[key] = ws.cell(row=row_no, column=col_no).value
 

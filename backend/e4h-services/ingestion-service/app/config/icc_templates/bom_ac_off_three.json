@@ -444,7 +444,7 @@
             [
               "13",
               "Availability of Airtel Network (Yes/No)",
-              "{{ rms_airtel_network_available }}"
+              "{{ rms_airtel_network_available }} - {{rms_network_notes}}"
             ],
             [
               "14",
