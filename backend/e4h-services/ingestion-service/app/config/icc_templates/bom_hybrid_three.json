@@ -435,7 +435,7 @@
             [
               "9",
               "Time of installation (HH:MM) AM/PM",
-              "{{ rms_installation_date }}"
+              "{{ rms_installation_time }}"
             ],
             ["10", "Name of the person installed", "{{ rms_installer_name }}"],
             [
@@ -451,7 +451,7 @@
             [
               "13",
               "Availability of Airtel Network (Yes/No)",
-              "{{ rms_airtel_network_available }}"
+              "{{ rms_airtel_network_available }} - {{rms_network_notes}}"
             ],
             [
               "14",
