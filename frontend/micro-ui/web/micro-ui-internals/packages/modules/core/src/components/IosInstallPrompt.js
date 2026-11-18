@@ -1,15 +1,6 @@
-import { ActionBar, CardText, Close, SubmitBar } from "@selco/digit-ui-react-components";
+import { ActionBar, CardText, Close } from "@selco/digit-ui-react-components";
 import React, { useEffect, useState } from "react";
 import { IOS_INSTALL_PROMPT_EVENT } from "../utilities/pwaInstallPrompt";
-
-// The iOS Share glyph (square with an arrow), so the instructions match what users see in Safari.
-const IosShareIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#007aff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: "text-bottom" }}>
-    <path d="M12 3v12" />
-    <path d="M8 7l4-4 4 4" />
-    <path d="M7 10H5v11h14V10h-2" />
-  </svg>
-);
 
 // DIGIT's ActionBar is the standard white bar fixed to the bottom of the screen. These overrides lay out
 // text + buttons in one row, keep it above page action bars and clear of the iPhone home indicator.
@@ -22,10 +13,27 @@ const barStyle = {
   zIndex: 1000,
 };
 
+// Which iOS browser we are in, from its user agent marker. Every iOS browser uses Safari's engine,
+// but only real Safari has "Version/x Safari" without another browser's or an in-app browser's marker.
+const getIosBrowser = () => {
+  const ua = window.navigator.userAgent;
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/Version\/[\d.]+.*Safari/.test(ua) && !/FxiOS|EdgiOS|FBAN|FBAV/.test(ua)) return "safari";
+  return "other";
+};
+
+// Where the Share button is in each browser. Safari's compact tab bar can hide it behind the ⋯ menu.
+const INSTRUCTIONS = {
+  safari: `Install Saura-eMitra: tap Share in Safari's toolbar (or ⋯ and then Share), then "Add to Home Screen".`,
+  chrome: `Install Saura-eMitra: tap Share Icon in Chrome's address bar, then "Add to Home Screen".`,
+  other: `Install Saura-eMitra: tap the Share button in your browser's toolbar, then "Add to Home Screen".`,
+};
+
 /**
  * iOS cannot open an install dialog from a web page, so after login (see showPwaInstallPromptIfEligible)
  * this shows a bottom banner explaining how to add the app to the home screen.
- * Share opens the iOS share sheet via navigator.share().
+ * There is deliberately no Share button: the sheet opened by navigator.share() never contains
+ * "Add to Home Screen" (iOS only offers it from the browser's own Share button), so we point users there.
  */
 const IosInstallPrompt = () => {
   const [open, setOpen] = useState(() => window.selcoShowIosInstallPrompt === true);
@@ -49,24 +57,10 @@ const IosInstallPrompt = () => {
     setOpen(false);
   };
 
-  const share = async () => {
-    try {
-      // Share the app's start page, which is what gets added to the home screen.
-      await navigator.share({ title: "Saura-eMitra", url: `${window.location.origin}/${window.contextPath || "digit-ui"}/` });
-      close();
-    } catch (error) {
-      // AbortError: the user closed the share sheet. Keep the banner so they can try again.
-      if (error?.name !== "AbortError") console.warn("Could not open the share sheet", error);
-    }
-  };
-
   // Children are not divs on purpose: ActionBar's CSS makes every nested div full width.
   return (
     <ActionBar style={barStyle}>
-      <CardText style={{ flex: 1, margin: 0 }}>
-        Install Saura-eMitra: tap Share <IosShareIcon />, then "Add to Home Screen".
-      </CardText>
-      {navigator.share && <SubmitBar label="Share" onSubmit={share} style={{ flexShrink: 0, padding: "0 16px", width: "auto" }} />}
+      <CardText style={{ flex: 1, margin: 0 }}>{INSTRUCTIONS[getIosBrowser()]}</CardText>
       <button type="button" onClick={close} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", flexShrink: 0, padding: 0 }}>
         <Close />
       </button>
