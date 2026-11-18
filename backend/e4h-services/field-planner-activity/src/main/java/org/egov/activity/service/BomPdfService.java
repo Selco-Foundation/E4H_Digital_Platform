@@ -42,11 +42,13 @@ public class BomPdfService {
     private static final String SYSTEM_TYPE_KEY = "systemType";
     private static final DateTimeFormatter PROJECT_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    /** Time-of-day bomData keys rendered as {@code hh:mm AM/PM}: Time of recording and RMS Time of installation. */
-    private static final List<String> TIME_KEYS = List.of("sfp_time", "rms_installation_time");
+    /** "Time of recording" keys, one per report template (AC Off-grid/Hybrid, DC, AC On-grid). */
+    private static final List<String> RECORDING_TIME_KEYS = List.of(
+            "sfp_time", "dc_time_of_recording", "ongrid_time_of_recording"
+    );
     private static final DateTimeFormatter RECORDING_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
-    /** Time-only inputs accepted for {@link #TIME_KEYS}, tried in order (12h before 24h, case-insensitive AM/PM). */
+    /** Time-only inputs accepted for the recording times, tried in order (12h before 24h, case-insensitive AM/PM). */
     private static final List<DateTimeFormatter> RECORDING_TIME_PARSERS = Stream.of("h:mm[:ss] a", "h:mm[:ss]a", "H:mm[:ss]")
             .map(pattern -> new DateTimeFormatterBuilder().parseCaseInsensitive()
                     .appendPattern(pattern).toFormatter(Locale.ENGLISH))
@@ -195,7 +197,7 @@ public class BomPdfService {
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
         data.put("report_title", buildReportTitle((String) data.get("health_facility_name"), projectName));
-        for (String timeKey : TIME_KEYS) {
+        for (String timeKey : RECORDING_TIME_KEYS) {
             if (data.containsKey(timeKey)) {
                 data.put(timeKey, formatRecordingTime(timeKey, data.get(timeKey)));
             }
@@ -205,7 +207,7 @@ public class BomPdfService {
     }
 
     /**
-     * Renders a time-of-day value ("sfp_time", "rms_installation_time") as {@code hh:mm AM/PM},
+     * Renders a "Time of recording" value (see {@link #RECORDING_TIME_KEYS}) as {@code hh:mm AM/PM},
      * e.g. {@code 02:30 PM}.
      * <p>
      * Accepts epoch millis, a 24h/12h time ("14:30", "14:30:00", "2:30 PM") or an ISO date-time.
