@@ -25,6 +25,8 @@ import '../repositories/assessment_draft_repo.dart';
 import '../repositories/assessment_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/assessment_form_mapper.dart';
+import '../utils/form_time_value.dart';
+import '../widgets/form_time_field.dart';
 import '../utils/app_logger.dart';
 import '../utils/constants.dart';
 import '../utils/envConfig.dart';
@@ -153,7 +155,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       final loaded = bloc.stream.firstWhere(
         (state) => state.cachedSchemas.containsKey(_schemaKey),
       );
-      bloc.add(FormsEvent.load(schemas: [jsonEncode(schema)]));
+      bloc.add(FormsEvent.load(schemas: [jsonEncode(adaptTimeSchema(schema))]));
       await loaded;
       if (mounted) setState(() => _isLoading = false);
     } catch (error) {
@@ -238,7 +240,7 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
       }
     }
     if (_isFrozenDraft) form.markAsDisabled();
-    return form;
+    return normalizeTimeControls(form, page);
   }
 
   SchemaObject _withPageValues(
@@ -520,9 +522,11 @@ class _AssessmentDynamicFormPageState extends State<AssessmentDynamicFormPage> {
     FormGroup form,
   ) {
     return [
+      ...timeFormComponents(page),
       for (final entry
           in page.properties?.entries ?? <MapEntry<String, PropertySchema>>[])
-        if (entry.value.format == PropertySchemaFormat.custom &&
+        if (!isTimeProperty(entry.value) &&
+            entry.value.format == PropertySchemaFormat.custom &&
             (entry.key == 'facilityOpeningTime' ||
                 entry.key == 'facilityClosingTime'))
           {
