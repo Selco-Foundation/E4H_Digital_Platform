@@ -304,7 +304,7 @@ int parseWarrantyYears(String? s) {
   return 0;
 }
 
-final _displayFmt = DateFormat('yyyy-MM-dd HH:mm');
+final _displayFmt = DateFormat('yyyy-MM-dd');
 
 String buildWarrantyStart(String? raw) {
   try {
