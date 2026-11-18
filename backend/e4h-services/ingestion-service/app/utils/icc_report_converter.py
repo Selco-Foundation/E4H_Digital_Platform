@@ -198,6 +198,7 @@ SFP_FIELD_MAP_HYBRID = {
 
 SFP_FIELD_MAP_AC_OFF = {
     (138, 1): "sfp_date",
+    (138, 13): "sfp_time",
     (139, 6): "sfp_weather",
     (141, 4): "array_size_kwp",
     (141, 10): "array_no_modules",
