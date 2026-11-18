@@ -42,9 +42,12 @@ public class BomPdfService {
     private static final String SYSTEM_TYPE_KEY = "systemType";
     private static final DateTimeFormatter PROJECT_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    /** "Time of recording" keys, one per report template (AC Off-grid/Hybrid, DC, AC On-grid). */
+    /**
+     * Time-of-day keys rendered as {@code hh:mm AM/PM}: "Time of recording" (one key per report
+     * template: AC Off-grid/Hybrid, DC, AC On-grid) and the RMS "Time of installation".
+     */
     private static final List<String> RECORDING_TIME_KEYS = List.of(
-            "sfp_time", "dc_time_of_recording", "ongrid_time_of_recording"
+            "sfp_time", "dc_time_of_recording", "ongrid_time_of_recording", "rms_installation_time"
     );
     private static final DateTimeFormatter RECORDING_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
@@ -207,7 +210,7 @@ public class BomPdfService {
     }
 
     /**
-     * Renders a "Time of recording" value (see {@link #RECORDING_TIME_KEYS}) as {@code hh:mm AM/PM},
+     * Renders a time-of-day value (see {@link #RECORDING_TIME_KEYS}) as {@code hh:mm AM/PM},
      * e.g. {@code 02:30 PM}.
      * <p>
      * Accepts epoch millis, a 24h/12h time ("14:30", "14:30:00", "2:30 PM") or an ISO date-time.
