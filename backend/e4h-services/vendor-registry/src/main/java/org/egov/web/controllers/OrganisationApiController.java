@@ -67,10 +67,13 @@ public class OrganisationApiController {
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<OrgServiceResponse> orgServicesOrganisationV1SearchPOST(
             @ApiParam(value = "", allowableValues = "application/json") @RequestHeader(value = "Content-Type", required = false) String contentType,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "offset", required = false) Integer offset,
             @ApiParam(value = "") @Valid @RequestBody OrgSearchRequest body) {
         log.trace("OrganisationApiController::orgServicesOrganisationV1SearchPOST entry");
         log.info("Received search organisation request for tenant: {}",
                 body.getSearchCriteria() != null ? body.getSearchCriteria().getTenantId() : "unknown");
+        organisationService.applyUrlPagination(body, limit, offset);
 
         List<Organisation> organisations = organisationService.searchOrganisation(body);
         log.debug("Search returned {} organisations", organisations != null ? organisations.size() : 0);
