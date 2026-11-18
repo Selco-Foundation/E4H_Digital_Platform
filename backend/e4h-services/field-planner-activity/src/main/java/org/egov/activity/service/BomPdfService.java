@@ -42,10 +42,11 @@ public class BomPdfService {
     private static final String SYSTEM_TYPE_KEY = "systemType";
     private static final DateTimeFormatter PROJECT_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    private static final String SFP_TIME_KEY = "sfp_time";
+    /** Time-of-day bomData keys rendered as {@code hh:mm AM/PM}: Time of recording and RMS Time of installation. */
+    private static final List<String> TIME_KEYS = List.of("sfp_time", "rms_installation_time");
     private static final DateTimeFormatter RECORDING_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
-    /** Time-only inputs accepted for "sfp_time", tried in order (12h before 24h, case-insensitive AM/PM). */
+    /** Time-only inputs accepted for {@link #TIME_KEYS}, tried in order (12h before 24h, case-insensitive AM/PM). */
     private static final List<DateTimeFormatter> RECORDING_TIME_PARSERS = Stream.of("h:mm[:ss] a", "h:mm[:ss]a", "H:mm[:ss]")
             .map(pattern -> new DateTimeFormatterBuilder().parseCaseInsensitive()
                     .appendPattern(pattern).toFormatter(Locale.ENGLISH))
@@ -194,21 +195,24 @@ public class BomPdfService {
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
         data.put("report_title", buildReportTitle((String) data.get("health_facility_name"), projectName));
-        if (data.containsKey(SFP_TIME_KEY)) {
-            data.put(SFP_TIME_KEY, formatRecordingTime(data.get(SFP_TIME_KEY)));
+        for (String timeKey : TIME_KEYS) {
+            if (data.containsKey(timeKey)) {
+                data.put(timeKey, formatRecordingTime(timeKey, data.get(timeKey)));
+            }
         }
 
         return data;
     }
 
     /**
-     * Renders "sfp_time" (Time of recording) as {@code hh:mm AM/PM}, e.g. {@code 02:30 PM}.
+     * Renders a time-of-day value ("sfp_time", "rms_installation_time") as {@code hh:mm AM/PM},
+     * e.g. {@code 02:30 PM}.
      * <p>
      * Accepts epoch millis, a 24h/12h time ("14:30", "14:30:00", "2:30 PM") or an ISO date-time.
      * A blank value becomes null (the template shows "NA"); a value that cannot be parsed is kept
      * as is rather than dropped.
      */
-    private Object formatRecordingTime(Object value) {
+    private Object formatRecordingTime(String key, Object value) {
         if (value == null) {
             return null;
         }
@@ -232,7 +236,7 @@ public class BomPdfService {
         } catch (DateTimeParseException ignored) {
             // not an ISO date-time either
         }
-        log.warn("Unrecognised sfp_time value '{}', rendering it unchanged", text);
+        log.warn("Unrecognised {} value '{}', rendering it unchanged", key, text);
         return value;
     }
 
