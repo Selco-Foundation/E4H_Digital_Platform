@@ -11,12 +11,17 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -36,6 +41,21 @@ public class BomPdfService {
 
     private static final String SYSTEM_TYPE_KEY = "systemType";
     private static final DateTimeFormatter PROJECT_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /**
+     * Time-of-day keys rendered as {@code hh:mm AM/PM}: "Time of recording" (one key per report
+     * template: AC Off-grid/Hybrid, DC, AC On-grid) and the RMS "Time of installation".
+     */
+    private static final List<String> RECORDING_TIME_KEYS = List.of(
+            "sfp_time", "dc_time_of_recording", "ongrid_time_of_recording", "rms_installation_time"
+    );
+    private static final DateTimeFormatter RECORDING_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
+    /** Time-only inputs accepted for the recording times, tried in order (12h before 24h, case-insensitive AM/PM). */
+    private static final List<DateTimeFormatter> RECORDING_TIME_PARSERS = Stream.of("h:mm[:ss] a", "h:mm[:ss]a", "H:mm[:ss]")
+            .map(pattern -> new DateTimeFormatterBuilder().parseCaseInsensitive()
+                    .appendPattern(pattern).toFormatter(Locale.ENGLISH))
+            .toList();
 
     /**
      * Workflow actions that (re)submit the installation report - matches the literals
@@ -180,8 +200,49 @@ public class BomPdfService {
         data.put("po_wo_number", activityFacility.getFieldPlan() != null
                 ? activityFacility.getFieldPlan().getPocNumber() : null);
         data.put("report_title", buildReportTitle((String) data.get("health_facility_name"), projectName));
+        for (String timeKey : RECORDING_TIME_KEYS) {
+            if (data.containsKey(timeKey)) {
+                data.put(timeKey, formatRecordingTime(timeKey, data.get(timeKey)));
+            }
+        }
 
         return data;
+    }
+
+    /**
+     * Renders a time-of-day value (see {@link #RECORDING_TIME_KEYS}) as {@code hh:mm AM/PM},
+     * e.g. {@code 02:30 PM}.
+     * <p>
+     * Accepts epoch millis, a 24h/12h time ("14:30", "14:30:00", "2:30 PM") or an ISO date-time.
+     * A blank value becomes null (the template shows "NA"); a value that cannot be parsed is kept
+     * as is rather than dropped.
+     */
+    private Object formatRecordingTime(String key, Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return Instant.ofEpochMilli(number.longValue()).atZone(ZoneId.systemDefault())
+                    .toLocalTime().format(RECORDING_TIME_FORMATTER);
+        }
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        for (DateTimeFormatter parser : RECORDING_TIME_PARSERS) {
+            try {
+                return LocalTime.parse(text, parser).format(RECORDING_TIME_FORMATTER);
+            } catch (DateTimeParseException ignored) {
+                // try the next accepted format
+            }
+        }
+        try {
+            return LocalDateTime.parse(text).toLocalTime().format(RECORDING_TIME_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            // not an ISO date-time either
+        }
+        log.warn("Unrecognised {} value '{}', rendering it unchanged", key, text);
+        return value;
     }
 
     /**
