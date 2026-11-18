@@ -21,6 +21,8 @@ import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/form_date_value.dart';
+import '../utils/form_time_value.dart';
+import '../widgets/form_time_field.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -175,7 +177,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return;
     }
 
-    final schemaObj = SchemaObject.fromJson(schemaJson);
+    final schemaObj = SchemaObject.fromJson(adaptTimeSchema(schemaJson));
 
     final cacheKey = _baseSchemaKey ?? schemaObj.name;
     _schemaOwnerByFacility[cacheKey] = widget.activityFacilityId;
@@ -441,7 +443,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         updateParent: true,
                         emitEvent: false);
                   }
-                  return form;
+                  return normalizeTimeControls(form, pageSchema);
                 }
 
                 for (final k in propertyKeys) {
@@ -465,7 +467,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                     }
                   }
                 }
-                return form;
+                return normalizeTimeControls(form, pageSchema);
               },
               builder: (context, formGroup, child) => ScrollableContent(
                 enableFixedDigitButton: true,
@@ -677,7 +679,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         currentSchemaKey: currentKey,
                         propertySchema: pageSchema,
                         pageName: widget.pageName,
-                        childrens: const [],
+                        childrens: timeFormComponents(
+                          pageSchema,
+                          readOnly: widget.origin == FormOrigin.inboxSummary ||
+                              widget.origin == FormOrigin.submitted,
+                        ),
                         defaultValues: pageDefaults,
                         isView: (widget.origin == FormOrigin.inboxSummary ||
                                 widget.origin == FormOrigin.submitted)
