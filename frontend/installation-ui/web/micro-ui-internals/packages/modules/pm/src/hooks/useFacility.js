@@ -1,8 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { FacilityService } from "../services/Facility";
-import { boundariesByLevelForRole } from "../utilities/jurisdictionScope";
 import useJurisdictions from "./useJurisdictions";
-import { MODULE_ROLE } from "../constants/Roles";
 
 const fetchFacilities = async (queryFilter) => {
 
@@ -23,34 +21,31 @@ const fetchFacilities = async (queryFilter) => {
 };
 
 /**
- * Sets one filter, preferring the user's own choice over their jurisdiction at that level.
+ * Sets one filter from the user's own choice, or leaves it unset.
  *
- * The pickers only offer values already inside the user's scope, so a chosen value narrows the
- * scope rather than escaping it - which is why the choice replaces the scope outright instead of
- * being combined with it. Nothing is set when neither is present, so an unscoped user with no
- * filters sends no boundary criteria at all.
+ * The user's own jurisdiction is deliberately not sent as a fallback. Facility search is scoped
+ * on the server from the `x-acting-role` header this module sends and the caller's HRMS grants,
+ * so echoing those same grants back narrowed nothing the server was not already narrowing. What
+ * it could do is narrow *more*: a stale or half-written client copy silently dropped rows the
+ * user is entitled to see, and that failure looks identical to having no such facilities.
+ *
+ * The pickers only offer values already inside the user's scope, so a chosen value narrows within
+ * the server's ceiling rather than escaping it.
  */
-const applyFilter = (queryFilter, key, chosen, scoped) => {
-  const value = chosen?.length ? chosen : scoped;
-  if (value?.length) queryFilter[key] = value;
+const applyFilter = (queryFilter, key, chosen) => {
+  if (chosen?.length) queryFilter[key] = chosen;
 };
 
+/**
+ * The facilities this user may see, narrowed by whatever they have filtered.
+ *
+ * With no filters this now sends no boundary criteria at all and lets the server scope the list.
+ * That makes the server the only thing scoping it: with `facility.jurisdiction.scope.mode` set to
+ * `off` or `warn`, this search returns every facility in the country.
+ */
 const useFacility = (filter, limit = 10, offset = 0) => {
 
   const { facilityFilterQuery } = filter;
-
-  /*
-   * The facilities this user may see, as the levels their jurisdictions were granted at.
-   *
-   * Sent per level rather than resolved down to facility codes: facility search already expands
-   * `state`, `district` and `block` through boundary-service, so one state code does the work of
-   * every facility code beneath it, and the lower levels stay free for the user's own filters.
-   *
-   * Null means the user holds no grant for this role, or holds the whole country - either way,
-   * nothing is narrowed.
-   */
-  const jurisdictions = useJurisdictions();
-  const scope = boundariesByLevelForRole(MODULE_ROLE, jurisdictions);
 
   const queryFilter = {
     tenantId: [Digit.ULBService.getCurrentTenantId()],
@@ -58,14 +53,19 @@ const useFacility = (filter, limit = 10, offset = 0) => {
     offset,
   };
 
-  applyFilter(queryFilter, "state", facilityFilterQuery?.state, scope?.State);
-  applyFilter(queryFilter, "district", facilityFilterQuery?.district, scope?.District);
-  applyFilter(queryFilter, "block", facilityFilterQuery?.block, scope?.Block);
-  applyFilter(queryFilter, "boundaryCodes", facilityFilterQuery?.facility, scope?.Facility);
+  applyFilter(queryFilter, "state", facilityFilterQuery?.state);
+  applyFilter(queryFilter, "district", facilityFilterQuery?.district);
+  applyFilter(queryFilter, "block", facilityFilterQuery?.block);
+  applyFilter(queryFilter, "boundaryCodes", facilityFilterQuery?.facility);
+
+  // In the query key, not in the request: the server derives the ceiling from these itself, so a
+  // grant added or removed changes the answer without changing anything we send. Without them a
+  // page load that picks up a new grant would keep serving the pre-refresh list.
+  const jurisdictions = useJurisdictions();
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["FACILITY", queryFilter],
+    ["FACILITY", queryFilter, jurisdictions],
     () => fetchFacilities(queryFilter)
   );
 
