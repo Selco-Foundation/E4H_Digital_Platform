@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { defaultsToAssignedToMe } from "../constants/Inbox";
 import { EmployeeModuleCard } from "@selco/digit-ui-react-components";
+import { useLabel } from "./mobileChange/labels";
 
 
 const IMCard = () => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { t } = useTranslation();
+  const tr = useLabel(); // English fallback until the localisation CSV is uploaded
   const [total, setTotal] = useState("-");
   const { roles } = Digit.UserService.getUser().info;
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
@@ -88,6 +90,12 @@ const IMCard = () => {
     {
       label: t("ES_IM_PAUSE_RMS"),
       link: `/${window.contextPath}/employee/im/paused-rms-facilities`,
+      role: "COMPLAINT_ASSESSOR"
+    },
+    {
+      // CRM approval queue for registered-mobile-number change requests
+      label: tr("MOBILE_CHANGE_CRM_LINK"),
+      link: `/${window.contextPath}/employee/im/mobile-change-requests`,
       role: "COMPLAINT_ASSESSOR"
     }
   ]

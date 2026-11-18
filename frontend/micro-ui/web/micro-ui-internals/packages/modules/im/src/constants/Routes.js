@@ -8,6 +8,7 @@ import {
   PGR_EMPLOYEE_CREATE_COMPLAINT,
   PGR_EMPLOYEE_PAUSE_RMS,
   PGR_EMPLOYEE_PAUSED_RMS_FACILITIES,
+  PGR_EMPLOYEE_MOBILE_CHANGE_REQUESTS,
 } from "./Employee";
 
 export const PgrRoutes = {
@@ -39,6 +40,7 @@ export const Employee = {
   CreateComplaint: PGR_EMPLOYEE_CREATE_COMPLAINT,
   PauseRMS: PGR_EMPLOYEE_PAUSE_RMS,
   PausedRMSFacilities: PGR_EMPLOYEE_PAUSED_RMS_FACILITIES,
+  MobileChangeRequests: PGR_EMPLOYEE_MOBILE_CHANGE_REQUESTS,
   Response: "/incident/response",
   RMSResponse: "/incident/rms-response",
   Home: `/${window.contextPath}/employee`,
