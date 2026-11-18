@@ -56,42 +56,70 @@ export const CreateComplaint = ({ parentUrl }) => {
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
     country: ["-"],
   };
-  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  /**
+   * The boundary tree on this page is built from the caller's COMPLAINANT grants, not from their
+   * whole jurisdiction.
+   *
+   * `Jurisdiction.CurrentBoundary` is role-agnostic: someone who is COMPLAINANT for one facility
+   * and COMPLAINT_ASSESSOR across a state has both in it, so this page would offer every district
+   * of that state while the facility search - scoped to COMPLAINANT by the server - returned only
+   * the one. Falls back to the whole jurisdiction when the roles cannot be told apart, which is
+   * what a grant carrying no roles at all means.
+   */
+  const complainantBoundaries = Digit.Hooks.im.useScopedBoundaries(jurisdictionCurrentBoundary, ["COMPLAINANT"]);
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(complainantBoundaries);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
-  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [isInstallationTicket, setIsInstallationTicket] = useState(false);
   const [isUninstalledFacility, setIsUninstalledFacility] = useState(false);
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  // Raising a ticket is the facility POC's screen, so it offers the facilities they are POC for -
+  // not everything their other IM roles can reach. The route is gated to COMPLAINANT to match.
+  const { data: facilityData } = Digit.Hooks.im.useFacility(jurisdictionCurrentBoundary, ["COMPLAINANT"]);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
     if (boundaryData) {
       setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
-      setDistrictMenu(boundaryData.districts || []);
-      setBlockOptions(boundaryData.blocks);
       setFacilityBoundaries(boundaryData.facilities);
-      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
   }, [boundaryData, t]);
 
+  /**
+   * The district and block menus are derived from the facilities the search actually returned,
+   * not from the boundary tree.
+   *
+   * The tree above is already narrowed to the COMPLAINANT grants, which answers "may they act
+   * here". This answers the other question - "is there anything here" - and prunes a district or
+   * block that holds no ONM-ready facility, so it cannot be picked only to reveal an empty list.
+   * The two rules are kept separate because they fail differently: the first going wrong shows
+   * boundaries the server will refuse, the second going wrong shows boundaries with nothing in
+   * them.
+   */
   useEffect(() => {
     if (facilityBoundaries?.length && facilityData?.facilities?.length) {
       const facilityBoundaryCodeToParentMap = new Map();
       for (let facilityBoundary of facilityBoundaries) {
         facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
       }
-      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+      const inScopeFacilities = facilityData?.facilities?.map((facility) => ({
         code: facility.boundaryCode,
         id: facility.facilityId,
         status: facility.facilityStatus,
         parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
-      })));
+      }));
+      setFacilityOptions(inScopeFacilities);
+
+      const inScopeBlockCodes = new Set(inScopeFacilities.map((facility) => facility.parentCode).filter(Boolean));
+      const inScopeBlocks = (boundaryData?.blocks || []).filter((block) => inScopeBlockCodes.has(block.code));
+      const inScopeDistrictCodes = new Set(inScopeBlocks.map((block) => block.parentCode).filter(Boolean));
+
+      setBlockOptions(inScopeBlocks);
+      setDistrictMenu((boundaryData?.districts || []).filter((district) => inScopeDistrictCodes.has(district.code)));
     }
-  }, [facilityBoundaries, facilityData]);
+  }, [boundaryData, facilityBoundaries, facilityData]);
 
   useEffect(() => {
     if (district?.code && blockOptions?.length) {
@@ -211,7 +239,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       page_path: window.location?.pathname || "/new-ticket",
       page_title: "New Ticket",
     });
-    if (selectBoundaryCode !== stateBoundaryCode) {
+    if (!Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)) {
       ticketTypeRef?.current?.validate();
       ticketSubTypeRef?.current?.validate();
     } else {
@@ -221,7 +249,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(async () => {
     if (
-      selectBoundaryCode && stateBoundaryCode && selectBoundaryCode !== stateBoundaryCode
+      selectBoundaryCode && stateBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)
       && districtMenu?.length && blockOptions?.length && facilityOptions?.length
     ) {
       const selectedHealthCentre = facilityOptions.find((facility) => facility?.code === selectBoundaryCode)
@@ -630,7 +658,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
               required={true}
             />
           ),
@@ -648,7 +676,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
               required={true}
             />
           ),
@@ -666,7 +694,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
+              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
               required={true}
             />
           ),

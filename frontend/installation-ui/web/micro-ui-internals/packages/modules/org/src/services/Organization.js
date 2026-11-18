@@ -12,12 +12,17 @@ export const OrganizationService = {
       auth: true,
       userService: true,
       headers,
-      params: { tenantId, offset, limit },
+      // Pagination goes in the body: OrgSearchRequest reads it from there, and this endpoint
+      // ignores limit/offset query params entirely. Sending them there served the backend
+      // default (10 rows from offset 0) on every page. The sibling /user/_search is the other
+      // way round - it binds URLParams - so the two cannot be made to look alike here.
+      params: { tenantId },
       data: {
         SearchCriteria: {
           tenantId,
           ...searchCriteria,
         },
+        Pagination: { limit, offset },
       },
     });
 

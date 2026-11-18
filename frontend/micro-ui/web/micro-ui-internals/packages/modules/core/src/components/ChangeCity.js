@@ -22,16 +22,18 @@ const ChangeCity = (prop) => {
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
   const [facilityOptions, setFacilityOptions] = useState([]);
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
-  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries) || []);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  // The city list is narrowed to the boundaries the user holds under an IM role. core is the IM
+  // app's shell, so a Management Hub grant has no business widening it here - and offering one
+  // would let the user select a city the facility search then refuses.
+  const imBoundaries = Digit.Hooks.im.useScopedBoundaries(jurisdictionBoundaries);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(imBoundaries) || []);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(imBoundaries);
   const { t } = prop;
 
   useEffect(() => {
     if (boundaryData) {
       setFacilityBoundaries(boundaryData.facilities);
-      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
   }, [boundaryData]);
 

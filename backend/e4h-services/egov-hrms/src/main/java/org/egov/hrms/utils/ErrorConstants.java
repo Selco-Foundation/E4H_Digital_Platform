@@ -201,5 +201,13 @@ public class ErrorConstants {
 
 	public static final String HRMS_ENCRYPTION_FAILED_CODE = "ERR_HRMS_ENCRYPTION_FAILED";
 	public static final String HRMS_ENCRYPTION_FAILED_MSG = "Failed to encrypt username via the encryption service.";
+	public static final String HRMS_INVALID_JURISDICTION_ROLE_CODE_CODE = "ERR_HRMS_INVALID_JURISDICTION_ROLE_CODE";
+	public static final String HRMS_INVALID_JURISDICTION_ROLE_CODE_MSG = "Jurisdiction role code cannot be blank.";
+
+	public static final String HRMS_DUPLICATE_JURISDICTION_ROLE_CODE = "ERR_HRMS_DUPLICATE_JURISDICTION_ROLE";
+	public static final String HRMS_DUPLICATE_JURISDICTION_ROLE_MSG = "The same role is listed more than once on a jurisdiction.";
+
+	public static final String HRMS_JURISDICTION_ROLE_NOT_HELD_CODE = "ERR_HRMS_JURISDICTION_ROLE_NOT_HELD";
+	public static final String HRMS_JURISDICTION_ROLE_NOT_HELD_MSG = "A jurisdiction is scoped to a role the employee does not hold.";
 
 }

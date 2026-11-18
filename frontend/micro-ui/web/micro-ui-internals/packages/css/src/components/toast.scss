@@ -7,7 +7,20 @@
   gap: 16px;
   border-radius: 4px;
   min-height: 48px;
-  @apply fixed flex bg-success leading-7 z-20 items-center pl-md pr-sm;
+  @apply fixed flex bg-success leading-7 items-center pl-md pr-sm;
+
+  /*
+   * Above the modal overlay (.popup-wrap, 10000).
+   *
+   * A toast is often what explains why the modal is still open - a failed save leaves the
+   * dialog up so the action can be retried, and the only account of what went wrong is this
+   * toast. At the old z-20 it rendered behind the 70% black backdrop: dimmed, unreadable and
+   * impossible to dismiss, so the save looked like it had silently done nothing.
+   *
+   * Deliberately below the top bar (9999999), which sits at the other end of the screen and
+   * never overlaps a toast anchored to the bottom.
+   */
+  z-index: 10001;
 
   svg {
     height: 20px;

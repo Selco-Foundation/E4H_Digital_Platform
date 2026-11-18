@@ -180,6 +180,19 @@ public class IMConfiguration {
     @Value("${egov.hrms.search.endpoint}")
     private String hrmsEndPoint;
 
+    /** v2 only: it is the one version that returns the roles each jurisdiction applies to. */
+    @Value("${egov.hrms.v2.search.endpoint:/egov-hrms/v2/employees/_search}")
+    private String hrmsV2SearchEndpoint;
+
+    /**
+     * Workflow roles no real user holds, so an action carrying one is machine-driven and exempt from
+     * the jurisdiction check. Configurable rather than a constant: the workflow definition lives in a
+     * database row and can gain such an action without a release, and a stale list here would be a
+     * privilege question, not a cosmetic one.
+     */
+    @Value("${im.workflow.machine.roles:SYSTEM,AUTO_ESCALATE,COMPLAINT_CLOSER}")
+    private List<String> machineRoles;
+
     //Vendor registry - resolves which vendor organisation a user belongs to
     @Value("${egov.vendor.host}")
     private String vendorHost;

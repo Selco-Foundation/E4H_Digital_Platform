@@ -7,6 +7,8 @@ import Header from "../../../components/Header";
 import Carousel from "./Carousel/Carousel";
 import ImageComponent from "../../../components/ImageComponent";
 import { UserAccessReportService } from "../../../services/UserAccessReportService";
+import { HRMSService } from "../../../services/HRMSService";
+import { setJurisdictions } from "../../../utilities/jurisdictionScope";
 import { CONSENT_COOKIE_KEYS, getConsentCookie, rememberRequiredConsents } from "../../../utilities/consentCookies";
 
 const setEmployeeDetail = (userObject, token) => {
@@ -56,6 +58,20 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
         });
       } catch (err) {
         console.error("Login report failed", err);
+      }
+
+      /*
+       * The user's own jurisdictions, so each module can show only its own area.
+       *
+       * Best-effort on purpose: an employee with no HRMS record, or an HRMS that is briefly down,
+       * must still be able to sign in. Nothing is stored in that case, and `boundariesForRole`
+       * then answers null - "we do not know" - so screens stay unnarrowed rather than blank.
+       */
+      try {
+        const response = await HRMSService.searchByUserName(user?.info?.tenantId, user?.info?.userName);
+        setJurisdictions(response?.Employees?.[0]?.jurisdictions || []);
+      } catch (err) {
+        console.error("Could not read the user's jurisdictions; screens will not be narrowed", err);
       }
 
       /* logic to redirect back to same screen where we left off */

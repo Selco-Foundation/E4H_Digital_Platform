@@ -270,12 +270,8 @@ public class IMConstants {
     public static final String ROLE_COMPLAINT_FACILITATOR_1 = "COMPLAINT_FACILITATOR_1";
     public static final String ROLE_COMPLAINT_FACILITATOR_2 = "COMPLAINT_FACILITATOR_2";
 
-    // CRM: registered at state level; HRMS search runs without boundary (whole tenant).
-    // State SPOC (ROLE_COMPLAINT_FACILITATOR_1) and Tech POC (ROLE_COMPLAINT_FACILITATOR_2):
-    // registered at state jurisdiction "India_<State>"; boundary is resolved in
-    // NotificationService.getHRMSEmployee via IMUtils.extractStateBoundaryCode.
-    public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
-            ROLE_COMPLAINT_ASSESSOR);
+    // STATE_LEVEL_ROLES removed: HRMS searches now walk the ticket's ancestor chain, so there is no
+    // list of roles-held-above-the-facility to keep in sync. Any role may be held at any level.
 
     // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
     public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
@@ -322,13 +318,9 @@ public class IMConstants {
             ROLE_COMPLAINT_FACILITATOR_1,   // State SPOC
             ROLE_COMPLAINT_FACILITATOR_2)); // Tech POC
 
-    /**
-     * Workflow roles that no real user holds. They appear on auto-escalation and system-close actions,
-     * so they say nothing about who a state is waiting on and are ignored when deciding whether a
-     * state is pooled.
-     */
-    public static final List<String> MACHINE_ROLES = Collections.unmodifiableList(Arrays.asList(
-            ROLE_SYSTEM, "AUTO_ESCALATE", "COMPLAINT_CLOSER"));
+    // Machine roles - the ones no real user holds - moved to im.workflow.machine.roles. They now
+    // decide whether an action skips the jurisdiction check, and the workflow definition that grants
+    // them is a database row that can change without a release, so the list is configuration.
 
     /**
      * Statuses in which a vendor holds the ticket. The most recent transition into one of them names

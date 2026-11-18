@@ -133,6 +133,10 @@ public class EmployeeController {
 		log.trace("EmployeeController.search invoked");
 		String tenantId = criteria.getTenantId();
 		log.info("Employee search request received for tenant: {}", tenantId);
+		// This endpoint's response shape is fixed. criteria is bound from query params, so without
+		// this a caller could opt into jurisdiction roles on v1 with ?includeJurisdictionRoles=true;
+		// v2 is where that belongs.
+		criteria.setIncludeJurisdictionRoles(false);
 		validator.validateSearchRequest(requestInfoWrapper.getRequestInfo(), criteria);
 		log.debug("Employee search request validated successfully");
 		EmployeeResponse employeeResponse = employeeService.search(criteria, requestInfoWrapper.getRequestInfo());

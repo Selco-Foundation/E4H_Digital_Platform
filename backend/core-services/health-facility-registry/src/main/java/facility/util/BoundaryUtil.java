@@ -281,138 +281,164 @@ public class BoundaryUtil {
 //        }
 //    }
 
-    public List<String> getFacilityCodesFromBoundary(FacilityBulkSearchCriteria criteria) {
-        List<String> listBlock = null;
-        if(isNotNullOrEmpty(criteria.getBoundaryCodes()) || isNotNullOrEmpty(criteria.getBlock()) || isNotNullOrEmpty(criteria.getDistrict()) ||
-                isNotNullOrEmpty(criteria.getState())
-        ){
-            try {
-                listBlock = resolveFacilityCodes(criteria);
-            }catch(Exception e) {
-                e.printStackTrace();
-                throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
+    /** The hierarchy levels a client may filter on, in the order they nest. */
+    public static final List<String> FILTERABLE_LEVELS =
+            Collections.unmodifiableList(Arrays.asList("state", "district", "block"));
+
+    /**
+     * Each hierarchy level the client filtered on, resolved to the facility codes beneath it.
+     *
+     * Only levels the client actually supplied appear in the result. Each becomes its own ANDed
+     * SQL clause, so a facility has to sit beneath one of the states <em>and</em> one of the
+     * districts <em>and</em> one of the blocks - the reading a cascading filter bar needs, and the
+     * one that guarantees a filter can only ever narrow. Doing it in SQL rather than intersecting
+     * in Java means an empty level simply matches nothing, with no special case to get wrong.
+     *
+     * {@code boundaryCodes} is deliberately absent: those are facility-level codes already and go
+     * straight to the column.
+     *
+     * A requested code stays in its own set alongside its descendants, because a facility row whose
+     * {@code boundary_code} was never migrated into the hierarchy has nothing to descend from -
+     * which is what {@code _backfill-boundary-relationships} exists to repair.
+     */
+    public Map<String, Set<String>> resolveLevelFilters(FacilityBulkSearchCriteria criteria) {
+        Map<String, List<String>> requested = new LinkedHashMap<>();
+        putIfPresent(requested, "state", criteria.getState());
+        putIfPresent(requested, "district", criteria.getDistrict());
+        putIfPresent(requested, "block", criteria.getBlock());
+        if (requested.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<String> everyCode = requested.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Set<String>> beneath;
+        try {
+            // One call for every level at once: boundary-service filters `codes` with a plain IN
+            // and no level constraint, so mixed-level codes come back as one tree.
+            beneath = facilityCodesBeneath(everyCode);
+        } catch (Exception e) {
+            log.error("Failed to resolve the client's boundary filters", e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary " + e.getMessage());
+        }
+
+        Map<String, Set<String>> resolved = new LinkedHashMap<>();
+        for (Map.Entry<String, List<String>> level : requested.entrySet()) {
+            Set<String> selected = new LinkedHashSet<>();
+            for (String code : level.getValue()) {
+                selected.add(code);
+                selected.addAll(beneath.getOrDefault(code, Collections.emptySet()));
             }
+            resolved.put(level.getKey(), selected);
         }
-
-        return listBlock;
+        return resolved;
     }
 
-    public String detectLowestLevel(FacilityBulkSearchCriteria criteria) {
-
-        if (criteria.getBoundaryCodes() != null && !criteria.getBoundaryCodes().isEmpty()) {
-            return BOUNDARY_CODE;
+    private static void putIfPresent(Map<String, List<String>> target, String level, List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return;
         }
-        if (criteria.getBlock() != null && !criteria.getBlock().isEmpty()) {
-            return BLOCK_CODE;
-        }
-        if (criteria.getDistrict() != null && !criteria.getDistrict().isEmpty()) {
-            return DISTRICT_CODE;
-        }
-        if (criteria.getState() != null && !criteria.getState().isEmpty()) {
-            return STATE_CODE;
-        }
-        return null;
-    }
-
-    public List<String> resolveFacilityCodes(FacilityBulkSearchCriteria criteria) throws JsonProcessingException {
-        String level = detectLowestLevel(criteria);
-        ObjectMapper objectMapper = new ObjectMapper();
-        switch (level) {
-
-            case BOUNDARY_CODE:
-                List<String> boundaryCodes = criteria.getBoundaryCodes().stream()
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
-                String jsonString = getBoundaryData(boundaryCodes);
-                JsonNode rootNode = objectMapper.readTree(jsonString);
-                return extractFacilityCodesByLevel(rootNode, criteria.getBoundaryCodes());
-
-            case BLOCK_CODE:
-                List<String> blockBoundaryCodes = criteria.getBlock().stream()
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
-                String blockJsonString = getBoundaryData(blockBoundaryCodes);
-                JsonNode blockRootNode = objectMapper.readTree(blockJsonString);
-                return extractFacilityCodesByLevel(blockRootNode, criteria.getBlock());
-
-            case DISTRICT_CODE:
-                List<String> districtBoundaryCodes = criteria.getDistrict().stream()
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
-                String districtJsonString = getBoundaryData(districtBoundaryCodes);
-                JsonNode districtRootNode = objectMapper.readTree(districtJsonString);
-                return extractFacilityCodesByLevel(districtRootNode, criteria.getDistrict());
-
-            case STATE_CODE:
-                List<String> stateBoundaryCodes = criteria.getState().stream()
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .collect(Collectors.toList());
-                String stateJsonString = getBoundaryData(stateBoundaryCodes);
-                JsonNode stateRootNode = objectMapper.readTree(stateJsonString);
-                return extractFacilityCodesByLevel(stateRootNode, criteria.getState());
-
-            default:
-                return Collections.emptyList();
+        List<String> cleaned = codes.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(code -> !code.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+        if (!cleaned.isEmpty()) {
+            target.put(level, cleaned);
         }
     }
 
-    public List<String> extractFacilityCodesByLevel(JsonNode rootNode, List<String> boundaryCodes) {
-        List<String> result = new ArrayList<>();
-
-        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+    /**
+     * Every facility-level code at or beneath each of the given boundary codes, keyed by the code asked for.
+     *
+     * A code that is itself a Facility maps to just itself. A code absent from the hierarchy maps to
+     * an empty set rather than being missing, so callers never have to distinguish the two.
+     */
+    public Map<String, Set<String>> facilityCodesBeneath(Collection<String> boundaryCodes) throws JsonProcessingException {
+        Map<String, Set<String>> result = new LinkedHashMap<>();
+        List<String> wanted = boundaryCodes == null ? Collections.emptyList()
+                : boundaryCodes.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(code -> !code.isEmpty())
+                        .distinct()
+                        .collect(Collectors.toList());
+        if (wanted.isEmpty()) {
             return result;
         }
 
-        Set<String> targetCodes = new HashSet<>(boundaryCodes);
+        JsonNode root = objectMapper.readTree(getBoundaryData(wanted));
+        Map<String, JsonNode> byCode = new HashMap<>();
+        // Walk every tenant and every root boundary. The previous version read TenantBoundary[0] only,
+        // which threw on an empty response.
+        for (JsonNode tenantBoundary : root.path("TenantBoundary")) {
+            for (JsonNode boundary : tenantBoundary.path("boundary")) {
+                indexByCode(boundary, byCode);
+            }
+        }
 
-        JsonNode boundaries = rootNode
-                .path("TenantBoundary")
-                .get(0)
-                .path("boundary");
-
-        for (JsonNode node : boundaries) {
-            findAndCollect(node, targetCodes, result);
+        for (String code : wanted) {
+            Set<String> facilities = new LinkedHashSet<>();
+            JsonNode node = byCode.get(code);
+            if (node != null) {
+                collectFacilitiesRecursive(node, facilities);
+            } else {
+                log.warn("Boundary code {} is not in the {} hierarchy; it selects no descendants",
+                        code, boundaryHierarchyType);
+            }
+            result.put(code, facilities);
         }
         return result;
     }
 
-    private boolean findAndCollect(
-            JsonNode node,
-            Set<String> boundaryCodes,
-            List<String> result
-    ) {
-        String code = node.path("code").asText();
-
-        // Si on a trouvé le bon niveau et le bon code
-        if (boundaryCodes.contains(code)) {
-            collectFacilitiesRecursive(node, result);
-            return true; // Stop la recherche
+    /**
+     * Facility-level codes at or beneath one boundary, for callers holding a single grant.
+     *
+     * A Facility-level boundary resolves to itself without calling boundary-service at all, which is
+     * the common case for vendor and facility-POC users.
+     */
+    public Set<String> expandToFacilityCodes(String boundaryCode, String boundaryType) throws JsonProcessingException {
+        if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
+            return Collections.emptySet();
         }
+        String code = boundaryCode.trim();
+        if (FACILITY_BOUNDARY_TYPE.equalsIgnoreCase(boundaryType)) {
+            return Collections.singleton(code);
+        }
+        Set<String> facilities = facilityCodesBeneath(Collections.singletonList(code))
+                .getOrDefault(code, Collections.emptySet());
+        return new LinkedHashSet<>(facilities);
+    }
 
-        // Continue à chercher dans les enfants
+    /** Indexes every node in the subtree by its code, so a later lookup needs no second walk. */
+    private static void indexByCode(JsonNode node, Map<String, JsonNode> index) {
+        JsonNode codeNode = node.get("code");
+        if (codeNode != null) {
+            index.putIfAbsent(codeNode.asText(), node);
+        }
         JsonNode children = node.path("children");
         if (children.isArray()) {
             for (JsonNode child : children) {
-                if (findAndCollect(child, boundaryCodes, result)) {
-                    return true;
-                }
+                indexByCode(child, index);
             }
         }
-        return false;
     }
 
-    private void collectFacilitiesRecursive(JsonNode node, List<String> result) {
-
-        if ("Facility".equalsIgnoreCase(node.path("boundaryType").asText())) {
-            String fullCode = node.path("code").asText();
-            result.add(fullCode);
+    /**
+     * Collects the Facility-type codes at or beneath this node.
+     *
+     * Visits every sibling. The previous version stopped the whole search at the first match, so a
+     * filter naming several boundaries resolved only the first one found in each subtree.
+     */
+    private static void collectFacilitiesRecursive(JsonNode node, Set<String> result) {
+        if (FACILITY_BOUNDARY_TYPE.equalsIgnoreCase(node.path("boundaryType").asText())) {
+            result.add(node.path("code").asText());
             return;
         }
-
         JsonNode children = node.path("children");
         if (children.isArray()) {
             for (JsonNode child : children) {
@@ -426,4 +452,3 @@ public class BoundaryUtil {
     }
 
 }
-
