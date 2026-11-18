@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import '../../lib/widgets/form_time_field.dart';
+import '../../lib/utils/form_time_value.dart';
+import 'package:digit_forms_engine/models/property_schema/property_schema.dart';
+import 'package:digit_forms_engine/json_forms.dart';
 
 void main() {
   Future<FormGroup> render(
@@ -9,7 +12,15 @@ void main() {
     String value, {
     bool readOnly = false,
   }) async {
-    final form = FormGroup({'time': FormControl<String>(value: value)});
+    final page = PropertySchema.fromJson(adaptTimeSchema({
+      'type': 'object',
+      'properties': {
+        'time': {'type': 'string', 'format': 'time'}
+      },
+    }));
+    final form = FormGroup(JsonForms.getFormControls(page));
+    form.control('time').value = value;
+    normalizeTimeControls(form, page);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -45,15 +56,18 @@ void main() {
     expect(form.control('time').touched, isTrue);
   });
 
-  testWidgets('cancel preserves invalid legacy text', (tester) async {
+  testWidgets('invalid prefill is blank and cancelling leaves it blank',
+      (tester) async {
     final form = await render(tester, 'legacy text');
     await tester.tap(find.byType(TextField));
     await tester.pumpAndSettle();
     expect(find.byType(TimePickerDialog), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(form.control('time').value, 'legacy text');
-    expect(find.text('legacy text'), findsOneWidget);
+    expect(form.control('time').value, isNull);
+    expect(find.text('legacy text'), findsNothing);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty);
   });
 
   testWidgets('read-only field displays saved time without opening picker', (

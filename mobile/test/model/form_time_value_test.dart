@@ -61,8 +61,21 @@ void main() {
       expect(normalizeTimeValue(entry.key), entry.value);
     }
     expect(normalizeTimeValue(DateTime.utc(2026, 11, 18, 9, 5)), '09:05');
-    for (final value in [null, '', 'bad', '24:00', '12:60', '2026-11-18']) {
-      expect(normalizeTimeValue(value), value);
+    for (final value in [
+      null,
+      '',
+      '   ',
+      'bad',
+      '24:00',
+      '12:60',
+      '12:30:99',
+      '2026-11-18',
+      '2026-11-18T24:00:00Z',
+      123,
+      true,
+      <String, dynamic>{},
+    ]) {
+      expect(normalizeTimeValue(value), isNull);
     }
   });
 
@@ -76,6 +89,12 @@ void main() {
     expect(form.control('arbitrary_new_key').valid, isTrue);
     form.control('arbitrary_new_key').value = 'not a time';
     expect(form.control('arbitrary_new_key').invalid, isTrue);
+    normalizeTimeControls(form, page);
+    expect(form.control('arbitrary_new_key').value, isNull);
+    expect(form.control('arbitrary_new_key').valid, isTrue);
+    expect(
+        formValueForStorage(page.properties!['arbitrary_new_key']!, 'invalid'),
+        isNull);
     form.control('arbitrary_new_key').value = '';
     expect(form.control('arbitrary_new_key').valid, isTrue);
     expect(
@@ -93,5 +112,29 @@ void main() {
       formValueForStorage(page.properties!['text']!, '2026-11-18T14:30:00Z'),
       '2026-11-18T14:30:00Z',
     );
+  });
+
+  test(
+      'invalid schema defaults are blank and required times still need selection',
+      () {
+    final raw = schema();
+    final fields = raw['pages']['page']['properties'] as Map;
+    fields['arbitrary_new_key'] = <String, Object>{
+      ...fields['arbitrary_new_key'] as Map,
+      'value': 'TESTT invalid imported time',
+      'validations': [
+        {'type': 'required', 'value': true}
+      ],
+    };
+    final page = SchemaObject.fromJson(adaptTimeSchema(raw)).pages['page']!;
+    final form = FormGroup(JsonForms.getFormControls(page));
+    normalizeTimeControls(form, page);
+    expect(form.control('arbitrary_new_key').value, isNull);
+    expect(
+        form.control('arbitrary_new_key').hasError(ValidationMessage.required),
+        isTrue);
+    expect(fields['arbitrary_new_key']['value'], 'TESTT invalid imported time');
+    form.control('arbitrary_new_key').value = '09:05';
+    expect(form.control('arbitrary_new_key').valid, isTrue);
   });
 }

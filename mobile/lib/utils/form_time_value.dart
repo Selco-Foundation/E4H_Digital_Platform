@@ -40,13 +40,13 @@ Map<String, dynamic> adaptTimeSchema(Map<String, dynamic> schema) {
   return adapt(schema) as Map<String, dynamic>;
 }
 
-/// Keep the written clock components, including for offset-bearing timestamps.
-dynamic normalizeTimeValue(dynamic value) {
+/// Return HH:mm without timezone conversion, or null for blank/invalid values.
+String? normalizeTimeValue(dynamic value) {
   if (value is DateTime) {
     return '${value.hour.toString().padLeft(2, '0')}:'
         '${value.minute.toString().padLeft(2, '0')}';
   }
-  if (value is! String || value.trim().isEmpty) return value;
+  if (value is! String || value.trim().isEmpty) return null;
   final text = value.trim();
   final clock = RegExp(
     r'^(\d{1,2}):(\d{2})(?::[0-5]\d(?:\.\d+)?)?$',
@@ -55,10 +55,10 @@ dynamic normalizeTimeValue(dynamic value) {
     r'^\d{4}-\d{2}-\d{2}[T ](\d{2}):(\d{2})(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$',
   ).firstMatch(text);
   final match = clock ?? timestamp;
-  if (match == null) return value;
+  if (match == null) return null;
   final hour = int.parse(match[1]!);
   final minute = int.parse(match[2]!);
-  if (hour > 23 || minute > 59) return value;
+  if (hour > 23 || minute > 59) return null;
   return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 }
 
