@@ -67,7 +67,8 @@ const useOrganization = (filter, limit, offset, fixedOrgType) => {
 
   const searchCriteria = {};
 
-  if (organizationSearchQuery.name) searchCriteria.name = organizationSearchQuery.name;
+  // Matched against name OR code by the backend.
+  if (organizationSearchQuery.searchText) searchCriteria.searchText = organizationSearchQuery.searchText;
 
   if (fixedOrgType) searchCriteria.orgType = fixedOrgType;
 

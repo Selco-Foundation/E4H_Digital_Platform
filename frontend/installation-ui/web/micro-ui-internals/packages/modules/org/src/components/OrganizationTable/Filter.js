@@ -5,32 +5,32 @@ import CustomFilterIcon from "../Custom/CustomFilterIcon";
 
 const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
   const initialSearch =
-    (projectQueryFilter && projectQueryFilter.organizationSearch) || { name: "" };
+    (projectQueryFilter && projectQueryFilter.organizationSearch && projectQueryFilter.organizationSearch.searchText) ||  "" ;
 
-  const [name, setName] = useState(initialSearch.name || "");
+  const [searchText, setSearchText] = useState(initialSearch);
 
   useEffect(() => {
     const next =
       (projectQueryFilter &&
         projectQueryFilter.organizationSearch &&
-        projectQueryFilter.organizationSearch.name) ||
+        projectQueryFilter.organizationSearch.searchText) ||
       "";
-    setName(next || "");
+    setSearchText(next || "");
   }, [
     projectQueryFilter &&
     projectQueryFilter.organizationSearch &&
-    projectQueryFilter.organizationSearch.name,
+    projectQueryFilter.organizationSearch.searchText,
   ]);
 
-  const debouncedName = useMemo(() => name, [name]);
+  const debouncedName = useMemo(() => searchText, [searchText]);
 
   useEffect(() => {
     const id = setTimeout(() => {
       const trimmed = (debouncedName || "").trim();
-      const organizationSearchQuery = trimmed ? { name: trimmed } : {};
+      const organizationSearchQuery = trimmed ? { searchText: trimmed } : {};
 
       onFilterChange({
-        organizationSearch: { name: debouncedName || "" },
+        organizationSearch: { searchText: debouncedName || "" },
         organizationSearchQuery: organizationSearchQuery,
       });
     }, 350);
@@ -39,7 +39,7 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
   }, [debouncedName]);
 
   const onClearAll = () => {
-    setName("");
+    setSearchText("");
   };
 
   return (
@@ -89,11 +89,11 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
         </div>
 
         <div style={{ marginBottom: "16px" }}>
-          <div className="filter-label">{t("ORG_SEARCH_NAME")}</div>
+          <div className="filter-label">{t("ORG_SEARCH_NAME_OR_CODE")}</div>
           <TextInput
-            value={name}
-            onChange={(e) => setName((e && e.target && e.target.value) || "")}
-            placeholder={t("ORG_SEARCH_NAME_PLACEHOLDER")}
+            value={searchText}
+            onChange={(e) => setSearchText((e && e.target && e.target.value) || "")}
+            placeholder={t("ORG_SEARCH_NAME_OR_CODE_PLACEHOLDER")}
             style={{ width: "100%" }}
           />
         </div>
