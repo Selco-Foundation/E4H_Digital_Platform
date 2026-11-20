@@ -1,6 +1,6 @@
 import React from "react";
 import getRootReducer from "./redux/reducers";
-import { ORG_PLATFORM_ADMIN, VENDOR_ADMIN } from "./constants/Roles";
+import { ORG_ADMIN, ORG_PLATFORM_ADMIN, VENDOR_ADMIN } from "./constants/Roles";
 import EmployeeApp from "./App";
 import { Loader } from "@egovernments/digit-ui-react-components";
 import ORGCard from "./components/ORGCard";
@@ -23,8 +23,10 @@ const ORGModule = ({ stateCode, userType, tenants }) => {
   // VENDOR_ADMIN, which is current, and AMC_VENDOR_ADMIN, which is not. Matching the name
   // admitted the dead one as well.
   const isVendorAdminUser = currentUserRoles.some((role) => role?.code === VENDOR_ADMIN);
+  //ORG_ADMIN manages one Platform Org, the same way VENDOR_ADMIN manages one Vendor Org.
+  const isOrgAdminUser = currentUserRoles.some((role) => role?.code === ORG_ADMIN);
 
-  if (!currentUserRoleCodes?.includes(ORG_PLATFORM_ADMIN) && !isVendorAdminUser) {
+  if (!currentUserRoleCodes?.includes(ORG_PLATFORM_ADMIN) && !isVendorAdminUser && !isOrgAdminUser) {
     return null;
   }
 

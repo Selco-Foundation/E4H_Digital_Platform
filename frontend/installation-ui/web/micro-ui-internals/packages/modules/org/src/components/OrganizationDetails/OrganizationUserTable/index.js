@@ -10,6 +10,11 @@ import UserModal from "./UserModal";
 import {VendorService} from "../../../services/Vendor";
 import CommonUtils from "../../../utilities/CommonUtils";
 
+import CustomKeyIcon from "../../Custom/CustomKeyIcon";
+import ResetPasswordModal from "./ResetPasswordModal";
+import { getResetPasswordLabel } from "./resetPasswordLabels";
+import { canManageOrgUser, canResetOrgUserPassword } from "../../../utilities/orgAdminRoles";
+
 const OrganizationUserTable = ({ t, organizationId, organizationType, organizationSubType }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -23,6 +28,9 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
   const queryClient = useQueryClient();
+  // the row whose password is being reset (null = modal closed), and who is looking.
+  const [userToReset, setUserToReset] = useState(null);
+  const currentUserInfo = Digit.UserService.getUser()?.info;
 
   useEffect(() => {
     if (toast) {
@@ -165,6 +173,9 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
     {
       Header: t("ORG_USER_ACTIONS"),
       Cell: ({ row }) => {
+        // an ORG_ADMIN gets no actions on a Platform Admin's row - ORG_PLATFORM_ADMIN is not
+        // in their role list, so saving the edit form would silently strip it. Others: unchanged.
+        if (!canManageOrgUser(currentUserInfo?.roles, row.original)) return GetCell("-");
         return (
           <div>
             <button
@@ -192,6 +203,22 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
             >
               <CustomDustbinIcon colourFill={"#bc210a"} />
             </button>
+            {/*shown only when ROLE allows the reset - see canResetOrgUserPassword. */}
+            {canResetOrgUserPassword(currentUserInfo, row.original) && (
+              <button
+                type="button"
+                title={getResetPasswordLabel(t, "ORG_RESET_PWD_ACTION")}
+                aria-label={getResetPasswordLabel(t, "ORG_RESET_PWD_ACTION")}
+                style={{
+                  paddingTop: "3px",
+                  background: "none",
+                  marginLeft: "5px",
+                }}
+                onClick={() => setUserToReset(row.original)}
+              >
+                <CustomKeyIcon />
+              </button>
+            )}
           </div>
         );
       },
@@ -348,6 +375,9 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
           formToast={formToast}
           setFormToast={setFormToast}
         />
+      )}
+      {userToReset && (
+        <ResetPasswordModal t={t} user={userToReset} organizationId={organizationId} onClose={() => setUserToReset(null)} />
       )}
       {toast && (
         <Toast

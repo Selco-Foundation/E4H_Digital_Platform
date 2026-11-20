@@ -1,4 +1,4 @@
-/**
+  /**
  * Role codes this module gates on - see Module.js, ORGCard.js and pages/employee/index.js.
  *
  * Codes rather than names, because names are not unique in MDMS: `VENDOR_ADMIN` and the retired
@@ -11,3 +11,9 @@ export const ORG_PLATFORM_ADMIN = "ORG_PLATFORM_ADMIN";
 
 /** Manages the users of their own vendor organisation, within their own jurisdictions. */
 export const VENDOR_ADMIN = "VENDOR_ADMIN";
+
+/**
+ * NOT the same as ORG_PLATFORM_ADMIN above - the two codes share words, and mixing them up
+ * silently grants platform-wide access. Gate on it through utilities/orgAdminRoles.js.
+ */
+export const ORG_ADMIN = "ORG_ADMIN";

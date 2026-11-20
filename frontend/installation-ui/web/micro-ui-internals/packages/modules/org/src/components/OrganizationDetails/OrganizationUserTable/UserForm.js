@@ -12,6 +12,7 @@ import {
   collapseRoleCodesToGroups,
   pruneAssignmentGroups,
 } from "../../../utilities/jurisdictionRoles";
+import { getAssignableRoleGroups } from "../../../utilities/orgAdminRoles";
 
 /**
  * A saved jurisdiction stores only its own boundary code and type. The add-assignment
@@ -67,7 +68,9 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const [pageOffset, setPageOffset] = useState(0);
   const [jurisdictionSearch, setJurisdictionSearch] = useState("");
   const [debouncedJurisdictionSearch, setDebouncedJurisdictionSearch] = useState("");
-  const isPlatformOrgAdmin = (info?.roles || []).map((role) => role?.code).includes("ORG_PLATFORM_ADMIN");
+  // The PLATFORM ADMIN (ORG_PLATFORM_ADMIN), not the org-scoped ORG_ADMIN - renamed from
+  // `isPlatformOrgAdmin`, which read like the new role and invited wiring it into the wrong gate.
+  const isPlatformAdminUser = (info?.roles || []).map((role) => role?.code).includes("ORG_PLATFORM_ADMIN");
   const [totalAssignmentsToDisplay, setTotalAssignmentsToDisplay] = useState(0);
   const [selectedRoleGroups, setSelectedRoleGroups] = useState([]);
 
@@ -255,7 +258,10 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
               error: t("CORE_COMMON_REQUIRED"),
               optionsKey: "name",
               required: true,
-              options: roleGroups,
+              // an ORG_ADMIN is not offered ORG_PLATFORM_ADMIN; everyone else sees the
+              // same list as before. Only the OPTIONS are filtered - `roleGroups` itself still
+              // drives the edit defaults and the jurisdiction role chips unchanged.
+              options: getAssignableRoleGroups(roleGroups, info?.roles),
             },
           },
         ],
@@ -675,7 +681,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           onClose={() => setFormToast(null)}
         />
       )}
-      {isPlatformOrgAdmin && (
+      {isPlatformAdminUser && (
         <div style={{ marginBottom: "30px", padding: "10px" }}>
           <h2 style={{
             margin: 0,

@@ -4,7 +4,7 @@ import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
 import OrganizationDetails from "./OrganizationDetails";
-import { VENDOR_ADMIN } from "../../constants/Roles";
+import { ORG_ADMIN, VENDOR_ADMIN } from "../../constants/Roles";
 import VendorOrganization from "./VendorOrgTable";
 import PlatformOrganization from "./PlatformOrgTable"
 
@@ -20,6 +20,8 @@ const ORGApp = () => {
   // VENDOR_ADMIN, which is current, and AMC_VENDOR_ADMIN, which is not. Matching the name
   // admitted the dead one as well.
   const isVendorAdminUser = currentUserRoles.some((role) => role?.code === VENDOR_ADMIN);
+  // ORG_ADMIN, like VENDOR_ADMIN, has one org and no org list - so no "Organizations" crumb.
+  const isOrgAdminUser = currentUserRoles.some((role) => role?.code === ORG_ADMIN);
 
   const breadCrumbsConfig = {
     home: {
@@ -73,7 +75,7 @@ const ORGApp = () => {
         <Route path={`${path}/organizations/:organizationId/details`} exact={true}>
           <BreadCrumb
             spanStyle={{ color: "#0B0C0C" }}
-            crumbs={[breadCrumbsConfig.home, ...(isVendorAdminUser ? [] : [breadCrumbsConfig.organizations]), breadCrumbsConfig.organizationDetails]}
+            crumbs={[breadCrumbsConfig.home, ...((isVendorAdminUser || isOrgAdminUser) ? [] : [breadCrumbsConfig.organizations]), breadCrumbsConfig.organizationDetails]}
           />
           <OrganizationDetails />
         </Route>
