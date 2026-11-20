@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Route, Switch, useRouteMatch } from "react-router-dom";
 import ChangePasswordComponent from "./changePassword";
 import { config } from "./config";
+import ForcedChangePassword from "./forcedChangePassword";
 
 const EmployeeChangePassword = () => {
   const { t } = useTranslation();
@@ -25,6 +26,10 @@ const EmployeeChangePassword = () => {
     <Switch>
       <Route path={`${path}`} exact>
         <ChangePasswordComponent config={params[0]} t={t} />
+      </Route>
+      {/* MH2-10: forced change on first login (logged-in `_update`, not the OTP flow above). */}
+      <Route path={`${path}/required`} exact>
+        <ForcedChangePassword />
       </Route>
     </Switch>
   );

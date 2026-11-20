@@ -12,6 +12,7 @@ import ErrorComponent from "../../components/ErrorComponent";
 import { PrivateRoute } from "@selco/digit-ui-react-components";
 import { useSelector } from "react-redux";
 import TermsPrivacyPolicy from "./TermsPrivacyPolicy";
+import { getPasswordChangeRedirect } from "../../utilities/passwordChangeRequired";
 
 const userScreensExempted = ["user/profile", "user/error"];
 
@@ -54,6 +55,12 @@ const EmployeeApp = ({
       setLogos([...baseLogos, ...stateLogos]);
     }
   }, [stateLogos]);
+
+  // MH2-10: while the backend says this user must change their password, every employee route
+  // except the change screen (and login) redirects to it. Gating the route - not hiding the
+  // navigation - means a typed URL, Back or a refresh cannot get around it.
+  const passwordChangeRedirect = getPasswordChangeRedirect(location.pathname);
+  if (passwordChangeRedirect) return <Redirect to={passwordChangeRedirect} />;
 
   return (
     <div className="employee">
