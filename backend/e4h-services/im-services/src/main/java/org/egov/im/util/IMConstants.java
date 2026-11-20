@@ -137,6 +137,13 @@ public class IMConstants {
 
     public static final String IM_WF_ON_HOLD = "ON_HOLD";
 
+    public static final String SYSTEM_FUNCTIONAL_FUNCTIONAL = "FUNCTIONAL";
+
+    public static final String SYSTEM_FUNCTIONAL_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+
+    /** systemFunctional of a ticket while it sits in {@link #OUT_OF_WARRANTY_ON_HOLD}. */
+    public static final String SYSTEM_FUNCTIONAL_ON_HOLD = "ON_HOLD";
+
     public static final String ON_HOLD_REASON_FUND_UNAVAILABLE = "ON_HOLD_REASON_FUND_UNAVAILABLE";
 
     public static final String ON_HOLD_REASON_OTHER = "ON_HOLD_REASON_OTHER";

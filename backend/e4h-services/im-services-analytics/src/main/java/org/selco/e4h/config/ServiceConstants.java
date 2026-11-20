@@ -16,4 +16,5 @@ public class ServiceConstants {
 	public static final String CREATED_DATE_PATH = "$.auditDetails.createdDate";
 	public static final String NON_FUNCTIONAL = "NON_FUNCTIONAL";
 	public static final String FUNCTIONAL = "FUNCTIONAL";
+	public static final String ON_HOLD = "ON_HOLD";
 }
