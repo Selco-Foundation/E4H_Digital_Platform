@@ -69,6 +69,10 @@ public class IMServiceRequest {
         @JsonProperty("boundaryCode")
         private String boundaryCode;
 
+        // MDMS Incident.Component code, used by im-services' duplicate check by facility + component
+        @JsonProperty("component")
+        private String component;
+
         @JsonProperty("additionalDetail")
         private Map<String, Object> additionalDetail;
 

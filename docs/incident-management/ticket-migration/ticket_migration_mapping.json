@@ -1,0 +1,1822 @@
+[
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Burnt",
+    "newType": "Array Junction Box",
+    "newSubType": "Burnt"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Array Junction Box",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Mcb Failure",
+    "newType": "Array Junction Box",
+    "newSubType": "Mcb Failure"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Mishandling",
+    "newType": "Array Junction Box",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Other",
+    "newType": "Array Junction Box",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "SPD Burnt",
+    "newType": "Array Junction Box",
+    "newSubType": "SPD Burnt"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Tripped",
+    "newType": "Array Junction Box",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Acid Leakage",
+    "newType": "Battery",
+    "newSubType": "Acid Leakage"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Battery Disconnected",
+    "newType": "Battery",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Breakage Of Caps",
+    "newType": "Battery",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Burnt",
+    "newType": "Battery",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Deep Discharge",
+    "newType": "Battery",
+    "newSubType": "Deep Discharge"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Battery",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Dust",
+    "newType": "Battery",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Fast Draining Of Distilled Water",
+    "newType": "Battery",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "High Voltage",
+    "newType": "Battery",
+    "newSubType": "High Voltage"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Low Backup",
+    "newType": "Battery",
+    "newSubType": "Low Backup"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Low battery water",
+    "newType": "Battery",
+    "newSubType": "Low battery water"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Low Petroleum Gel",
+    "newType": "Battery",
+    "newSubType": "Low Petroleum Gel"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Mishandling",
+    "newType": "Battery",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Other",
+    "newType": "Battery",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Overcharge",
+    "newType": "Battery",
+    "newSubType": "Overcharge"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Physical Damage",
+    "newType": "Battery",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Battery",
+    "oldSubType": "Rack Issue",
+    "newType": "Battery",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Cables",
+    "oldSubType": "Burnt",
+    "newType": "Cables",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Cables",
+    "oldSubType": "Damaged",
+    "newType": "Cables",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Cables",
+    "oldSubType": "Load Wiring Issues",
+    "newType": "Cables",
+    "newSubType": "Load Wiring Issues"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Cables",
+    "oldSubType": "Mishandling",
+    "newType": "Cables",
+    "newSubType": "Loose/Disconnected"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Cables",
+    "oldSubType": "Other",
+    "newType": "Cables",
+    "newSubType": "Loose/Disconnected"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Burnt",
+    "newType": "Change Over Switch",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Damaged",
+    "newType": "Change Over Switch",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Mishandling",
+    "newType": "Change Over Switch",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Not Working",
+    "newType": "Change Over Switch",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Other",
+    "newType": "Change Over Switch",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Burnt (or) Damaged",
+    "newType": "Charge Controller",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Continuous buzzer",
+    "newType": "Charge Controller",
+    "newSubType": "Continuous buzzer"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Disconnected by Health Centre",
+    "newType": "Charge Controller",
+    "newSubType": "Disconnected by Facility"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Display broken",
+    "newType": "Charge Controller",
+    "newSubType": "Display broken"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Error code on display",
+    "newType": "Charge Controller",
+    "newSubType": "Error code on display"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Error Light Indicators (Red & Orange)",
+    "newType": "Charge Controller",
+    "newSubType": "Error Light Indicators (Red & Orange)"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Input & Output Cable Damage",
+    "newType": "Charge Controller",
+    "newSubType": "Damaged Cables"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Input & Output Cable disconnected or loose cables",
+    "newType": "Charge Controller",
+    "newSubType": "Loose/Disconnected Cables"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "No Display",
+    "newType": "Charge Controller",
+    "newSubType": "Display broken"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Charge Controller",
+    "oldSubType": "Non readable display characters",
+    "newType": "Charge Controller",
+    "newSubType": "Error code on display"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Broken",
+    "newType": "Earthing Connection",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Burnt",
+    "newType": "Earthing Connection",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Earthing Connection",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Mishandling",
+    "newType": "Earthing Connection",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Other",
+    "newType": "Earthing Connection",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Burnt",
+    "newType": "Earthing Pit",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Damaged",
+    "newType": "Earthing Pit",
+    "newSubType": "Burnt/Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Mishandling",
+    "newType": "Earthing Pit",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Other",
+    "newType": "Earthing Pit",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "GIPB",
+    "oldSubType": "Burnt",
+    "newType": "GIPB",
+    "newSubType": "Burnt/ Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "GIPB",
+    "oldSubType": "Disconnected Cable",
+    "newType": "GIPB",
+    "newSubType": "Burnt/ Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "GIPB",
+    "oldSubType": "Mcb Failure",
+    "newType": "GIPB",
+    "newSubType": "Mcb Failure"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "GIPB",
+    "oldSubType": "Mishandling",
+    "newType": "GIPB",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "GIPB",
+    "oldSubType": "Other",
+    "newType": "GIPB",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "GIPB",
+    "oldSubType": "Tripped",
+    "newType": "GIPB",
+    "newSubType": "Tripped"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Grid",
+    "oldSubType": "High Voltage",
+    "newType": "Grid",
+    "newSubType": "High Voltage"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Grid",
+    "oldSubType": "Reverse Voltage",
+    "newType": "Grid",
+    "newSubType": "Reverse Voltage"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "I Cannot Identify The Issue",
+    "oldSubType": "Technician Visit Needed",
+    "newType": "I Cannot Identify The Issue",
+    "newSubType": "Technician Visit Needed"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Abnormal Sound",
+    "newType": "Inverter",
+    "newSubType": "Beeping sound"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Continuous Buzzer",
+    "newType": "Inverter",
+    "newSubType": "Beeping sound"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Inverter",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Dismantled By HC",
+    "newType": "Inverter",
+    "newSubType": "Disconnected by Facility"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Display Issue",
+    "newType": "Inverter",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Electric Shock",
+    "newType": "Inverter",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Error Code On Display",
+    "newType": "Inverter",
+    "newSubType": "Error Code On Display"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Fan Issue",
+    "newType": "Inverter",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "High Voltage",
+    "newType": "Inverter",
+    "newSubType": "High Voltage"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Mishandling",
+    "newType": "Inverter",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Shutdown",
+    "newType": "Inverter",
+    "newSubType": "Shutdown"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Tripped",
+    "newType": "Inverter",
+    "newSubType": "Tripped"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Inverter",
+    "oldSubType": "Other",
+    "newType": "Inverter",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Broken",
+    "newType": "Lightning Arrestor",
+    "newSubType": "Burnt/ Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Burnt",
+    "newType": "Lightning Arrestor",
+    "newSubType": "Burnt/ Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Lightning Arrestor",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Mishandling",
+    "newType": "Lightning Arrestor",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Other",
+    "newType": "Lightning Arrestor",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Crack",
+    "newType": "Solar Panel",
+    "newSubType": "Broken"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Solar Panel",
+    "newSubType": "Loose"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Dismantled By HC",
+    "newType": "Solar Panel",
+    "newSubType": "Disconnected by Facility"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Displaced",
+    "newType": "Solar Panel",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Dust",
+    "newType": "Solar Panel",
+    "newSubType": "Dust"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Hotspot",
+    "newType": "Solar Panel",
+    "newSubType": "Hotspot"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Low Generation",
+    "newType": "Solar Panel",
+    "newSubType": "Low Generation"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Mishandling",
+    "newType": "Solar Panel",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Other",
+    "newType": "Solar Panel",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Running on Grid",
+    "newType": "Solar Panel",
+    "newSubType": "On Grid"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Panel",
+    "oldSubType": "Shade",
+    "newType": "Solar Panel",
+    "newSubType": "Not Generating Power"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Reinstall",
+    "oldSubType": "Solar System",
+    "newType": "Reinstall",
+    "newSubType": "Solar System"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "RMS Device",
+    "oldSubType": "Disconnected Cable",
+    "newType": "RMS Device",
+    "newSubType": "Disconnected Cable"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "RMS Device",
+    "oldSubType": "Display Issue",
+    "newType": "RMS Device",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "RMS Device",
+    "oldSubType": "Physical Damage",
+    "newType": "RMS Device",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "AJB",
+    "newType": "Shifting",
+    "newSubType": "AJB"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Battery",
+    "newType": "Shifting",
+    "newSubType": "Battery"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Change Over Switch",
+    "newType": "Shifting",
+    "newSubType": "Change Over Switch"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Charge Controller",
+    "newType": "Shifting",
+    "newSubType": "Charge Controller"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Earthing Connections",
+    "newType": "Shifting",
+    "newSubType": "Earthing Connections"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Earthing Pit",
+    "newType": "Shifting",
+    "newSubType": "Earthing Pit"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "GIPB",
+    "newType": "Shifting",
+    "newSubType": "GIPB"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Inverter",
+    "newType": "Shifting",
+    "newSubType": "Inverter"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Lightning Arrestor",
+    "newType": "Shifting",
+    "newSubType": "Lightning Arrestor"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Load Wiring",
+    "newType": "Shifting",
+    "newSubType": "Load Wiring"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Other",
+    "newType": "Shifting",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Panel",
+    "newType": "Shifting",
+    "newSubType": "Solar Panel"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Solar System",
+    "newType": "Shifting",
+    "newSubType": "Solar System"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Solar Water Heater",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Shifting",
+    "oldSubType": "Solar Water Pump",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Abnormal Sound",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Burnt",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Mishandling",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Not Working",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Other",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Abnormal Sound",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Burnt",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Mishandling",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Not Working",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Other",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Battery",
+    "newType": "Theft",
+    "newSubType": "Battery"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Earthing Connection",
+    "newType": "Theft",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Inverter",
+    "newType": "Theft",
+    "newSubType": "Inverter"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Panel",
+    "newType": "Theft",
+    "newSubType": "Solar Panel"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Theft",
+    "oldSubType": "Theft of RMS",
+    "newType": "Theft",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "CRM",
+    "oldType": "Uninstall",
+    "oldSubType": "Solar System",
+    "newType": "Uninstall",
+    "newSubType": "Solar System"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Burnt",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Mcb Failure",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Mishandling",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Other",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "SPD Burnt",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Array Junction Box",
+    "oldSubType": "Tripped",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Acid Leakage",
+    "newType": "Battery",
+    "newSubType": "Leakage / Physical Damage"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Battery Disconnected",
+    "newType": "Battery",
+    "newSubType": "Not Holding Charge"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Breakage Of Caps",
+    "newType": "Battery",
+    "newSubType": "Leakage / Physical Damage"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Burnt",
+    "newType": "Battery",
+    "newSubType": "Leakage / Physical Damage"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Deep Discharge",
+    "newType": "Battery",
+    "newSubType": "Not Holding Charge"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Battery",
+    "newSubType": "Not Holding Charge"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Dust",
+    "newType": "Battery",
+    "newSubType": "Not Holding Charge"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Fast Draining Of Distilled Water",
+    "newType": "Battery",
+    "newSubType": "Water Level Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "High Voltage",
+    "newType": "Battery",
+    "newSubType": "Not Holding Charge"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Low Backup",
+    "newType": "Battery",
+    "newSubType": "Not Holding Charge"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Low battery water",
+    "newType": "Battery",
+    "newSubType": "Water Level Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Low Petroleum Gel",
+    "newType": "Battery",
+    "newSubType": "Water Level Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Mishandling",
+    "newType": "Battery",
+    "newSubType": "Leakage / Physical Damage"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Other",
+    "newType": "Battery",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Overcharge",
+    "newType": "Battery",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Physical Damage",
+    "newType": "Battery",
+    "newSubType": "Leakage / Physical Damage"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Battery",
+    "oldSubType": "Rack Issue",
+    "newType": "Battery",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Cables",
+    "oldSubType": "Burnt",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Cables",
+    "oldSubType": "Damaged",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Cables",
+    "oldSubType": "Load Wiring Issues",
+    "newType": "Cable",
+    "newSubType": "Loose / Disconnected"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Cables",
+    "oldSubType": "Mishandling",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Cables",
+    "oldSubType": "Other",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Burnt",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Damaged",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Mishandling",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Not Working",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Change Over Switch",
+    "oldSubType": "Other",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Burnt (or) Damaged",
+    "newType": "Charge Controller",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Continuous buzzer",
+    "newType": "Charge Controller",
+    "newSubType": "Beeping sound"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Disconnected by Health Centre",
+    "newType": "Charge Controller",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Display broken",
+    "newType": "Charge Controller",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Error code on display",
+    "newType": "Charge Controller",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Error Light Indicators (Red & Orange)",
+    "newType": "Charge Controller",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Input & Output Cable Damage",
+    "newType": "Charge Controller",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Input & Output Cable disconnected or loose cables",
+    "newType": "Charge Controller",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "No Display",
+    "newType": "Charge Controller",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Charge Controller",
+    "oldSubType": "Non readable display characters",
+    "newType": "Charge Controller",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Broken",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Burnt",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Cable",
+    "newSubType": "Loose / Disconnected"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Mishandling",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Connection",
+    "oldSubType": "Other",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Burnt",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Damaged",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Mishandling",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Earthing Pit",
+    "oldSubType": "Other",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "GIPB",
+    "oldSubType": "Burnt",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "GIPB",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Cable",
+    "newSubType": "Loose / Disconnected"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "GIPB",
+    "oldSubType": "Mcb Failure",
+    "newType": "Cable",
+    "newSubType": "Loose / Disconnected"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "GIPB",
+    "oldSubType": "Mishandling",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "GIPB",
+    "oldSubType": "Other",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "GIPB",
+    "oldSubType": "Tripped",
+    "newType": "Cable",
+    "newSubType": "Loose / Disconnected"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Grid",
+    "oldSubType": "High Voltage",
+    "newType": "Additional Support Required",
+    "newSubType": "Call Back from CRM"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Grid",
+    "oldSubType": "Reverse Voltage",
+    "newType": "Additional Support Required",
+    "newSubType": "Call Back from CRM"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "I Cannot Identify The Issue",
+    "oldSubType": "Technician Visit Needed",
+    "newType": "Additional Support Required",
+    "newSubType": "Call Back from CRM"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Abnormal Sound",
+    "newType": "Inverter",
+    "newSubType": "Beeping sound"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Continuous Buzzer",
+    "newType": "Inverter",
+    "newSubType": "Beeping sound"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Inverter",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Dismantled By HC",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Display Issue",
+    "newType": "Inverter",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Electric Shock",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Error Code On Display",
+    "newType": "Inverter",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Fan Issue",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "High Voltage",
+    "newType": "Inverter",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Mishandling",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Shutdown",
+    "newType": "Inverter",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Tripped",
+    "newType": "Inverter",
+    "newSubType": "Not Working"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Inverter",
+    "oldSubType": "Other",
+    "newType": "Inverter",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Broken",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Burnt",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Cable",
+    "newSubType": "Loose / Disconnected"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Mishandling",
+    "newType": "Cable",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Lightning Arrestor",
+    "oldSubType": "Other",
+    "newType": "Cable",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Crack",
+    "newType": "Solar Panel",
+    "newSubType": "Broken"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Solar Panel",
+    "newSubType": "Loose"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Dismantled By HC",
+    "newType": "Solar Panel",
+    "newSubType": "Other issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Displaced",
+    "newType": "Solar Panel",
+    "newSubType": "Loose"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Dust",
+    "newType": "Solar Panel",
+    "newSubType": "Other issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Hotspot",
+    "newType": "Solar Panel",
+    "newSubType": "Not Generating Power"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Low Generation",
+    "newType": "Solar Panel",
+    "newSubType": "Not generating power"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Mishandling",
+    "newType": "Solar Panel",
+    "newSubType": "Broken"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Other",
+    "newType": "Solar Panel",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Running on Grid",
+    "newType": "Solar Panel",
+    "newSubType": "Other Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Panel",
+    "oldSubType": "Shade",
+    "newType": "Solar Panel",
+    "newSubType": "Not Generating Power"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Reinstall",
+    "oldSubType": "Solar System",
+    "newType": "Additional Support Required",
+    "newSubType": "Reinstallation Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "RMS Device",
+    "oldSubType": "Disconnected Cable",
+    "newType": "RMS Device",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "RMS Device",
+    "oldSubType": "Display Issue",
+    "newType": "RMS Device",
+    "newSubType": "Display Issue"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "RMS Device",
+    "oldSubType": "Physical Damage",
+    "newType": "RMS Device",
+    "newSubType": "Damaged"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "AJB",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Battery",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Change Over Switch",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Charge Controller",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Earthing Connections",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Earthing Pit",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "GIPB",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Inverter",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Lightning Arrestor",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Load Wiring",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Other",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Panel",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Solar System",
+    "newType": "Additional Support Required",
+    "newSubType": "Shifting Required"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Solar Water Heater",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Shifting",
+    "oldSubType": "Solar Water Pump",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Abnormal Sound",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Burnt",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Mishandling",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Not Working",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Heater",
+    "oldSubType": "Other",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Abnormal Sound",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Burnt",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Disconnected Cable",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Mishandling",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Not Working",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Solar Water Pump",
+    "oldSubType": "Other",
+    "newType": "Remove",
+    "newSubType": "Remove",
+    "action": "skip"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Battery",
+    "newType": "Theft",
+    "newSubType": "Battery"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Earthing Connection",
+    "newType": "Theft",
+    "newSubType": "Cable"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Inverter",
+    "newType": "Theft",
+    "newSubType": "Inverter"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Theft",
+    "oldSubType": "Theft of Panel",
+    "newType": "Theft",
+    "newSubType": "Solar Panel"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Theft",
+    "oldSubType": "Theft of RMS",
+    "newType": "Theft",
+    "newSubType": "Other"
+  },
+  {
+    "reporterType": "HCR",
+    "oldType": "Uninstall",
+    "oldSubType": "Solar System",
+    "newType": "Additional Support Required",
+    "newSubType": "Uninstallation Required"
+  }
+]

@@ -35,6 +35,10 @@ public class LocalizationUtil {
     private RestTemplate restTemplate;
 
     public String getLocalizedMessage(String code, String locale, RequestInfo requestInfo) {
+        return getLocalizedMessage(code, locale, requestInfo, DEFAULT_EMAIL_UPDATION_MESSAGE);
+    }
+
+    public String getLocalizedMessage(String code, String locale, RequestInfo requestInfo, String defaultMessage) {
         if(locale == null)
             locale = defaultLocale;
         String uri = getUri(locale);
@@ -44,10 +48,9 @@ public class LocalizationUtil {
         List<String> messages = (ArrayList<String>) object;
         if(CollectionUtils.isEmpty(messages)){
             log.warn("No localization messages returned for locale: " + locale +" . Continuing with english language");
-            messages.add(DEFAULT_EMAIL_UPDATION_MESSAGE);
+            return defaultMessage;
         }
-        String message = messages.get(0);
-        return message;
+        return messages.get(0);
     }
 
     String getUri(String locale) {
