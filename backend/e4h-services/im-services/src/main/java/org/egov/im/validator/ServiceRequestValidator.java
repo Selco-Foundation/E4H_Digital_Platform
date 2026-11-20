@@ -7,6 +7,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.HRMSUtil;
+import org.egov.im.util.OnHoldSystemFunctional;
 import org.egov.im.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +86,7 @@ public class ServiceRequestValidator {
             request.getIncident().setWarrantyStatus(existingIncident.getWarrantyStatus());
         }
 
+        OnHoldSystemFunctional.carryOver(request.getIncident(), existingIncident);
     }
 
     /**
