@@ -1,6 +1,5 @@
 [
   {
-    "id": 9332,
     "serviceCode": "INVERTER_NOT_WORKING",
     "name": "Not Working",
     "menuPath": "INVERTER",
@@ -15,7 +14,6 @@
     "deprecated": false
   },
   {
-    "id": 9333,
     "serviceCode": "INVERTER_DISPLAY_ISSUE",
     "name": "Display Issue",
     "menuPath": "INVERTER",
@@ -30,7 +28,6 @@
     "deprecated": false
   },
   {
-    "id": 9334,
     "serviceCode": "INVERTER_BEEPING_SOUND",
     "name": "Beeping Sound",
     "menuPath": "INVERTER",
@@ -45,7 +42,6 @@
     "deprecated": false
   },
   {
-    "id": 9335,
     "serviceCode": "INVERTER_OTHER_ISSUE",
     "name": "Other Issue",
     "menuPath": "INVERTER",
@@ -60,7 +56,62 @@
     "deprecated": false
   },
   {
-    "id": 9336,
+    "serviceCode": "CHARGE_CONTROLLER_NOT_WORKING",
+    "name": "Not Working",
+    "menuPath": "CHARGE CONTROLLER",
+    "componentCode": "CHARGE_CONTROLLER",
+    "channel": "HF",
+    "priority": "High",
+    "order": 1,
+    "keywords": "not working",
+    "slaHours": 264,
+    "department": "O&M",
+    "active": true,
+    "deprecated": false
+  },
+  {
+    "serviceCode": "CHARGE_CONTROLLER_DISPLAY_ISSUE",
+    "name": "Display Issue",
+    "menuPath": "CHARGE CONTROLLER",
+    "componentCode": "CHARGE_CONTROLLER",
+    "channel": "HF",
+    "priority": "High",
+    "order": 2,
+    "keywords": "display issue",
+    "slaHours": 264,
+    "department": "O&M",
+    "active": true,
+    "deprecated": false
+  },
+  {
+    "serviceCode": "CHARGE_CONTROLLER_BEEPING_SOUND",
+    "name": "Beeping Sound",
+    "menuPath": "CHARGE CONTROLLER",
+    "componentCode": "CHARGE_CONTROLLER",
+    "channel": "HF",
+    "priority": "High",
+    "order": 3,
+    "keywords": "beeping sound",
+    "slaHours": 264,
+    "department": "O&M",
+    "active": true,
+    "deprecated": false
+  },
+  {
+    "serviceCode": "CHARGE_CONTROLLER_OTHER_ISSUE",
+    "name": "Other Issue",
+    "menuPath": "CHARGE CONTROLLER",
+    "componentCode": "CHARGE_CONTROLLER",
+    "channel": "HF",
+    "priority": "Medium",
+    "order": 4,
+    "keywords": "other issue",
+    "slaHours": 264,
+    "department": "O&M",
+    "active": true,
+    "deprecated": false
+  },
+  {
     "serviceCode": "BATTERY_NOT_HOLDING_CHARGE",
     "name": "Not Holding Charge",
     "menuPath": "BATTERY",
@@ -75,7 +126,6 @@
     "deprecated": false
   },
   {
-    "id": 9337,
     "serviceCode": "BATTERY_WATER_LEVEL_ISSUE",
     "name": "Water Level Issue",
     "menuPath": "BATTERY",
@@ -90,7 +140,6 @@
     "deprecated": false
   },
   {
-    "id": 9338,
     "serviceCode": "BATTERY_LEAKAGE_PHYSICAL_DAMAGE",
     "name": "Leakage / Physical Damage",
     "menuPath": "BATTERY",
@@ -105,7 +154,6 @@
     "deprecated": false
   },
   {
-    "id": 9339,
     "serviceCode": "BATTERY_OTHER_ISSUE",
     "name": "Other Issue",
     "menuPath": "BATTERY",
@@ -120,7 +168,6 @@
     "deprecated": false
   },
   {
-    "id": 9340,
     "serviceCode": "SOLAR_PANEL_BROKEN",
     "name": "Broken",
     "menuPath": "PANEL",
@@ -135,7 +182,6 @@
     "deprecated": false
   },
   {
-    "id": 9341,
     "serviceCode": "SOLAR_PANEL_LOOSE",
     "name": "Loose",
     "menuPath": "PANEL",
@@ -150,7 +196,6 @@
     "deprecated": false
   },
   {
-    "id": 9342,
     "serviceCode": "SOLAR_PANEL_NOT_GENERATING_POWER",
     "name": "Not Generating Power",
     "menuPath": "PANEL",
@@ -165,7 +210,6 @@
     "deprecated": false
   },
   {
-    "id": 9343,
     "serviceCode": "SOLAR_PANEL_OTHER_ISSUE",
     "name": "Other Issue",
     "menuPath": "PANEL",
@@ -180,7 +224,6 @@
     "deprecated": false
   },
   {
-    "id": 9344,
     "serviceCode": "RMS_DEVICE_DAMAGED",
     "name": "Damaged",
     "menuPath": "RMS Device",
@@ -195,7 +238,6 @@
     "deprecated": false
   },
   {
-    "id": 9345,
     "serviceCode": "RMS_DEVICE_DISPLAY_ISSUE",
     "name": "Display Issue",
     "menuPath": "RMS Device",
@@ -210,7 +252,6 @@
     "deprecated": false
   },
   {
-    "id": 9346,
     "serviceCode": "CABLE_DAMAGED",
     "name": "Damaged",
     "menuPath": "CABLES",
@@ -225,7 +266,6 @@
     "deprecated": false
   },
   {
-    "id": 9347,
     "serviceCode": "CABLE_LOOSE_DISCONNECTED",
     "name": "Loose / Disconnected",
     "menuPath": "CABLES",
@@ -240,7 +280,6 @@
     "deprecated": false
   },
   {
-    "id": 9348,
     "serviceCode": "CABLE_OTHER_ISSUE",
     "name": "Other Issue",
     "menuPath": "CABLES",
@@ -255,7 +294,6 @@
     "deprecated": false
   },
   {
-    "id": 9349,
     "serviceCode": "THEFT_ENTIRE_SOLAR_SYSTEM",
     "name": "Entire Solar System",
     "menuPath": "Theft",
@@ -270,7 +308,6 @@
     "deprecated": false
   },
   {
-    "id": 9350,
     "serviceCode": "THEFT_INVERTER",
     "name": "Inverter",
     "menuPath": "Theft",
@@ -285,7 +322,6 @@
     "deprecated": false
   },
   {
-    "id": 9351,
     "serviceCode": "THEFT_BATTERY",
     "name": "Battery",
     "menuPath": "Theft",
@@ -300,7 +336,6 @@
     "deprecated": false
   },
   {
-    "id": 9352,
     "serviceCode": "THEFT_SOLAR_PANEL",
     "name": "Solar Panel",
     "menuPath": "Theft",
@@ -315,7 +350,6 @@
     "deprecated": false
   },
   {
-    "id": 9353,
     "serviceCode": "THEFT_CABLE",
     "name": "Cable",
     "menuPath": "Theft",
@@ -330,7 +364,6 @@
     "deprecated": false
   },
   {
-    "id": 9354,
     "serviceCode": "THEFT_OTHER",
     "name": "Other",
     "menuPath": "Theft",
@@ -345,7 +378,6 @@
     "deprecated": false
   },
   {
-    "id": 9355,
     "serviceCode": "ADDITIONAL_SUPPORT_SHIFTING_REQUIRED",
     "name": "Shifting Required",
     "menuPath": "Shifting",
@@ -360,7 +392,6 @@
     "deprecated": false
   },
   {
-    "id": 9356,
     "serviceCode": "ADDITIONAL_SUPPORT_UNINSTALLATION_REQUIRED",
     "name": "Uninstallation Required",
     "menuPath": "Uninstall",
@@ -375,7 +406,6 @@
     "deprecated": false
   },
   {
-    "id": 9357,
     "serviceCode": "ADDITIONAL_SUPPORT_REINSTALLATION_REQUIRED",
     "name": "Reinstallation Required",
     "menuPath": "Reinstall",
@@ -390,7 +420,6 @@
     "deprecated": false
   },
   {
-    "id": 9358,
     "serviceCode": "ADDITIONAL_SUPPORT_CALL_BACK_FROM_CRM",
     "name": "Call Back from CRM",
     "menuPath": "Call Back",
