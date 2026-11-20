@@ -23,6 +23,7 @@ import java.util.Map;
 
 import static org.selco.e4h.config.ServiceConstants.FUNCTIONAL;
 import static org.selco.e4h.config.ServiceConstants.NON_FUNCTIONAL;
+import static org.selco.e4h.config.ServiceConstants.ON_HOLD;
 
 @Slf4j
 @Service
@@ -154,11 +155,14 @@ public class IncidentService {
         target.setFacilityId((String) data.get("facilityId"));
         target.setTenantId(tenantId != null ? tenantId : (String) data.get("tenantId"));
 
-        // solarPanelStatus=NON_FUNCTIONAL if at least one open ticket reports NON_FUNCTIONAL.
+        // solarPanelStatus=NON_FUNCTIONAL if at least one open ticket reports NON_FUNCTIONAL,
+        // ON_HOLD if every open ticket is ON_HOLD, otherwise FUNCTIONAL.
         List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
         boolean hasNonFunctional = systemFunctional != null && systemFunctional.stream()
                 .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
-        target.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
+        boolean onlyOnHold = !hasNonFunctional && systemFunctional != null && !systemFunctional.isEmpty()
+                && systemFunctional.stream().allMatch(item -> ON_HOLD.equals(item.getSystemFunctional()));
+        target.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : onlyOnHold ? ON_HOLD : FUNCTIONAL);
 
         // Derived from the same open/non-functional ticket set as the status above, so the two can
         // never disagree: a timestamp exactly when non-functional, null when functional.
