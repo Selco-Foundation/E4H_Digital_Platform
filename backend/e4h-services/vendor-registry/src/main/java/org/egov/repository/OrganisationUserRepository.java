@@ -92,6 +92,27 @@ public class OrganisationUserRepository {
         return orgUserEnricheds;
     }
 
+    /** An active organisation a user is linked to, with its type. */
+    public record UserOrgLink(String organizationId, String orgType) {}
+
+    /**
+     * The active organisations this user is an active (not deleted) member of.
+     * Used to work out which organisation an ORG_ADMIN caller is bound to.
+     */
+    public List<UserOrgLink> getActiveOrgLinksForUser(String userUuid) {
+        String query = "SELECT DISTINCT ou.organizationid, org.org_type FROM eg_org_user ou "
+                + "JOIN eg_org org ON org.id = ou.organizationid "
+                + "WHERE ou.userid = ? AND ou.isdeleted = false AND org.is_active = true";
+        return jdbcTemplate.query(query, (rs, i) -> new UserOrgLink(rs.getString(1), rs.getString(2)), userUuid);
+    }
+
+    /** The organisation an org-user row belongs to, deleted rows included; empty when no such row. */
+    public Optional<String> getOrganizationIdOfOrgUser(String orgUserId) {
+        List<String> ids = jdbcTemplate.queryForList(
+                "SELECT organizationid FROM eg_org_user WHERE id = ?", String.class, orgUserId);
+        return ids.isEmpty() ? Optional.empty() : Optional.ofNullable(ids.get(0));
+    }
+
     public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
         List<Object> preparedStatement = new ArrayList<>();
         if (urlParams == null) {

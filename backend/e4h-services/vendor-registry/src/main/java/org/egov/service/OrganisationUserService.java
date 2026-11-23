@@ -11,6 +11,7 @@ import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
 import org.egov.util.JurisdictionScopeResolver;
+import org.egov.util.OrgAdminScopeResolver;
 import org.egov.validator.OrganisationUserServiceValidator;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +47,10 @@ public class OrganisationUserService {
 
     private final JurisdictionScopeResolver jurisdictionScopeResolver;
 
+    private final OrgAdminScopeResolver orgAdminScopeResolver;
+
     @Autowired
-    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver) {
+    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver, OrgAdminScopeResolver orgAdminScopeResolver) {
         this.validator = validator;
         this.userRepository = userRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -57,11 +60,18 @@ public class OrganisationUserService {
         this.hrmsUtils = hrmsUtils;
         this.mapper = mapper;
         this.jurisdictionScopeResolver = jurisdictionScopeResolver;
+        this.orgAdminScopeResolver = orgAdminScopeResolver;
     }
 
 
     public OrgUserRequest createOrgUser(OrgUserRequest request) {
         log.info("received request to create org user {} ", request );
+
+        // An ORG_ADMIN creates users in their own organisation only; the payload's id is ignored.
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
+        if (orgScope.restricted()) {
+            request.setOrganizationId(orgScope.orgId());
+        }
 
         validator.validateCreateOrgUserRequest(request);
 
@@ -91,7 +101,7 @@ public class OrganisationUserService {
         validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
         log.debug("Search request validation completed");
 
-        if (!narrowByHrmsFilters(request, urlParams)) {
+        if (!narrowToCallerOrg(request) || !narrowByHrmsFilters(request, urlParams)) {
             return Collections.emptyList();
         }
 
@@ -118,7 +128,7 @@ public class OrganisationUserService {
         URLParams urlParams = URLParams.builder()
                 .includeDeleted(searchParams != null ? searchParams.getIncludeDeleted() : null)
                 .build();
-        if (!narrowByHrmsFilters(request, urlParams)) {
+        if (!narrowToCallerOrg(request) || !narrowByHrmsFilters(request, urlParams)) {
             return 0;
         }
         JurisdictionScopeResolver.Scope scope =
@@ -167,6 +177,41 @@ public class OrganisationUserService {
                 .filter(employee -> !scope.within(employee.getJurisdictions()).isEmpty())
                 .collect(Collectors.toMap(employee -> employee.getUser().getUuid(),
                         Function.identity(), (first, second) -> first, LinkedHashMap::new));
+    }
+
+    /**
+     * Restricts an ORG_ADMIN's search to their own organisation.
+     *
+     * Asking for another organisation's id answers nothing - not an error, which would confirm the
+     * organisation exists.
+     *
+     * @return false when nothing can match.
+     */
+    private boolean narrowToCallerOrg(OrgUserSearchRequest request) {
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
+        if (!orgScope.restricted()) {
+            return true;
+        }
+        List<String> narrowed = orgScope.narrow(request.getCriteria().getOrganizationId());
+        request.getCriteria().setOrganizationId(narrowed);
+        return !narrowed.isEmpty();
+    }
+
+    /**
+     * An ORG_ADMIN may only act on a user row of their own organisation. An unknown row and another
+     * organisation's row get the same answer, so the response does not reveal which it was.
+     */
+    private void requireOrgUserInCallerOrg(org.egov.common.contract.request.RequestInfo requestInfo, String orgUserId) {
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(requestInfo);
+        if (!orgScope.restricted()) {
+            return;
+        }
+        boolean inOrg = orgUserId != null && userRepository.getOrganizationIdOfOrgUser(orgUserId)
+                .map(orgScope::allows).orElse(false);
+        if (!inOrg) {
+            log.error("ORG_ADMIN attempted to act on org user {} outside their organisation", orgUserId);
+            throw new CustomException("Organization", "This org user id do not exist");
+        }
     }
 
     /**
@@ -224,7 +269,15 @@ public class OrganisationUserService {
     }
 
     public OrgUserRequest updateOrgUser(OrgUserRequest request) {
-        log.info("received request to create org user {} ", request );
+        log.info("received request to update org user {} ", request );
+
+        // The target must be in the caller's organisation, and an ORG_ADMIN cannot move it out.
+        requireOrgUserInCallerOrg(request.getRequestInfo(), request.getId());
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
+        if (orgScope.restricted() && !orgScope.allows(request.getOrganizationId())) {
+            log.error("ORG_ADMIN attempted to move org user {} to organisation {}", request.getId(), request.getOrganizationId());
+            throw new CustomException("Organization", "Organization ID do not exist");
+        }
 
         validator.validateUpdateOrgUserRequest(request);
 //        List<OrgUser> orgUserList = request.getOrgUsers();
@@ -241,7 +294,8 @@ public class OrganisationUserService {
     }
 
     public DeleteOrgUserRequest deleteUserOrg(DeleteOrgUserRequest request) {
-        log.info("received request to delete bulk activity facility staff");
+        log.info("received request to delete org user {}", request.getId());
+        requireOrgUserInCallerOrg(request.getRequestInfo(), request.getId());
         validator.validateDeleteOrgUserRequest(request);
         try {
             deactivateHrmsUser(request);

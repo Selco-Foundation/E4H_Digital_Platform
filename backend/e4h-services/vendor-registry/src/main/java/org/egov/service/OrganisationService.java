@@ -8,6 +8,8 @@ import org.egov.repository.OrganisationRepository;
 import org.egov.config.Configuration;
 import org.egov.tracer.model.CustomException;
 import org.egov.validator.OrganisationServiceValidator;
+import org.egov.util.OrgAdminScopeResolver;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 import static org.egov.util.OrganisationConstant.ORGANISATION_ENCRYPT_KEY;
+import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
 
 
 @Service
@@ -34,12 +37,14 @@ public class OrganisationService {
 
     private final IndividualService individualService;
 
+    private final OrgAdminScopeResolver orgAdminScopeResolver;
+
     private final NotificationService notificationService;
 
     private final ObjectMapper mapper;
 
     @Autowired
-    public OrganisationService(OrganisationServiceValidator organisationServiceValidator, OrganisationRepository organisationRepository, OrganisationEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, IndividualService individualService, NotificationService notificationService, ObjectMapper mapper) {
+    public OrganisationService(OrganisationServiceValidator organisationServiceValidator, OrganisationRepository organisationRepository, OrganisationEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, IndividualService individualService, NotificationService notificationService, ObjectMapper mapper, OrgAdminScopeResolver orgAdminScopeResolver) {
         this.organisationServiceValidator = organisationServiceValidator;
         this.organisationRepository = organisationRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -48,6 +53,7 @@ public class OrganisationService {
         this.individualService = individualService;
         this.notificationService = notificationService;
         this.mapper = mapper;
+        this.orgAdminScopeResolver = orgAdminScopeResolver;
     }
 
 
@@ -61,6 +67,14 @@ public class OrganisationService {
         String tenantId = orgRequest.getOrganisations() != null && !orgRequest.getOrganisations().isEmpty()
                 ? orgRequest.getOrganisations().get(0).getTenantId() : "unknown";
         log.info("Starting organisation creation process for tenant: {}", tenantId);
+
+        // Creating an organisation is reserved to the platform administrator, whatever else the
+        // caller holds. Checked here, not left to the UI.
+        if (!OrgAdminScopeResolver.holdsRole(orgRequest.getRequestInfo(), ORG_PLATFORM_ADMIN_ROLE_CODE)) {
+            log.error("Organisation create refused: caller does not hold {}", ORG_PLATFORM_ADMIN_ROLE_CODE);
+            throw new CustomException("ORG_CREATE_NOT_ALLOWED",
+                    "Only " + ORG_PLATFORM_ADMIN_ROLE_CODE + " can create organisations");
+        }
 
         organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest);
         log.debug("Organisation validation completed");
@@ -103,6 +117,8 @@ public class OrganisationService {
         String orgId = orgRequest.getOrganisations() != null && !orgRequest.getOrganisations().isEmpty()
                 ? orgRequest.getOrganisations().get(0).getId() : "unknown";
         log.info("Starting organisation update process for organisation ID: {}, tenant: {}", orgId, tenantId);
+
+        requireOwnOrgUpdateForOrgAdmin(orgRequest);
 
         organisationServiceValidator.validateUpdateOrgRegistryWithoutWorkFlow(orgRequest);
         log.debug("Organisation validation completed");
@@ -171,6 +187,10 @@ public class OrganisationService {
         organisationServiceValidator.validateSearchOrganisationRequest(orgSearchRequest);
         log.debug("Search criteria validation completed");
 
+        if (!narrowToCallerOrg(orgSearchRequest)) {
+            return java.util.Collections.emptyList();
+        }
+
         List<Organisation> organisations = organisationRepository.getOrganisations(orgSearchRequest);
         log.info("Organisation search completed, found {} organisations", organisations != null ? organisations.size() : 0);
         return organisations;
@@ -187,8 +207,93 @@ public class OrganisationService {
                 ? orgSearchRequest.getSearchCriteria().getTenantId() : "unknown";
         log.debug("Counting organisations for tenant: {}", tenantId);
 
+        if (!narrowToCallerOrg(orgSearchRequest)) {
+            return 0;
+        }
+
         Integer count = organisationRepository.getOrganisationsCount(orgSearchRequest);
         log.debug("Organisation count: {}", count);
         return count;
+    }
+
+    /**
+     * An ORG_ADMIN sees only their own organisation. Asking for any other id answers nothing rather
+     * than an error, so the response does not confirm that organisation exists.
+     *
+     * @return false when nothing can match.
+     */
+    private boolean narrowToCallerOrg(OrgSearchRequest orgSearchRequest) {
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(orgSearchRequest.getRequestInfo());
+        if (!orgScope.restricted()) {
+            return true;
+        }
+        OrgSearchCriteria criteria = orgSearchRequest.getSearchCriteria();
+        if (StringUtils.isNotBlank(criteria.getId()) && !orgScope.allows(criteria.getId())) {
+            return false;
+        }
+        java.util.List<String> narrowed = orgScope.narrow(criteria.getIds());
+        criteria.setIds(new java.util.ArrayList<>(narrowed));
+        return !narrowed.isEmpty();
+    }
+
+    /**
+     * An ORG_ADMIN may update only their own organisation, and may not change what it is.
+     *
+     * Another organisation's id gets the same answer as an id that does not exist, so the response
+     * does not confirm it. Type, subtype, status and active flag stay as stored: changing them would
+     * turn the org into something else (a vendor org, a deactivated one) - a platform admin's call.
+     * Status and active flag count as changed only when sent; type and subtype are always sent.
+     */
+    private void requireOwnOrgUpdateForOrgAdmin(OrgRequest orgRequest) {
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(orgRequest.getRequestInfo());
+        if (!orgScope.restricted()) {
+            return;
+        }
+        List<Organisation> incoming = orgRequest.getOrganisations();
+        if (incoming == null || incoming.isEmpty()) {
+            return; // the validator refuses an empty list
+        }
+        List<String> foreign = incoming.stream()
+                .map(Organisation::getId)
+                .filter(id -> !orgScope.allows(id))
+                .toList();
+        if (!foreign.isEmpty()) {
+            log.error("ORG_ADMIN attempted to update organisation(s) outside their own: {}", foreign);
+            throw new CustomException("INVALID_ORG_ID", "Given org id(s) : " + foreign + " don't exist in the system.");
+        }
+
+        Organisation update = incoming.get(0);
+        OrgSearchRequest storedRequest = OrgSearchRequest.builder()
+                .requestInfo(orgRequest.getRequestInfo())
+                .searchCriteria(OrgSearchCriteria.builder()
+                        .ids(new java.util.ArrayList<>(List.of(orgScope.orgId())))
+                        .tenantId(update.getTenantId())
+                        .includeDeleted(Boolean.FALSE)
+                        .build())
+                .build();
+        List<Organisation> stored = organisationRepository.getOrganisations(storedRequest);
+        if (stored == null || stored.isEmpty()) {
+            throw new CustomException("INVALID_ORG_ID", "Given org id(s) : " + List.of(orgScope.orgId()) + " don't exist in the system.");
+        }
+        Organisation current = stored.get(0);
+
+        List<String> changed = new java.util.ArrayList<>();
+        if (!java.util.Objects.equals(StringUtils.trimToNull(current.getOrgType()), StringUtils.trimToNull(update.getOrgType()))) {
+            changed.add("orgType");
+        }
+        if (!java.util.Objects.equals(StringUtils.trimToNull(current.getOrgSubType()), StringUtils.trimToNull(update.getOrgSubType()))) {
+            changed.add("orgSubType");
+        }
+        if (update.getOrgStatus() != null && !java.util.Objects.equals(current.getOrgStatus(), update.getOrgStatus())) {
+            changed.add("orgStatus");
+        }
+        if (update.getIsActive() != null && !java.util.Objects.equals(current.getIsActive(), update.getIsActive())) {
+            changed.add("isActive");
+        }
+        if (!changed.isEmpty()) {
+            log.error("ORG_ADMIN attempted to change {} of organisation {}", changed, orgScope.orgId());
+            throw new CustomException("ORG_FIELDS_NOT_EDITABLE",
+                    "Organisation admins cannot change: " + String.join(", ", changed));
+        }
     }
 }

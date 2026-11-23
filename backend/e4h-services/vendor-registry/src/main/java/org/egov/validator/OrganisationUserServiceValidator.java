@@ -1,5 +1,7 @@
 package org.egov.validator;
 
+import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
@@ -87,6 +89,8 @@ public class OrganisationUserServiceValidator {
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
+        //The platform administrator role is never created through this API
+        rejectPlatformAdminRole(request.getUser(), null);
         //Verify every jurisdiction being granted is one the caller holds
         validateGrantedJurisdictions(request);
         //Verify if org users request and mandatory fields are present
@@ -116,6 +120,34 @@ public class OrganisationUserServiceValidator {
         log.error("Caller attempted to grant jurisdictions outside their own scope: {}", refused);
         throw new CustomException("JURISDICTION_OUT_OF_SCOPE",
                 "You can only assign jurisdictions you administer. Not allowed: " + refused);
+    }
+
+    /**
+     * Refuses ORG_PLATFORM_ADMIN in a payload, whatever the UI offers.
+     *
+     * Every other role may be assigned - ORG_ADMIN included, so an org admin can create peers in
+     * their own organisation. The platform administrator is unscoped across every organisation and
+     * is not created through this API. On update, `existing` is the user as stored: a user who
+     * already holds the role may keep it, so editing a platform admin still works.
+     */
+    private void rejectPlatformAdminRole(User incoming, User existing) {
+        if (!holdsRole(incoming, ORG_PLATFORM_ADMIN_ROLE_CODE) || holdsRole(existing, ORG_PLATFORM_ADMIN_ROLE_CODE)) {
+            return;
+        }
+        log.error("Attempt to assign {} through the org user API", ORG_PLATFORM_ADMIN_ROLE_CODE);
+        throw new CustomException("INVALID_ROLES",
+                ORG_PLATFORM_ADMIN_ROLE_CODE + " cannot be assigned through this API");
+    }
+
+    private static boolean holdsRole(User user, String roleCode) {
+        if (user == null || user.getRoles() == null) {
+            return false;
+        }
+        return user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .map(Role::getCode)
+                .filter(Objects::nonNull)
+                .anyMatch(code -> roleCode.equalsIgnoreCase(code.trim()));
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
@@ -436,6 +468,9 @@ public class OrganisationUserServiceValidator {
 
         // Get employee details fetched from HRMS
         Employee employee = employees.get(0);
+
+        // An update may keep ORG_PLATFORM_ADMIN on a user who already holds it, never grant it.
+        rejectPlatformAdminRole(orgUser, employee.getUser());
 
         // The caller must administer somewhere this user actually works. Checked against what is
         // stored rather than what was submitted, since the payload is the thing being validated.
