@@ -91,6 +91,10 @@ public class OrganisationUserService {
         validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
         log.debug("Search request validation completed");
 
+        if (!narrowByHrmsFilters(request, urlParams)) {
+            return Collections.emptyList();
+        }
+
         JurisdictionScopeResolver.Scope scope =
                 jurisdictionScopeResolver.resolve(request.getRequestInfo());
 
@@ -99,30 +103,37 @@ public class OrganisationUserService {
         }
 
         Map<String, Employee> inScope = resolveUsersInScope(request, urlParams, scope);
-        if (inScope.isEmpty()) {
+        if (inScope.isEmpty() || !narrowToUsers(request, inScope.keySet())) {
             return Collections.emptyList();
         }
-        narrowToUsers(request, inScope.keySet());
 
         return userRepository.getOrgUsers(request, urlParams, inScope, scope);
     }
 
-    public Integer countOrganisationUsers(OrgUserSearchRequest request) {
-        URLParams urlParams = URLParams.builder().build();
+    /**
+     * Counts with the same includeDeleted as the search it accompanies, so the total agrees with
+     * the rows. Only includeDeleted is carried over: limit/offset must not apply to a count.
+     */
+    public Integer countOrganisationUsers(OrgUserSearchRequest request, URLParams searchParams) {
+        URLParams urlParams = URLParams.builder()
+                .includeDeleted(searchParams != null ? searchParams.getIncludeDeleted() : null)
+                .build();
+        if (!narrowByHrmsFilters(request, urlParams)) {
+            return 0;
+        }
         JurisdictionScopeResolver.Scope scope =
                 jurisdictionScopeResolver.resolve(request.getRequestInfo());
 
         if (scope.unscoped()) {
-            return userRepository.getOrganisationsCount(request);
+            return userRepository.getOrganisationsCount(request, urlParams);
         }
 
         Map<String, Employee> inScope = resolveUsersInScope(request, urlParams, scope);
-        if (inScope.isEmpty()) {
+        if (inScope.isEmpty() || !narrowToUsers(request, inScope.keySet())) {
             return 0;
         }
-        narrowToUsers(request, inScope.keySet());
 
-        return userRepository.getOrganisationsCount(request);
+        return userRepository.getOrganisationsCount(request, urlParams);
     }
 
     /**
@@ -158,13 +169,58 @@ public class OrganisationUserService {
                         Function.identity(), (first, second) -> first, LinkedHashMap::new));
     }
 
-    /** Intersects any caller-supplied userIds filter with the set they are allowed to see. */
-    private void narrowToUsers(OrgUserSearchRequest request, java.util.Set<String> allowed) {
+    /**
+     * Applies the name and role filters, which SQL cannot evaluate: eg_org_user holds neither the
+     * name nor the roles - both live on the HRMS user.
+     *
+     * The organisation's matching user uuids are fetched unpaged, HRMS is asked once which of them
+     * hold any requested role, the name is matched on that answer, and the survivors go back in as
+     * a `userIds` filter. SQL then pages and counts over exactly that set, so pages are full and
+     * the total agrees with the rows. Filtering inside the enrichment loop instead - after
+     * LIMIT/OFFSET - would give neither.
+     *
+     * @return false when nothing can match, so the caller can answer empty without querying.
+     */
+    private boolean narrowByHrmsFilters(OrgUserSearchRequest request, URLParams urlParams) {
+        OrgUserSearchCriteria criteria = request.getCriteria();
+        String name = criteria.getName() == null ? null : criteria.getName().trim().toLowerCase();
+        List<String> roles = criteria.getRoles() == null ? Collections.emptyList()
+                : criteria.getRoles().stream().filter(r -> r != null && !r.isBlank()).map(String::trim).distinct().toList();
+        boolean byName = name != null && !name.isEmpty();
+        if (!byName && roles.isEmpty()) {
+            return true;
+        }
+
+        List<String> candidateIds = userRepository.getOrgUserIds(request, urlParams);
+        if (candidateIds.isEmpty()) {
+            return false;
+        }
+
+        java.util.Set<String> matching = hrmsUtils.getUsersByIdsAndRoles(request, candidateIds, roles).stream()
+                .filter(employee -> employee != null && employee.getUser() != null
+                        && employee.getUser().getUuid() != null)
+                .filter(employee -> !byName || (employee.getUser().getName() != null
+                        && employee.getUser().getName().toLowerCase().contains(name)))
+                .map(employee -> employee.getUser().getUuid())
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        log.debug("HRMS name/role filters kept {} of {} candidate users", matching.size(), candidateIds.size());
+        return !matching.isEmpty() && narrowToUsers(request, matching);
+    }
+
+    /**
+     * Intersects any caller-supplied userIds filter with the given set.
+     *
+     * @return false when the intersection is empty. The caller must then answer empty: an empty
+     *         userIds list is read by the query builder as "no filter", which would match everyone.
+     */
+    private boolean narrowToUsers(OrgUserSearchRequest request, java.util.Set<String> allowed) {
         List<String> requested = request.getCriteria().getUserId();
         List<String> narrowed = (requested == null || requested.isEmpty())
                 ? List.copyOf(allowed)
                 : requested.stream().filter(allowed::contains).toList();
         request.getCriteria().setUserId(narrowed);
+        return !narrowed.isEmpty();
     }
 
     public OrgUserRequest updateOrgUser(OrgUserRequest request) {

@@ -92,9 +92,11 @@ public class OrganisationUserRepository {
         return orgUserEnricheds;
     }
 
-    public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest) {
+    public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
         List<Object> preparedStatement = new ArrayList<>();
-        URLParams urlParams = URLParams.builder().build();
+        if (urlParams == null) {
+            urlParams = URLParams.builder().build();
+        }
         String queryDocument = queryBuilder.getOrganisationUserSearchQuery(orgSearchRequest, urlParams, preparedStatement, true);
         if (queryDocument == null)
             return 0;

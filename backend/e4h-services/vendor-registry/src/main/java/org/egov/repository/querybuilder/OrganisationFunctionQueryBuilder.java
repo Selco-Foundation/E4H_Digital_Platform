@@ -94,6 +94,15 @@ public class OrganisationFunctionQueryBuilder {
             preparedStmtList.add('%' + searchCriteria.getCode() + '%');
         }
 
+        // Parenthesised so the OR stays inside its own group and cannot leak past the AND chain.
+        if (StringUtils.isNotBlank(searchCriteria.getSearchText())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" (LOWER(org.name) LIKE ? OR LOWER(org.code) LIKE ?) ");
+            String pattern = '%' + searchCriteria.getSearchText().trim().toLowerCase() + '%';
+            preparedStmtList.add(pattern);
+            preparedStmtList.add(pattern);
+        }
+
         if (StringUtils.isNotBlank(searchCriteria.getApplicationNumber())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.application_number=? ");

@@ -33,4 +33,15 @@ public class OrgUserSearchCriteria {
     @JsonProperty("tenantId")
     private String tenantId;
 
+    /**
+     * Partial, case-insensitive match on the user's name. The name lives on the HRMS user, not in
+     * eg_org_user, so it is resolved against HRMS before paging - see OrganisationUserService.
+     */
+    @JsonProperty("name")
+    private String name;
+
+    /** Role codes; a user matches when they hold any of them. Resolved against HRMS before paging. */
+    @JsonProperty("roles")
+    private List<String> roles;
+
 }
