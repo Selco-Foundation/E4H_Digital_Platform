@@ -33,8 +33,10 @@ public class User {
     @JsonProperty("userName")
     private String userName;
 
+    // Accepted on input only: never logged, never echoed in a response or a Kafka message.
     @Size(max=64)
-    @JsonProperty("password")
+    @JsonProperty(value = "password", access = JsonProperty.Access.WRITE_ONLY)
+    @ToString.Exclude
     private String password;
 
     @Size(max = 5)
