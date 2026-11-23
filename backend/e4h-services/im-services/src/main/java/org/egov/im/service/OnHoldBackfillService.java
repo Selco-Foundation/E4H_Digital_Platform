@@ -21,8 +21,9 @@ import static org.egov.im.util.IMConstants.SYSTEM_FUNCTIONAL_ON_HOLD;
  * existed in line with live ones.
  * <p>
  * Sets ON_HOLD (saving the previous value) in the database in one statement, then re-publishes every
- * on-hold ticket to the indexer topic. That refreshes the ticket index, and im-services-analytics
- * recomputes and re-publishes each ticket's facility document (solarPanelStatus) from the same message.
+ * on-hold ticket to the indexer topic. That refreshes the ticket index (systemFunctional, and currentOwner
+ * as {@code Not Applicable}), and im-services-analytics recomputes and re-publishes each ticket's facility
+ * document (solarPanelStatus) from the same message.
  * Safe to re-run: tickets already ON_HOLD are not rewritten, and re-publishing is idempotent.
  */
 @Service
