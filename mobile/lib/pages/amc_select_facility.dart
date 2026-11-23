@@ -19,10 +19,13 @@ import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../repositories/scheduled_visit_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/cards/report_detail_row.dart';
 
 @RoutePage()
 class AmcSelectFacilityPage extends StatefulWidget {
@@ -36,13 +39,37 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   String? _sortDirection;
   String _searchQuery = '';
 
+  List<String> _statuses() {
+    return [WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name];
+  }
+
   @override
   void initState() {
     super.initState();
+    _fetchVisits();
+  }
 
-    context.read<ScheduledVisitBloc>().add(ScheduledVisitEvent.loadInitial(
-          statuses: [WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name],
-        ));
+  void _fetchVisits() {
+    final statuses = _statuses();
+    if (_searchQuery.isNotEmpty) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              query: _searchQuery,
+            ),
+          );
+    } else if (_sortDirection != null) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              sortDirection: _sortDirection,
+            ),
+          );
+    } else {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(statuses: statuses),
+          );
+    }
   }
 
   @override
@@ -51,7 +78,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
     final textTheme = theme.digitTextTheme(context);
 
     final isar = context.read<ScheduledVisitBloc>().isar;
-    const schemaKey = 'SELCO.AMC_SCHEDULED_MAINTENANCE';
+    const schemaKey = 'AssetForm.AMC_SCHEDULED_MAINTENANCE';
 
     return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
       builder: (context, state) {
@@ -69,9 +96,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                     if (hasMore && !isLoadingMore) {
                       bloc.add(
                         ScheduledVisitEvent.loadMore(
-                          statuses: [
-                            WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
-                          ],
+                          statuses: _statuses(),
+                          query: _searchQuery.isNotEmpty ? _searchQuery : null,
+                          sortDirection: _sortDirection,
                         ),
                       );
                     }
@@ -110,7 +137,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                       failure: (msg) => Padding(
                         padding: const EdgeInsets.all(spacer2),
                         child: Text(
-                          'Failed to load scheduled visits',
+                          context.translate(
+                              i18.amcSelectFacility.failedToLoadVisits),
                           style: textTheme.bodyS
                               .copyWith(color: theme.colorTheme.alert.error),
                         ),
@@ -121,7 +149,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                           return Padding(
                             padding: const EdgeInsets.all(spacer4),
                             child: Text(
-                              'No scheduled visits found.',
+                              context
+                                  .translate(i18.amcSelectFacility.noVisitsFound),
                               style: textTheme.bodyS.copyWith(
                                 color: theme.colorTheme.text.secondary,
                               ),
@@ -149,13 +178,21 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                     ),
                                     builder: (context, snapshot) {
                                       final label = snapshot.data ?? 'Start';
+                                      final locality =
+                                          parseBoundaryCodeLocality(
+                                        items[index].facility?.boundaryCode,
+                                      );
                                       return AMCInstallationReportCard(
+                                          scheduledVisitId: items[index].id,
                                           label: label,
                                           title: items[index]
                                                   .facility
                                                   ?.facilityName ??
                                               '',
                                           status: items[index].status,
+                                          state: locality.state,
+                                          district: locality.district,
+                                          block: locality.block,
                                           dateAssigned:
                                               items[index].scheduledDate ??
                                                   DateTime.now(),
@@ -179,7 +216,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                               AmcDynamicFormRoute(
                                                 pageName: 'AMC_Report',
                                                 uniqueIdentifier:
-                                                    'AMC.SCHEDULED_MAINTENANCE',
+                                                    'AssetForm.AMC_SCHEDULED_MAINTENANCE',
                                                 schemaName: schemaKey,
                                                 scheduledVisit: items[index],
                                                 origin:
@@ -226,7 +263,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select Health Facility',
+              context.translate(i18.amcSelectFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -241,6 +278,10 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                         _searchQuery = text;
                         _sortDirection = null;
                       });
+                      if (text.isEmpty ||
+                          text.length >= minFacilitySearchQueryLength) {
+                        _fetchVisits();
+                      }
                     },
                   ),
                 ),
@@ -267,11 +308,11 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text('Submission Date',
+            Text(context.translate(i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
@@ -281,16 +322,26 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
               onChanged: (value) =>
                   popupSetState(() => _sortDirection = value.code),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
               ],
             ),
             Row(
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    label: context.translate(i18.common.clear),
+                    onPressed: () {
+                      setState(() {
+                        _sortDirection = null;
+                      });
+                      Navigator.of(ctx).pop();
+                      _fetchVisits();
+                    },
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     mainAxisSize: MainAxisSize.min,
@@ -299,10 +350,11 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                 const SizedBox(width: spacer5),
                 Expanded(
                   child: DigitButton(
-                    label: 'Sort',
+                    label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       Navigator.of(ctx).pop();
+                      _fetchVisits();
                     },
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
@@ -318,11 +370,14 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   }
 }
 
-class AMCInstallationReportCard extends StatelessWidget {
+class AMCInstallationReportCard extends StatefulWidget {
   final String? scheduledVisitId;
   final String? title;
   final String? status;
   final String? label;
+  final String? state;
+  final String? district;
+  final String? block;
   final DateTime dateAssigned;
   final String? systemDesignCode;
   final Function() onPress;
@@ -333,16 +388,50 @@ class AMCInstallationReportCard extends StatelessWidget {
     this.title,
     this.status,
     this.label,
+    this.state,
+    this.district,
+    this.block,
     required this.dateAssigned,
     this.systemDesignCode,
     required this.onPress,
   });
 
   @override
+  State<AMCInstallationReportCard> createState() =>
+      _AMCInstallationReportCardState();
+}
+
+class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
+  late Future<bool> _isFailedFuture;
+
+  void _loadIsFailedFuture() {
+    _isFailedFuture = ScheduledVisitRepository(
+      context.read<ScheduledVisitBloc>().isar,
+    ).isFailedScheduledVisitInCache(
+      scheduledVisitId: widget.scheduledVisitId ?? '',
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIsFailedFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant AMCInstallationReportCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scheduledVisitId != widget.scheduledVisitId) {
+      _loadIsFailedFuture();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+    final effectiveLabel = widget.label ?? '';
+    String formattedDate = DateFormat('dd/MM/yy').format(widget.dateAssigned);
 
     return DigitCard(
       children: [
@@ -350,84 +439,86 @@ class AMCInstallationReportCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "$title",
+              widget.title ?? '',
               style: textTheme.headingL.copyWith(
                 color: theme.colorTheme.text.primary,
               ),
             ),
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'Status',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'AMC Date',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      )
-                    ],
-                  ),
-                ),
-                const SizedBox(width: spacer12),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer4),
-                      Text(
-                        context.translate('$status'),
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
-                        ),
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        formattedDate,
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            ReportDetailRow(
+              label: context.translate(i18.common.status),
+              value: _detailText(
+                context.translate(widget.status ?? ''),
+                textTheme,
+                theme,
+              ),
+            ),
+            ReportDetailRow(
+              label: context.translate(i18.amcSelectFacility.amcDate),
+              value: _detailText(formattedDate, textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: context.translate(i18.common.state),
+              value: _detailText(_displayValue(widget.state), textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: context.translate(i18.common.district),
+              value:
+                  _detailText(_displayValue(widget.district), textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: context.translate(i18.common.block),
+              value: _detailText(_displayValue(widget.block), textTheme, theme),
             ),
             const SizedBox(height: spacer4),
             DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: "$label Report",
-              onPressed: onPress,
+              label:
+                  effectiveLabel.isEmpty
+                      ? context.translate(i18.amcSelectFacility.report)
+                      : '$effectiveLabel ${context.translate(i18.amcSelectFacility.report)}',
+              onPressed: widget.onPress,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,
             ),
             const SizedBox(height: spacer4),
-            DigitButton(
-              mainAxisSize: MainAxisSize.max,
-              label: 'Submit For Approval',
-              onPressed: () {
-                context.router.push(const AmcOtpRoute());
+            FutureBuilder<bool>(
+              future: _isFailedFuture,
+              builder: (context, snapshot) {
+                final existsInFailedCache = snapshot.data == true;
+                final canResume = effectiveLabel.contains("Resume");
+
+                return DigitButton(
+                  mainAxisSize: MainAxisSize.max,
+                  label: context
+                      .translate(i18.amcSelectFacility.submitForApproval),
+                  onPressed: () {
+                    context.router.push(const AmcOtpRoute());
+                  },
+                  isDisabled: existsInFailedCache || !canResume,
+                  type: DigitButtonType.secondary,
+                  size: DigitButtonSize.large,
+                );
               },
-              isDisabled: label!.contains("Resume") ? false : true,
-              type: DigitButtonType.secondary,
-              size: DigitButtonSize.large,
             ),
           ],
         )
       ],
+    );
+  }
+
+  String _displayValue(String? value) {
+    final normalized = value?.trim() ?? '';
+    return normalized.isEmpty ? '---' : normalized;
+  }
+
+  Widget _detailText(String value, dynamic textTheme, ThemeData theme) {
+    return Text(
+      value,
+      style: textTheme.bodyL.copyWith(color: theme.colorTheme.text.primary),
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
   }
 }

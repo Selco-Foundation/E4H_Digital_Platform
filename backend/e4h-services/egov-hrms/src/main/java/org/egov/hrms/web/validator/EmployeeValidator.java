@@ -256,6 +256,7 @@ public class EmployeeValidator {
 		validateAssignments(employee, errorMap, mdmsData);
 		validateServiceHistory(employee, errorMap, mdmsData);
 		validateJurisdicton(employee, errorMap, mdmsData, boundaryMap);
+		validateJurisdictionRoles(employee, errorMap);
 		validateEducationalDetails(employee, errorMap, mdmsData);
 		validateDepartmentalTest(employee, errorMap, mdmsData);
 	}
@@ -294,19 +295,19 @@ public class EmployeeValidator {
 	private void validateUserData(Employee existingEmp, Employee employee, Map<String, String> errorMap, RequestInfo requestInfo) {
 		if(!employee.getCode().equals(existingEmp.getCode()))
 			errorMap.put(ErrorConstants.HRMS_UPDATE_EMPLOYEE_CODE_CHANGE_CODE,ErrorConstants.HRMS_UPDATE_EMPLOYEE_CODE_CHANGE_MSG);
-		if(!employee.getUser().getMobileNumber().equals(existingEmp.getUser().getMobileNumber())){
-			Map<String, Object> userSearchCriteria = new HashMap<>();
-			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_TENANTID,employee.getTenantId());
-			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_MOBILENO,employee.getUser().getMobileNumber());
-			UserResponse userResponse = userService.getUser(requestInfo, userSearchCriteria);
-			if(!CollectionUtils.isEmpty(userResponse.getUser())){
-				if(!employee.getUser().getUuid().equals(userResponse.getUser().get(0).getUuid())){
-					errorMap.put(ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_CODE,ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_MSG);
-				}
-			}
-
-
-		}
+//		if(!employee.getUser().getMobileNumber().equals(existingEmp.getUser().getMobileNumber())){
+//			Map<String, Object> userSearchCriteria = new HashMap<>();
+//			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_TENANTID,employee.getTenantId());
+//			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_MOBILENO,employee.getUser().getMobileNumber());
+//			UserResponse userResponse = userService.getUser(requestInfo, userSearchCriteria);
+//			if(!CollectionUtils.isEmpty(userResponse.getUser())){
+//				if(!employee.getUser().getUuid().equals(userResponse.getUser().get(0).getUuid())){
+//					errorMap.put(ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_CODE,ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_MSG);
+//				}
+//			}
+//
+//
+//		}
 
 	}
 
@@ -496,6 +497,61 @@ public class EmployeeValidator {
 		// 	}
 
 
+	}
+
+
+	/**
+	 * Validates the roles a jurisdiction is scoped to. Checks the following:
+	 * 1. Every role carries a code.
+	 * 2. No code appears twice on the same jurisdiction.
+	 * 3. Every code is one the employee actually holds in user.roles.
+	 *
+	 * A jurisdiction with no roles is not an error: that is the "applies to every role the
+	 * employee holds" case, and it is what every pre-existing jurisdiction looks like.
+	 *
+	 * Null roles are skipped rather than rejected. On update that means "unchanged", and the
+	 * merge in EmployeeService restores the stored roles - which runs after this, so there is
+	 * nothing here to validate yet. An explicit empty list is the way to clear them.
+	 *
+	 * Rule 3 is the one worth keeping. Scoping a jurisdiction to a role the employee does not
+	 * hold produces a row that can never match anything, so the jurisdiction silently grants no
+	 * access at all; rejecting it turns a confusing no-op into a clear error. The employee's own
+	 * roles are already checked against MDMS in validateEmployee, so checking against them is
+	 * strictly stronger than checking against MDMS again.
+	 *
+	 * @param employee
+	 * @param errorMap
+	 */
+	private void validateJurisdictionRoles(Employee employee, Map<String, String> errorMap) {
+		if(CollectionUtils.isEmpty(employee.getJurisdictions()))
+			return;
+
+		Set<String> heldRoleCodes = new HashSet<>();
+		if(null != employee.getUser() && !CollectionUtils.isEmpty(employee.getUser().getRoles())) {
+			for(org.egov.hrms.model.Role role : employee.getUser().getRoles()) {
+				if(!StringUtils.isEmpty(role.getCode()))
+					heldRoleCodes.add(role.getCode());
+			}
+		}
+
+		for(Jurisdiction jurisdiction : employee.getJurisdictions()) {
+			if(CollectionUtils.isEmpty(jurisdiction.getRoles()))
+				continue;
+			Set<String> seenCodes = new HashSet<>();
+			for(JurisdictionRole role : jurisdiction.getRoles()) {
+				if(StringUtils.isBlank(role.getCode())) {
+					errorMap.put(ErrorConstants.HRMS_INVALID_JURISDICTION_ROLE_CODE_CODE,
+							ErrorConstants.HRMS_INVALID_JURISDICTION_ROLE_CODE_MSG);
+					continue;
+				}
+				if(!seenCodes.add(role.getCode()))
+					errorMap.put(ErrorConstants.HRMS_DUPLICATE_JURISDICTION_ROLE_CODE,
+							ErrorConstants.HRMS_DUPLICATE_JURISDICTION_ROLE_MSG);
+				if(!heldRoleCodes.contains(role.getCode()))
+					errorMap.put(ErrorConstants.HRMS_JURISDICTION_ROLE_NOT_HELD_CODE,
+							ErrorConstants.HRMS_JURISDICTION_ROLE_NOT_HELD_MSG);
+			}
+		}
 	}
 
 

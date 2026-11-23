@@ -36,4 +36,6 @@ class Routes {
   static const amcInbox = 'amc-inbox';
   static const amcMediaUpload = 'amc-media-upload';
   static const amcRejectionReasons = 'amc-rejection-reasons';
+  static const installationCompletionImages = 'installationCompletionImages';
+  static const roleSelection = 'role-selection';
 }

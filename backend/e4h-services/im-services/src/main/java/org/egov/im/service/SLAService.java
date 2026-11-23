@@ -1,9 +1,9 @@
 package org.egov.im.service;
 
-import org.apache.kafka.common.protocol.types.Field;
 import org.egov.im.repository.IMPriorityRepository;
 import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.egov.im.web.models.Incident;
+import org.egov.im.util.BusinessHoursUtil;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
 import org.egov.im.web.models.workflow.ProcessInstance;
@@ -17,6 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,14 +31,15 @@ import static org.egov.im.util.IMConstants.*;
 @Slf4j
 @Service
 public class SLAService {
-    
+
     private  final IMPriorityRepository imPriorityRepository;
-    
+
     @Autowired
     public SLAService(IMPriorityRepository imPriorityRepository){
         this.imPriorityRepository = imPriorityRepository;
     }
-    
+
+
     /**
      * Returns the part of the workflow history that the SLA is measured over. Taking a ticket off
      * hold resets its SLA, so everything up to and including the most recent
@@ -53,9 +57,111 @@ public class SLAService {
         return processInstances;
     }
 
+    public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
+        return computeTotalSlaRemaining(states, processInstances, businessHourList, currentProcessInstance, false);
+    }
+
+    /**
+     * Total SLA remaining at the moment the ticket entered its current state, i.e. before any time was
+     * spent in it. Readers derive the live value as this minus the business time elapsed since then,
+     * which is what {@link #computeTotalSlaRemaining} returns for the current instant.
+     */
+    public long computeTotalSlaBase(List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
+        return computeTotalSlaRemaining(states, processInstances, businessHourList, currentProcessInstance, true);
+    }
+
+    /** States whose time counts against the ticket's total SLA. */
+    public boolean isSlaBearingState(String state) {
+        return state != null && (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
+                || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
+                || state.startsWith(PENDING_RESOLUTION_PREFIX)
+                || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
+                || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
+                || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state));
+    }
+
+    /**
+     * Closed tickets keep the SLA values written when they closed. Mirrors the set the SLA cron used to
+     * skip: terminal states plus the resolved / rejected statuses awaiting closure.
+     */
+    public boolean isSlaClockStopped(ProcessInstance processInstance) {
+        State state = processInstance.getState();
+        return Boolean.TRUE.equals(state.getIsTerminateState())
+                || SLA_CLOCK_STOPPED_STATUSES.contains(state.getApplicationStatus());
+    }
+
+    private long computeTotalSlaRemaining(List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList,
+                                          ProcessInstance currentProcessInstance, boolean excludeCurrentStateElapsed) {
+        BusinessHoursUtil businessHoursUtil = new BusinessHoursUtil(businessHourList);
+
+        Map<String, Long> stateToSlaMap = new HashMap<>();
+        for (State state : states) {
+            String key = state.getApplicationStatus();
+            if (key != null && state.getSla() != null) {
+                stateToSlaMap.put(key, state.getSla());
+            }
+        }
+        if(processInstances.isEmpty() || !processInstances.get(processInstances.size() - 1).getState().getState().equals(currentProcessInstance.getState().getState())){
+            processInstances.add(currentProcessInstance);
+        }
+        long remainingTotalSla = 0;
+
+        for (int i = 0; i < processInstances.size(); i++) {
+            ProcessInstance current = processInstances.get(i);
+            String state = current.getState().getApplicationStatus();
+
+            if (isSlaBearingState(state)) {
+                long prevStateTime = current.getAuditDetails().getCreatedTime();
+                ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of(ASIA_KOLKATA));
+                ZonedDateTime zonedNextStateTime;
+                if (i + 1 < processInstances.size()) {
+                    long nextStateTime = processInstances.get(i + 1).getAuditDetails().getCreatedTime();
+                    zonedNextStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nextStateTime), ZoneId.of(ASIA_KOLKATA));
+                } else if (excludeCurrentStateElapsed) {
+                    zonedNextStateTime = zonedPrevStateTime;
+                } else {
+                    zonedNextStateTime = ZonedDateTime.now(ZoneId.of(ASIA_KOLKATA));
+                }
+                long currentStateTimeSpent = businessHoursUtil.calculateBusinessDuration(zonedPrevStateTime, zonedNextStateTime);
+                long currentStateDefinedSla = stateToSlaMap.getOrDefault(state, 0L);
+                if(i + 1 >= processInstances.size() || currentStateDefinedSla-currentStateTimeSpent<0){
+                    remainingTotalSla += currentStateDefinedSla-currentStateTimeSpent;
+                }
+            }
+        }
+        String currentState = currentProcessInstance.getState().getApplicationStatus();
+        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
+            log.debug("Computed remaining SLA for combined state={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDING_TECH_POC, 0L);
+            log.debug("Computed remaining SLA for RMS device assignment | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDINGRESOLUTION, 0L);
+            log.debug("Computed remaining SLA for RMS device tech POC | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)
+                || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(PENDING_ASSIGNMENT_OUT_OF_WARRANTY, 0L);
+            log.debug("Computed remaining SLA for out-of-warranty tech POC | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(PENDING_RESOLUTION_OUT_OF_SCOPE, 0L);
+            log.debug("Computed remaining SLA for out-of-scope | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (PENDING_REVISION.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2, 0L);
+            log.debug("Computed remaining SLA for pending revision | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
+            remainingTotalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
+            log.debug("Computed remaining SLA for assignment workflow | currentState={} resolutionState={} totalSlaRemaining={}",
+                    currentState, resolutionState, remainingTotalSla);
+        }
+
+        return remainingTotalSla;
+    }
+
     public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
-        log.trace("SLAService::computeTotalSla method invoked");
-        log.info("Computing total SLA for currentState={}", currentState);
+        log.info("SLAService::computeTotalSla called | currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
             String key = state.getApplicationStatus();
@@ -69,17 +175,11 @@ public class SLAService {
                 .stream()
                 .map(p -> p.getState().getApplicationStatus())
                 .collect(Collectors.toList());
-
         if(previousStates.isEmpty() || !previousStates.get(previousStates.size() - 1).equals(currentState)){
             previousStates.add(currentState);
         }
         for (String state : previousStates) {
-            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
-                    || state.startsWith(PENDING_RESOLUTION_PREFIX)
-                    || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
-                    || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
-                    || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)) {
+            if (isSlaBearingState(state)) {
                 totalSla += stateToSlaMap.getOrDefault(state, 0L);
             }
         }
@@ -115,10 +215,9 @@ public class SLAService {
     }
 
     public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
-        log.trace("SLAService::getPriorityFromMDMS method invoked");
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
-        log.info("Fetching priority from MDMS for assetType={} serviceCode={}", assetType, serviceCode);
+        log.info("SLAService::getPriorityFromMDMS called | assetType={} serviceCode={}", assetType, serviceCode);
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
         List<Object> res;
         try {
@@ -161,16 +260,12 @@ public class SLAService {
     }
 
     private String getStringValue(Map<String, Object> map, String key) {
-        log.trace("SLAService::getStringValue method invoked");
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
     }
 
     public Priority getPriorityFromIMPriorityTable(Incident incident) {
-        log.trace("SLAService::getPriorityFromIMPriorityTable method invoked");
         String stateTenantId = incident.getTenantId().split("\\.")[0];
-        log.debug("Fetching priority from IM priority table for tenantId={}, incidentType={}, incidentSubType={}", 
-                stateTenantId, incident.getIncidentType(), incident.getIncidentSubType());
         IMPrioritySearchCriteria criteria = IMPrioritySearchCriteria.builder()
                 .tenantId(stateTenantId)
                 .incidentType(incident.getIncidentType())
@@ -179,4 +274,4 @@ public class SLAService {
                 .build();
         return imPriorityRepository.getPriority(criteria);
     }
-} 
+}

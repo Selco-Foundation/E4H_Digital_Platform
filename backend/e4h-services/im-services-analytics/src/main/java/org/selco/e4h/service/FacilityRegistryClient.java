@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
+import org.selco.e4h.util.SystemRequestInfo;
 import org.selco.e4h.config.CarbonEmissionProperties;
 import org.selco.e4h.web.models.Co2Boundary;
 import org.selco.e4h.web.models.Co2FacilityContext;
@@ -80,7 +81,10 @@ public class FacilityRegistryClient {
         criteria.put("sendNonPaginatedResponse", false);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("RequestInfo", requestInfo);
+        // Batch and aggregate reads, not one person's view of the registry: facility bulk search
+        // is jurisdiction-scoped, and a CO2 run or a per-state count that saw only the
+        // triggering user's area would be silently wrong rather than denied.
+        body.put("RequestInfo", SystemRequestInfo.of(requestInfo));
         body.put("Facility", criteria);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -122,7 +126,10 @@ public class FacilityRegistryClient {
     private FacilityPage search(RequestInfo requestInfo, String tenantId, Map<String, Object> criteria) {
         String url = properties.getFacilityHost() + properties.getFacilityBulkSearchPath();
         Map<String, Object> body = new HashMap<>();
-        body.put("RequestInfo", requestInfo);
+        // Batch and aggregate reads, not one person's view of the registry: facility bulk search
+        // is jurisdiction-scoped, and a CO2 run or a per-state count that saw only the
+        // triggering user's area would be silently wrong rather than denied.
+        body.put("RequestInfo", SystemRequestInfo.of(requestInfo));
         body.put("Facility", criteria);
 
         HttpHeaders headers = new HttpHeaders();
@@ -162,6 +169,9 @@ public class FacilityRegistryClient {
                         .tenantId(tenantId)
                         .facilityName(text(f, "facility_name", "facilityName"))
                         .facilityType(text(f, "facility_type", "facilityType"))
+                        .facilityCategory(text(f, "facility_category", "facilityCategory"))
+                        .mappedVendorName(text(f, "mappedVendorName", "mapped_vendor_name"))
+                        .mappedVendorUserName(text(f, "mappedVendorUserName", "mapped_vendor_user_name"))
                         .hfrId(text(f, "hfr_id", "hfrId"))
                         .ninId(text(f, "nin_id", "ninId"))
                         .solarInstallationDate(parseDate(f, "solar_installation_date", "solarInstallationDate"))

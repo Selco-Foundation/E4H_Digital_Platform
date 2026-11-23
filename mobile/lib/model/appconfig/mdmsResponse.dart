@@ -6,7 +6,7 @@ part 'mdmsResponse.g.dart';
 @freezed
 class MdmsResponseModel with _$MdmsResponseModel {
   const factory MdmsResponseModel({
-    @JsonKey(name: 'HCM-FIELD-APP-CONFIG') required AppConfig? appConfig,
+    @JsonKey(name: 'E4H-FIELD-APP-CONFIG') required AppConfig? appConfig,
   }) = _MdmsResponseModel;
 
   factory MdmsResponseModel.fromJson(

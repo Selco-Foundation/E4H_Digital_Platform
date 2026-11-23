@@ -7,12 +7,15 @@ import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_doc.dart';
+import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
 import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_installation_image.dart';
+import '../data/nosql/cache_operation_checkpoint.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_prefilled_activity_facility.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
@@ -63,11 +66,14 @@ class Constants {
           CacheUnsubmittedActivityFacilitySchema,
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
+          CacheInstallationImageSchema,
           CacheBomDocSchema,
           CachePrefilledActivityFacilitySchema,
           CacheActivityFacilityBomValuesSchema,
           CacheSubmissionJobSchema,
+          CacheOperationCheckpointSchema,
           CacheScheduledVisitSchema,
+          CacheAmcFailedScheduledVisitSchema,
           CacheAmcDocSchema,
           CacheAmcMediaUploadSchema,
           CacheScheduleVisitFormValuesSchema,

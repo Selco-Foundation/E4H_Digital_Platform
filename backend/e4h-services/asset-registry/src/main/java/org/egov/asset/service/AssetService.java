@@ -440,6 +440,7 @@ public class AssetService {
             throw new CustomException("ASSET_NOT_FOUND", "Asset with ID " + assetId + " does not exist");
         }
 
+        // Update audit details
         if (updated.getAuditDetails() != null) {
             updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
             updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());

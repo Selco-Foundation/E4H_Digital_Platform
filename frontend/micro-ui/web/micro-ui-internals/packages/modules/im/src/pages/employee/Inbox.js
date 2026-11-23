@@ -4,6 +4,7 @@ import { Loader, Header } from "@selco/digit-ui-react-components";
 import DesktopInbox from "../../components/DesktopInbox";
 import MobileInbox from "../../components/MobileInbox";
 import { Link, useHistory, useLocation } from "react-router-dom";
+import { defaultsToAssignedToMe } from "../../constants/Inbox";
 
 const Inbox = () => {
   const { t } = useTranslation();
@@ -12,9 +13,6 @@ const Inbox = () => {
   const { userName, roles } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const { nearing } = Digit.Hooks.useQueryParams();
-  const isStateProgramManagerUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_1");
-  const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
-
   const isCodePresent = (array, codeToCheck) => array.some((item) => item.code === codeToCheck);
 
   const history = useHistory();
@@ -25,25 +23,24 @@ const Inbox = () => {
     (() => {
       try {
         const filterParam = queryParams.get("filter");
-        return filterParam ? JSON.parse(filterParam) : null;
+        if (!filterParam) return null;
+        const restored = JSON.parse(filterParam);
+        // A URL bookmarked before the backend took over "assigned to me" still carries the
+        // role-derived statuses and an assignee. Honouring them would resurrect the behaviour this
+        // replaced - including the empty-intersection case that emptied the inbox.
+        if (restored?.filters?.wfFilters) {
+          const { wfStatus, assignee, ...rest } = restored.filters.wfFilters;
+          restored.filters.wfFilters = rest;
+        }
+        return restored;
       } catch (error) {
         console.error("Failed to parse filter parameter:", error);
         return null;
       }
     })() || {
       filters: {
-        wfFilters: isCodePresent(roles, "COMPLAINT_RESOLVER") || isStateProgramManagerUser
-          ? { assignee: [{ code: userName }] }
-          : isTechPocUser
-          ? {
-              assignee: [{ code: userName }],
-              wfStatus: [
-                { code: "RMS_DEVICE_PENDING_TECH_POC" },
-                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
-                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
-              ],
-            }
-          : { assignee: [{ code: "" }] },
+        // No statuses and no assignee: the backend decides what "mine" means for whoever asks.
+        wfFilters: { assignedToMe: defaultsToAssignedToMe(roles) },
       },
       search: "",
       sort: {},
@@ -212,10 +209,10 @@ const Inbox = () => {
       }
 
       // Assigned to Me vs All Tickets toggle
-      const hadAssignee = (old?.wfFilters?.assignee || []).map((e) => e.code).filter(Boolean).length > 0;
-      const hasAssignee = (next?.wfFilters?.assignee || []).map((e) => e.code).filter(Boolean).length > 0;
-      if (hadAssignee !== hasAssignee) {
-        sendFilterEvent("assigned_toggle", hasAssignee ? "assigned_to_me" : "all_tickets");
+      const wasAssignedToMe = old?.wfFilters?.assignedToMe === true;
+      const isAssignedToMe = next?.wfFilters?.assignedToMe === true;
+      if (wasAssignedToMe !== isAssignedToMe) {
+        sendFilterEvent("assigned_toggle", isAssignedToMe ? "assigned_to_me" : "all_tickets");
       }
 
       // Issue Type Filter

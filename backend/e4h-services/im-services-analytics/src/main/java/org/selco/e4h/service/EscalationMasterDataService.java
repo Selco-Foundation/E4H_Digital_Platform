@@ -37,7 +37,6 @@ public class EscalationMasterDataService {
      * Fetch all escalation levels from MDMS
      */
     public List<EscalationLevel> fetchEscalationLevels(RequestInfo requestInfo) {
-        log.trace("Fetching escalation levels from MDMS");
         try {
             log.info("Fetching escalation levels from MDMS");
             Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
@@ -46,7 +45,6 @@ public class EscalationMasterDataService {
                 INCIDENT_MODULE, 
                 List.of(ESCALATION_LEVEL_MASTER)
             );
-            log.debug("Retrieved MDMS data for escalation levels");
             
             JSONArray escalationLevels = mdmsData.get(INCIDENT_MODULE).get(ESCALATION_LEVEL_MASTER);
             if (escalationLevels != null && !escalationLevels.isEmpty()) {
@@ -54,7 +52,7 @@ public class EscalationMasterDataService {
                     return objectMapper.convertValue(escalationLevels, new TypeReference<List<EscalationLevel>>() {});
                 } catch (Exception conversionError) {
                     log.error("Error converting escalation levels JSONArray to List<EscalationLevel>", conversionError);
-                    log.debug("Escalation levels JSONArray size: {}", escalationLevels.size());
+                    log.debug("Escalation levels JSONArray content: {}", escalationLevels);
                     return new ArrayList<>();
                 }
             }
@@ -72,7 +70,6 @@ public class EscalationMasterDataService {
      * Fetch all escalation recipients from MDMS
      */
     public List<EscalationRecipient> fetchEscalationRecipients(RequestInfo requestInfo) {
-        log.trace("Fetching escalation recipients from MDMS");
         try {
             log.info("Fetching escalation recipients from MDMS");
             Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
@@ -81,13 +78,11 @@ public class EscalationMasterDataService {
                 INCIDENT_MODULE, 
                 List.of(ESCALATION_RECIPIENT_MASTER)
             );
-            log.debug("Retrieved MDMS data for escalation recipients");
             
             JSONArray escalationRecipients = mdmsData.get(INCIDENT_MODULE).get(ESCALATION_RECIPIENT_MASTER);
             if (escalationRecipients != null && !escalationRecipients.isEmpty()) {
                 try {
                     List<EscalationRecipient> recipients = objectMapper.convertValue(escalationRecipients, new TypeReference<List<EscalationRecipient>>() {});
-                    log.debug("Converted {} escalation recipients from JSONArray", recipients != null ? recipients.size() : 0);
                     
                     // Sort by ID to ensure correct processing order (1-7, not 7-1)
                     recipients.sort((a, b) -> {
@@ -97,13 +92,13 @@ public class EscalationMasterDataService {
                         return a.getId().compareTo(b.getId());
                     });
                     
-                    log.info("Fetched {} escalation recipients, sorted by ID", recipients.size());
-                    log.debug("Escalation recipient IDs: {}", recipients.stream().map(EscalationRecipient::getId).toList());
+                    log.info("Fetched {} escalation recipients, sorted by ID: {}", 
+                        recipients.size(), recipients.stream().map(EscalationRecipient::getId).toList());
                     
                     return recipients;
                 } catch (Exception conversionError) {
                     log.error("Error converting escalation recipients JSONArray to List<EscalationRecipient>", conversionError);
-                    log.debug("Escalation recipients JSONArray size: {}", escalationRecipients.size());
+                    log.debug("Escalation recipients JSONArray content: {}", escalationRecipients);
                     return new ArrayList<>();
                 }
             }
@@ -121,7 +116,6 @@ public class EscalationMasterDataService {
      * Fetch all active tenant IDs from MDMS
      */
     public List<String> fetchActiveTenantIds(RequestInfo requestInfo) {
-        log.trace("Fetching active tenant IDs from MDMS");
         try {
             log.info("Fetching active tenant IDs from MDMS");
             Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
@@ -130,12 +124,10 @@ public class EscalationMasterDataService {
                 TENANT_MODULE, 
                 List.of(TENANT_MASTER)
             );
-            log.debug("Retrieved MDMS data for tenants");
             
             JSONArray tenants = mdmsData.get(TENANT_MODULE).get(TENANT_MASTER);
             if (tenants != null && !tenants.isEmpty()) {
                 List<String> activeTenantIds = new ArrayList<>();
-                log.debug("Processing {} tenant objects from MDMS", tenants.size());
                 
                 for (Object tenantObj : tenants) {
                     try {
@@ -152,15 +144,14 @@ public class EscalationMasterDataService {
                                 log.debug("Skipping country-level tenant: {}", tenantId);
                             }
                         } else {
-                            log.warn("Tenant object missing 'code' field");
+                            log.warn("Tenant object missing 'code' field: {}", tenantObj);
                         }
                     } catch (Exception e) {
-                        log.warn("Error processing tenant object", e);
+                        log.warn("Error processing tenant object: {}", tenantObj, e);
                     }
                 }
                 
-                log.info("Found {} active state-level tenants", activeTenantIds.size());
-                log.debug("Active tenant IDs: {}", activeTenantIds);
+                log.info("Found {} active state-level tenants: {}", activeTenantIds.size(), activeTenantIds);
                 return activeTenantIds;
             }
             
@@ -175,7 +166,6 @@ public class EscalationMasterDataService {
 
     // Allow to get boundary for each state base
     public Map<String, String> getActiveTenantIdsName(RequestInfo requestInfo) {
-        log.trace("Fetching active tenant IDs and names from MDMS");
         log.info("Fetching active tenant IDs from MDMS");
 
         try {
@@ -185,7 +175,6 @@ public class EscalationMasterDataService {
                     TENANT_MODULE,
                     List.of(TENANT_MASTER)
             );
-            log.debug("Retrieved MDMS data for tenant IDs and names");
 
             JSONArray tenants = mdmsData
                     .getOrDefault(TENANT_MODULE, Map.of())
@@ -197,14 +186,12 @@ public class EscalationMasterDataService {
             }
 
             Map<String, String> tenantMap = new HashMap<>();
-            log.debug("Processing {} tenant objects", tenants.size());
 
             for (Object tenantObj : tenants) {
                 processTenant(tenantObj, tenantMap);
             }
 
-            log.info("Found {} active state-level tenants", tenantMap.size());
-            log.debug("Tenant map: {}", tenantMap);
+            log.info("Found {} active state-level tenants: {}", tenantMap.size(), tenantMap);
             return tenantMap;
 
         } catch (Exception e) {
@@ -213,10 +200,10 @@ public class EscalationMasterDataService {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void processTenant(Object tenantObj, Map<String, String> tenantMap) {
-        log.trace("Processing tenant object");
         if (!(tenantObj instanceof Map)) {
-            log.warn("Invalid tenant object format");
+            log.warn("Invalid tenant object format: {}", tenantObj);
             return;
         }
 
@@ -225,7 +212,7 @@ public class EscalationMasterDataService {
         String tenantName = (String) tenant.get("name");
 
         if (!isValidTenant(tenantId, tenantName)) {
-            log.warn("Tenant object missing required fields: code={}, name={}", tenantId, tenantName);
+            log.warn("Tenant object missing required fields: {}", tenantObj);
             return;
         }
 

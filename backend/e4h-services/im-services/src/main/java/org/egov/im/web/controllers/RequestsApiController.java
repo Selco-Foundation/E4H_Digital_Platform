@@ -19,6 +19,9 @@ import java.io.IOException;
 import java.util.*;
 
 import jakarta.validation.Valid;
+import org.egov.im.service.WorkflowActionFilterService;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.util.Map;
 
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2020-07-15T11:35:33.568+05:30")
 
@@ -26,6 +29,9 @@ import jakarta.validation.Valid;
 @RequestMapping("/v2")
 @Slf4j
 public class RequestsApiController{
+
+    @Autowired
+    private WorkflowActionFilterService workflowActionFilterService;
 
     private final ObjectMapper objectMapper;
 
@@ -109,6 +115,23 @@ public class RequestsApiController{
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    /**
+     * Workflow's process search, minus the actions the caller may not take where this ticket is.
+     *
+     * Same request and response shapes as {@code /egov-workflow-v2/egov-wf/process/_search} - the
+     * ticket details page points here instead, because workflow sees only a businessId and so
+     * cannot know a ticket's boundary. Every query parameter is forwarded untouched.
+     *
+     * Presentation only: {@code ServiceRequestValidator} refuses the transition regardless.
+     */
+    @RequestMapping(value = "/process/_search", method = RequestMethod.POST)
+    public ResponseEntity<Object> processSearchPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
+                                                    @RequestParam Map<String, String> queryParams) {
+        return new ResponseEntity<>(
+                workflowActionFilterService.searchAndFilter(requestInfoWrapper.getRequestInfo(), queryParams),
+                HttpStatus.OK);
+    }
+
     @RequestMapping(value="/request/_update", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsUpdatePost(@Valid @RequestBody IncidentRequest request) throws IOException {
         log.trace("RequestsApiController::requestsUpdatePost method invoked");
@@ -127,6 +150,16 @@ public class RequestsApiController{
         IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
         IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @RequestMapping(value="/request/migration/v2/_update", method = RequestMethod.POST)
+    public ResponseEntity<IncidentResponse> migrationV2UpdateTheftStatus(@Valid @RequestBody MigrationV2Request request) {
+        log.trace("RequestsApiController::migrationV2UpdateTheftStatus method invoked");
+        log.info("Received migration v2 update request for tenantId={}", request.getTenantId());
+        MigrationV2Request enrichedReq = imService.migrationV2Update(request);
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
+        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.emptyList()).build();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 

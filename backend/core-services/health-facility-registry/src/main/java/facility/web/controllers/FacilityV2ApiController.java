@@ -3,6 +3,7 @@ package facility.web.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.service.FacilityService;
+import facility.util.RoleScopeResolver;
 import facility.web.models.*;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -17,8 +18,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.server.ResponseStatusException;
+import org.egov.tracer.model.CustomException;
+
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-14T17:15:00.238919256+05:30[Asia/Kolkata]")
 @Controller
@@ -32,11 +40,18 @@ public class FacilityV2ApiController {
 
     private final FacilityService facilityService;
 
+    private final RoleScopeResolver roleScopeResolver;
+
+    /** Names the applied scope on every bulk response, so clients need not parse the body for it. */
+    private static final String JURISDICTION_SCOPE_HEADER = "x-jurisdiction-scope";
+
     @Autowired
-    public FacilityV2ApiController(ObjectMapper objectMapper, HttpServletRequest request, FacilityService facilityService) {
+    public FacilityV2ApiController(ObjectMapper objectMapper, HttpServletRequest request,
+                                   FacilityService facilityService, RoleScopeResolver roleScopeResolver) {
         this.objectMapper = objectMapper;
         this.request = request;
         this.facilityService = facilityService;
+        this.roleScopeResolver = roleScopeResolver;
     }
 
     @PostMapping("/create")
@@ -61,6 +76,21 @@ public class FacilityV2ApiController {
         }
     }
 
+
+    /**
+     * Checks HFR ID, NIN ID and POC username of facilities before they are created, with the same
+     * uniqueness rules as {@code /create} (across all three fields, within the request, among
+     * existing facilities and among HRMS usernames). Nothing is created.
+     */
+    @PostMapping("/_validate-identifiers")
+    public ResponseEntity<FacilityIdentifierValidationResponse> validateFacilityIdentifiers(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Identifiers of the facilities to check",
+                    required = true
+            )
+            @Valid @RequestBody FacilityIdentifierValidationRequest identifierValidationRequest) {
+        return ResponseEntity.ok(facilityService.validateIdentifiers(identifierValidationRequest));
+    }
 
     @RequestMapping(value = "/assessment/create", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> createHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data created", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
@@ -208,18 +238,9 @@ public class FacilityV2ApiController {
 
     @PostMapping("/_bulk-search")
     public ResponseEntity<FacilitySearchResponse> bulkSearchFacilities(
-            @RequestBody FacilityBulkSearchRequest searchRequest
-    ) {
-        log.trace("Entering bulkSearchFacilities endpoint");
-        FacilityBulkSearchCriteria criteria = searchRequest.getFacilityBulkSearchCriteria();
-        int criteriaCount = criteria != null ?
-                (criteria.getTenantIds() != null ? criteria.getTenantIds().size() : 0) : 0;
-        log.info("Received bulk facility search request with {} tenant criteria", criteriaCount);
-        List<Facility> facilities = facilityService.bulkSearchFacilities(searchRequest);
-        int totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest);
-        log.info("Bulk search completed: found {} facilities out of {} total", facilities.size(), totalCount);
-        log.trace("Exiting bulkSearchFacilities endpoint");
-        return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
+            @RequestBody FacilityBulkSearchRequest searchRequest,
+            @RequestHeader(value = RoleScopeResolver.X_ACTING_ROLE, required = false) String actingRole) {
+        return bulkSearch(searchRequest, actingRole, false, "_bulk-search");
     }
 
     /**
@@ -228,25 +249,140 @@ public class FacilityV2ApiController {
      */
     @PostMapping("/_bulk-search-with-boundary")
     public ResponseEntity<FacilitySearchResponse> bulkSearchFacilitiesWithAddressAndBoundary(
-            @RequestBody FacilityBulkSearchRequest searchRequest
-    ) {
-        log.trace("Entering bulkSearchFacilitiesWithAddressAndBoundary endpoint");
+            @RequestBody FacilityBulkSearchRequest searchRequest,
+            @RequestHeader(value = RoleScopeResolver.X_ACTING_ROLE, required = false) String actingRole) {
+        return bulkSearch(searchRequest, actingRole, true, "_bulk-search-with-boundary");
+    }
+
+    /**
+     * Both bulk endpoints, sharing one scope decision.
+     *
+     * They differ only in how boundary detail is attached to the rows they return, so resolving the
+     * caller's jurisdiction here - once, before either - is what stops the two drifting apart, and
+     * what guarantees the count is built from the same ceiling as the rows.
+     */
+    private ResponseEntity<FacilitySearchResponse> bulkSearch(FacilityBulkSearchRequest searchRequest,
+                                                              String actingRole,
+                                                              boolean resolveBoundaryPerRow,
+                                                              String endpoint) {
+        log.trace("Entering {} endpoint", endpoint);
+        FacilityScope scope = roleScopeResolver.resolve(searchRequest.getRequestInfo(), actingRole);
+
+        if (scope.decision() == FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE) {
+            // Fail closed on rows, loud on status. Answering 200 with an empty list would be
+            // indistinguishable from a genuinely empty result, so clients would render it as truth
+            // and the outage would never appear in HTTP metrics.
+            log.error("Refusing {}: {}", endpoint, scope.errorCode());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    scope.errorCode() + ": " + scope.errorMessage());
+        }
+        if (scope.isDeny() && !scope.isEmptyResultDenial()) {
+            log.warn("Refusing {}: {}", endpoint, scope.errorCode());
+            throw new CustomException(scope.errorCode(), scope.errorMessage());
+        }
+
+        List<Facility> facilities;
+        int totalCount;
+        if (scope.isEmptyResultDenial()) {
+            // A real answer: this role grants the caller nothing. Not an error.
+            log.info("Caller holds no jurisdiction as {}; returning no facilities", scope.actingRole());
+            facilities = new ArrayList<>();
+            totalCount = 0;
+        } else {
+            // Resolved once, used by both the rows and the count, so the two cannot disagree.
+            Map<String, Set<String>> levelFilters = facilityService.resolveLevelFilters(searchRequest);
+            facilities = resolveBoundaryPerRow
+                    ? facilityService.bulkSearchFacilitiesWithAddressAndBoundary(searchRequest, scope, levelFilters)
+                    : facilityService.bulkSearchFacilities(searchRequest, scope, levelFilters);
+            totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest, scope, levelFilters);
+        }
+
+        FacilitySearchResponse response = new FacilitySearchResponse(facilities, totalCount);
+        response.setScopeApplied(scope.isApplied() || scope.isEmptyResultDenial());
+        response.setOutOfScopeFacilityIds(outOfScopeFacilityIds(searchRequest, facilities, scope));
+        auditWarnMode(endpoint, facilities, scope);
+
+        log.info("{} completed: found {} facilities out of {} total, scope={}",
+                endpoint, facilities.size(), totalCount, scope.headerValue());
+        log.trace("Exiting {} endpoint", endpoint);
+        return ResponseEntity.ok()
+                .header(JURISDICTION_SCOPE_HEADER, scope.headerValue())
+                .body(response);
+    }
+
+    /**
+     * The ids the caller named that the ceiling excluded, or null when that cannot be said honestly.
+     *
+     * Only computable when the request named ids and the page could not have truncated the result -
+     * otherwise "asked for but not returned" would name the ids that merely fell on another page.
+     * Callers read a missing id as "does not exist", so a wrong answer here is worse than none.
+     */
+    private List<String> outOfScopeFacilityIds(FacilityBulkSearchRequest searchRequest,
+                                               List<Facility> facilities,
+                                               FacilityScope scope) {
         FacilityBulkSearchCriteria criteria = searchRequest.getFacilityBulkSearchCriteria();
-        int criteriaCount = criteria != null
-                ? (criteria.getTenantIds() != null ? criteria.getTenantIds().size() : 0)
-                : 0;
-        log.info("Received bulk facility search (with boundary batch) request with {} tenant criteria", criteriaCount);
-        List<Facility> facilities = facilityService.bulkSearchFacilitiesWithAddressAndBoundary(searchRequest);
-        int totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest);
-        log.info("Bulk search (with boundary batch) completed: found {} facilities out of {} total", facilities.size(), totalCount);
-        log.trace("Exiting bulkSearchFacilitiesWithAddressAndBoundary endpoint");
-        return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
+        if (criteria == null || criteria.getFacilityIds() == null || criteria.getFacilityIds().isEmpty()) {
+            return null;
+        }
+        if (!scope.isApplied() && !scope.isEmptyResultDenial()) {
+            return null;
+        }
+        boolean wholeResult = Boolean.TRUE.equals(criteria.getSendNonPaginatedResponse())
+                || (criteria.getLimit() != null && criteria.getFacilityIds().size() <= criteria.getLimit());
+        if (!wholeResult) {
+            return null;
+        }
+        Set<String> returned = new HashSet<>();
+        for (Facility facility : facilities) {
+            if (facility.getFacilityId() != null) {
+                returned.add(facility.getFacilityId());
+            }
+        }
+        List<String> denied = new ArrayList<>();
+        for (String requested : criteria.getFacilityIds()) {
+            if (requested != null && !returned.contains(requested)) {
+                denied.add(requested);
+            }
+        }
+        return denied;
+    }
+
+    /**
+     * In warn mode, record how many rows the ceiling <em>would</em> have removed.
+     *
+     * This is the only signal that predicts what switching to enforce actually breaks. Counting
+     * callers that arrive without a header badly over-counts: most of them are services or hold
+     * country-level grants and would lose nothing.
+     */
+    private void auditWarnMode(String endpoint, List<Facility> facilities, FacilityScope scope) {
+        if (scope.decision() != FacilityScope.Decision.UNSCOPED_WARN) {
+            return;
+        }
+        int wouldBeDenied = 0;
+        for (Facility facility : facilities) {
+            if (!scope.ceiling().contains(facility.getBoundaryCode())) {
+                wouldBeDenied++;
+            }
+        }
+        log.info("JURISDICTION_AUDIT endpoint={} acting_role={} rows_returned={} rows_that_would_be_denied={} ceiling_size={}",
+                endpoint, scope.actingRole(), facilities.size(), wouldBeDenied, scope.ceiling().size());
     }
 
     @GetMapping("/migrate_data")
     public ResponseEntity<String> migrateFacilityDB() {
         facilityService.migrateFacilityData();
         return ResponseEntity.ok("Script done");
+    }
+
+    /**
+     * Operator script: finds every facility whose facility_poc_phone is still a plaintext
+     * 10-digit number and re-persists it through the update-facility persister, which encrypts
+     * it on the way through (see FacilityRepository#pushUpdateFacility).
+     */
+    @GetMapping("/encrypt-poc-phone")
+    public ResponseEntity<String> encryptFacilityPocPhone() {
+        String summary = facilityService.encryptFacilityPocPhone();
+        return ResponseEntity.ok(summary);
     }
 
     /**
@@ -294,6 +430,90 @@ public class FacilityV2ApiController {
         FacilityKibanaReindexResponse result = facilityService.reindexFacilitiesInKibana(request);
         log.info("Kibana reindex finished: scanned={}, reindexed={}, skipped={}, failed={}",
                 result.getScanned(), result.getReindexed(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Operator backfill: scans the health facility index and sets {@code projectName} on each document
+     * from the project service (partial update; other fields untouched).
+     * Requires {@code facility.project-name.backfill.enabled=true}.
+     */
+    @PostMapping("/_backfill-project-name")
+    public ResponseEntity<FacilityProjectNameBackfillResponse> backfillFacilityProjectNames(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (optional tenantId filter; batchSize defaults to 500)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityProjectNameBackfillRequest request) {
+        log.info("Received facility projectName backfill request");
+        FacilityProjectNameBackfillResponse result = facilityService.backfillFacilityProjectNames(request);
+        log.info("projectName backfill finished: scanned={}, updated={}, skipped={}, failed={}",
+                result.getScanned(), result.getUpdated(), result.getSkipped(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Writes one facility's mapped vendor - the facility row and its index document - and nothing
+     * else. Identify the facility by {@code facilityId} or {@code boundaryCode}. Blank name and
+     * username together unmap the facility. Requires FACILITY_ADMIN or SYSTEM_USER.
+     *
+     * <p>Called by vendor-registry when a facility jurisdiction is added to or removed from a
+     * vendor, in place of routing the mapping through the full facility update.
+     */
+    @PostMapping("/_update-mapped-vendor")
+    public ResponseEntity<FacilityMappedVendorUpdateResponse> updateMappedVendor(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Mapped vendor update (tenantId plus facilityId or boundaryCode, "
+                            + "and the vendor name/username to write)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityMappedVendorUpdateRequest request) {
+        log.info("Received mapped vendor update for facilityId={} boundaryCode={}",
+                request.getFacilityId(), request.getBoundaryCode());
+        FacilityMappedVendorUpdateResponse result = facilityService.updateMappedVendor(request);
+        log.info("Mapped vendor update finished for facilityId={}: updated={}, unchanged={}, indexSkipped={}",
+                result.getFacilityId(), result.isUpdated(), result.isUnchanged(), result.isIndexSkipped());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Settles mappedVendorName / mappedVendorUserName from HRMS on facilities that carry none,
+     * writing both the facility row and its index document. Operator endpoint, disabled unless
+     * {@code facility.mapped-vendor.backfill.enabled=true}. Send {@code dryRun: true} first to
+     * size the affected set.
+     */
+    @PostMapping("/_backfill-mapped-vendor")
+    public ResponseEntity<FacilityMappedVendorBackfillResponse> backfillFacilityMappedVendors(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (optional tenantId/facilityIds filters; "
+                            + "onmReadyOnly defaults to true, dryRun to false)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityMappedVendorBackfillRequest request) {
+        log.info("Received facility mappedVendor backfill request");
+        FacilityMappedVendorBackfillResponse result = facilityService.backfillFacilityMappedVendors(request);
+        log.info("mappedVendor backfill finished: scanned={}, updated={}, skipped={}, failed={}, dryRun={}",
+                result.getScanned(), result.getUpdated(), result.getSkipped(),
+                result.getFailed(), result.isDryRun());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Writes a facility's AMC snapshot onto the health facility index only - the facility table is
+     * not touched. Called by amc-scheduler-service, which owns AMC data; see
+     * {@code FacilityAmcIndexUpdateRequest}. Requires FACILITY_ADMIN or SYSTEM_USER.
+     */
+    @PostMapping("/_update-amc-index")
+    public ResponseEntity<FacilityAmcIndexUpdateResponse> updateAmcIndexFields(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Facility AMC index update (facilityId plus the AMC fields to write)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityAmcIndexUpdateRequest request) {
+        log.info("Received AMC index update request for facilityId: {}", request.getFacilityId());
+        FacilityAmcIndexUpdateResponse result = facilityService.updateAmcIndexFields(request);
+        log.info("AMC index update finished for facilityId={}: updated={}",
+                result.getFacilityId(), result.getUpdated());
         return ResponseEntity.ok(result);
     }
 

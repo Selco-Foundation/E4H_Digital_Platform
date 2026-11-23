@@ -3,9 +3,29 @@ from typing import Any, Dict, Optional, List, Sequence, Union
 
 import requests
 
-from app.core.logging import AppLogger
+logger = logging.getLogger(__name__)
 
-logger = AppLogger().get_logger()
+
+SYSTEM_USER_ROLE = "SYSTEM_USER"
+
+
+def _as_system_request_info(request_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Present the caller as this service rather than as the person who uploaded the sheet.
+
+    Facility search filters by the caller's HRMS jurisdiction. Ingestion looks facilities up by id
+    to build and validate templates, and reads a missing row as "not found" - so a scoped lookup
+    would report real facilities as missing. Identifying as a service keeps those lookups unscoped
+    and preserves today's behaviour exactly.
+    """
+    enriched = dict(request_info or {})
+    user_info = dict(enriched.get("userInfo") or {})
+    roles = list(user_info.get("roles") or [])
+    if not any((role or {}).get("code") == SYSTEM_USER_ROLE for role in roles):
+        roles.append({"code": SYSTEM_USER_ROLE, "name": "System User"})
+    user_info["roles"] = roles
+    user_info["type"] = "SYSTEM"
+    enriched["userInfo"] = user_info
+    return enriched
 
 
 class FacilityServiceClient:
@@ -13,31 +33,40 @@ class FacilityServiceClient:
         self.facility_service_url = facility_service_url
 
     def create_facility(self, facility_payload: Dict[str, Any]):
-        logger.trace("Creating facility in facility service")
         url = f"{self.facility_service_url}/facility-service/v2/facility/create"
         headers = {"Content-Type": "application/json"}
         payload = facility_payload
         facility_count = len(payload.get("facilities") or [])
         timeout = 120 if facility_count > 1 else 30
-        facility_id = facility_payload.get("facility", {}).get("facility_id") or "unknown"
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=timeout)
-            logger.info(f"Facility created successfully: facility_id={facility_id}")
-            logger.debug(f"Create response status: {response.status_code}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error creating facility {facility_id}: {http_err}", exc_info=True)
+            logger.error(f"HTTP error occurred: {http_err}")
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            logger.error(f"Connection error creating facility {facility_id}: {conn_err}", exc_info=True)
+            logger.error(f"Connection error occurred: {conn_err}")
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            logger.error(f"Timeout error creating facility {facility_id}: {timeout_err}", exc_info=True)
+            logger.error(f"Timeout error occurred: {timeout_err}")
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            logger.error(f"Request error creating facility {facility_id}: {req_err}", exc_info=True)
+            logger.error(f"An error occurred: {req_err}")
             raise req_err
+
+    def validate_identifiers(self, request_info_payload: Dict[str, Any], tenant_id: str,
+                             facilities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Check HFR ID, NIN ID and PoC Username of facilities before creating them.
+
+        facilities: [{"facilityName", "hfrId", "ninId", "facilityPocUsername"}, ...]
+        Returns facility-service's conflicts: [{"index": <position in facilities>, "errors": [...]}].
+        """
+        url = f"{self.facility_service_url}/facility-service/v2/facility/_validate-identifiers"
+        payload = {"RequestInfo": request_info_payload, "tenantId": tenant_id, "facilities": facilities}
+        response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=120)
+        response.raise_for_status()
+        return (response.json() or {}).get("conflicts", []) or []
 
     def search_facility(
         self,
@@ -55,7 +84,6 @@ class FacilityServiceClient:
         url = f"{self.facility_service_url}/facility-service/v2/facility/search"
         headers = {"Accept": "application/json"}
 
-        logger.trace(f"Searching facilities: tenant_id={tenant_id}, facility_id={facility_id}, boundary_code={boundary_code}")
         try:
             # Fast path for identifier-based lookups used by ingestion templates
             if facility_id or hfr_id or nin_id:
@@ -103,8 +131,6 @@ class FacilityServiceClient:
                 data = response.json()
                 all_facilities.extend(data.get("facilities", []) or [])
 
-            logger.info(f"Facility search completed: {total_count} facilities found")
-            logger.debug(f"Search parameters: tenant_id={tenant_id}, facility_id={facility_id}, boundary_code={boundary_code}")
             return {"totalCount": total_count, "facilities": all_facilities}
 
         except requests.exceptions.HTTPError as http_err:
@@ -125,7 +151,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -144,7 +170,7 @@ class FacilityServiceClient:
           "Facility": {
             "tenantIds": [...],
             "facilityIds": [...],
-            "boundaryCodes": [...],
+            "block": [...],
             ...
           }
         }
@@ -154,7 +180,7 @@ class FacilityServiceClient:
             request_info=request_info,
             tenant_ids=tenant_ids,
             facility_ids=facility_ids,
-            boundary_codes=boundary_codes,
+            block_codes=block_codes,
             hfr_ids=hfr_ids,
             nin_ids=nin_ids,
             limit=limit,
@@ -169,7 +195,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -187,7 +213,7 @@ class FacilityServiceClient:
             request_info=request_info,
             tenant_ids=tenant_ids,
             facility_ids=facility_ids,
-            boundary_codes=boundary_codes,
+            block_codes=block_codes,
             hfr_ids=hfr_ids,
             nin_ids=nin_ids,
             limit=limit,
@@ -203,7 +229,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -222,7 +248,11 @@ class FacilityServiceClient:
             request_info_payload = request_info or {}
 
         payload: Dict[str, Any] = {
-            "RequestInfo": request_info_payload,
+            # Known gap, recorded in docs/jurisdiction/NEXT_STEPS.md: because this is a service
+            # call, an uploader can still build a template covering facilities outside their own
+            # area. Closing that needs ingestion to decide which role the uploader is acting as,
+            # which is a product question rather than a technical one.
+            "RequestInfo": _as_system_request_info(request_info_payload),
             "Facility": {
                 "tenantIds": list(tenant_ids),
                 "facilityIds": list(facility_ids) if facility_ids else [],
@@ -234,10 +264,14 @@ class FacilityServiceClient:
                 "facilityPocEmails": [],
                 "facilityStatus": [],
                 "userIds": [],
-                "boundaryCodes": list(boundary_codes) if boundary_codes else [],
+                "boundaryCodes": [],
                 "state": [],
                 "district": [],
-                "block": [],
+                # These are block codes - flatten_boundaries only ever emits block nodes - so they
+                # go in `block`, which facility-service resolves through the hierarchy into the
+                # facilities beneath them. `boundaryCodes` is matched against facility.boundary_code
+                # directly, so a block code sent there would match nothing.
+                "block": list(block_codes) if block_codes else [],
                 "sendNonPaginatedResponse": send_non_paginated_response,
                 "limit": limit,
                 "offset": offset,

@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { Redirect, useHistory } from "react-router-dom";
 import UploadDrawer from "./ImageUpload/UploadDrawer";
 import CustomTextInput from "../../../components/CustomTextInput";
+import MobileChangeRequestSection from "../../../components/MobileChangeRequest";
 
 const defaultImage =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAO4AAADUCAMAAACs0e/bAAAAM1BMVEXK0eL" +
@@ -227,6 +228,19 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
       setErrors({...errors, mobileNumber: null});
     }
   }
+
+  // Called by MobileChangeRequestSection when the CRM has approved a mobile number change.
+  // The profile keeps its own copy of the number in React state AND in the browser session
+  // (Employee.user-info); both must move to the new number, otherwise the page keeps showing the
+  // old one until re-login, and the next "Save" would write the old number back into that session copy.
+  const handleMobileNumberUpdated = (newMobileNumber) => {
+    setMobileNo(newMobileNumber);
+    const user = Digit.UserService.getUser();
+    if (user) {
+      Digit.UserService.setUser({ ...user, info: { ...user.info, mobileNumber: newMobileNumber } });
+      localStorage.setItem("Employee.user-info", JSON.stringify({ ...user.info, mobileNumber: newMobileNumber }));
+    }
+  };
 
   const setUserCurrentPassword = (value) => {
     setCurrentPassword(value);
@@ -676,6 +690,11 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                   {errors?.mobileNumber && <CardLabelError style={{margin: 0, padding: 0}}> {t(errors?.mobileNumber?.message)} </CardLabelError>}
                 </div>
               </LabelFieldPair>
+              
+              {/* Mobile number change request (HCR only - the component renders nothing for other roles) */}
+              {Digit.Utils?.mobileChangeRequest && Digit.Hooks?.im?.useMobileChangeRequests && (
+                <MobileChangeRequestSection currentMobileNumber={mobileNumber} onMobileNumberUpdated={handleMobileNumberUpdated} />
+              )}
               
               <LabelFieldPair style={{ display: "flex" }}>
                 <CardLabel className="profile-label-margin" style={editScreen ? { color: "#B1B4B6", width: "300px" } : { width: "300px" }}>{`${t(

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
@@ -12,6 +11,7 @@ import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
@@ -43,11 +43,10 @@ class BomRepository {
       final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
 
       final projectDate = _formatProjectDate(af);
-      final projectState = _resolveProjectBlockOrStateName(
-          af.facility?.boundaryCode?.toString(), true);
-
-      final projectBlock = _resolveProjectBlockOrStateName(
-          af.facility?.boundaryCode?.toString(), false);
+      final locality =
+          parseBoundaryCodeLocality(af.facility?.boundaryCode?.toString());
+      final projectState = locality.state;
+      final projectBlock = locality.block;
 
       final enriched = Map<String, dynamic>.from(bomData);
 
@@ -63,10 +62,10 @@ class BomRepository {
       if (projectDate != null && projectDate.trim().isNotEmpty) {
         enriched['project_date'] = projectDate.trim();
       }
-      if (projectState != null && projectState.trim().isNotEmpty) {
+      if (projectState.trim().isNotEmpty) {
         enriched['project_state'] = projectState.trim();
       }
-      if (projectBlock != null && projectBlock.trim().isNotEmpty) {
+      if (projectBlock.trim().isNotEmpty) {
         enriched['project_block'] = projectBlock.trim();
       }
 
@@ -114,14 +113,6 @@ class BomRepository {
     } catch (_) {
       return null;
     }
-  }
-
-  String _resolveProjectBlockOrStateName(String? boundaryCode, bool? isState) {
-    final raw = (boundaryCode ?? '').trim();
-    if (raw.isEmpty) return '';
-    final parts = raw.split('_').where((p) => p.trim().isNotEmpty).toList();
-    if (parts.length < 2) return '';
-    return isState == true ? parts[1] : parts[parts.length - 2];
   }
 
   Future<void> saveLocal({
@@ -339,9 +330,8 @@ class BomRepository {
     final path =
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
     final response = await _dio.post(path, data: payload);
-    AppLogger.instance.info("bom create/update ${response.data}");
     final returnedId = _extractBomId(response.data);
-    final finalId = isUpdate ? (existingId ?? '') : ((returnedId ?? '').trim());
+    final finalId = isUpdate ? existingId : (returnedId ?? '').trim();
 
     await isar.writeTxn(() async {
       for (final d in allDocs) {
@@ -397,7 +387,7 @@ class BomRepository {
   }) async {
     final tenantId = envConfigs.variables.tenantId;
     final path =
-        "/activity/v1/bom/_search?tenantId=${tenantId}&offset=$offset&limit=$limit";
+        "/activity/v1/bom/_search?tenantId=$tenantId&offset=$offset&limit=$limit";
 
     Response response;
     final body = {
@@ -451,8 +441,10 @@ class BomRepository {
       }
       return (savedBomValues: savedValues);
     } catch (e, stack) {
-      AppLogger.instance.info("syncBomForProject ERROR: $e");
-      AppLogger.instance.info(stack);
+      AppLogger.instance.error(
+          title: "syncBomForProject ERROR:",
+          message: e.toString(),
+          stackTrace: stack);
       throw Exception("Error syncing bom");
     }
   }
@@ -463,16 +455,22 @@ class BomRepository {
     required String userType,
   }) async {
     try {
-      final entryKey = '$activityFacilityId::$userType';
-      final rec = await isar.cacheActivityFacilityBomValues
-          .where()
-          .entryKeyEqualTo(entryKey)
-          .findFirst();
-      if (rec == null) {
+      final cachedBomData = await getProjectBomKV(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+      );
+      final fallbackBomData = await _getModelBomValues(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+      final bomData = cachedBomData != null && cachedBomData.isNotEmpty
+          ? Map<String, dynamic>.from(cachedBomData)
+          : Map<String, dynamic>.from(fallbackBomData);
+
+      if (bomData.isEmpty) {
         throw Exception("No BOM values found for project");
       }
-      final Map<String, dynamic> bomData =
-          jsonDecode(rec.dataJson) as Map<String, dynamic>;
 
       final spec = await isar.cacheSpecifications
           .where()
@@ -534,6 +532,11 @@ class BomRepository {
         .findFirst();
 
     if (rec != null) return userType;
+    final fallbackBomData = await _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
+    if (fallbackBomData.isNotEmpty) return userType;
     return null;
   }
 
@@ -591,6 +594,7 @@ class BomRepository {
     required String projectId,
     required String schemaKey,
     required FormOrigin origin,
+    required bool isSystemParameters,
   }) async {
     if (origin == FormOrigin.inboxSummary || origin == FormOrigin.submitted) {
       return 'View';
@@ -603,9 +607,9 @@ class BomRepository {
 
     return exists
         ? 'Edit'
-        : origin == FormOrigin.overallSummary
+        : origin == FormOrigin.overallSummary && isSystemParameters
             ? 'Fill'
-            : 'View';
+            : 'View/Edit';
   }
 
   Future<Map<String, dynamic>?> getProjectBomKV({
@@ -624,6 +628,165 @@ class BomRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<bool> hasLocalBomForSchema({
+    required Isar isar,
+    required String activityFacilityId,
+    required String schemaKey,
+  }) async {
+    final rec = await getLocal(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      schemaKey: schemaKey,
+    );
+    return rec != null;
+  }
+
+  Future<bool> _hasAnyLocalBomDocs({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final docs = await getAllForProject(isar, activityFacilityId);
+    return docs.isNotEmpty;
+  }
+
+  Future<bool> _hasAnyServerBackedBomDoc({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final docs = await getAllForProject(isar, activityFacilityId);
+    return docs.any(
+      (d) => (d.serverBomId ?? '').trim().isNotEmpty,
+    );
+  }
+
+  Future<Map<String, dynamic>> _getModelBomValues({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    Map<String, dynamic> modelBom = <String, dynamic>{};
+    try {
+      final row = await isar.cacheActivityFacilityWorkflows
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .findFirst();
+      final fromModel = row?.activityFacility.additionalDetails?.bom;
+      if (fromModel != null) {
+        modelBom = Map<String, dynamic>.from(fromModel);
+      }
+    } catch (_) {}
+
+    return modelBom;
+  }
+
+  bool _sameKvMap(
+    Map<String, dynamic> left,
+    Map<String, dynamic> right,
+  ) {
+    return json.encode(jsonSafe(left)) == json.encode(jsonSafe(right));
+  }
+
+  Future<Map<String, dynamic>> getOrCreateInitialFormValuesForSchema({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    final modelBom = await _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
+
+    final globalKv = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    final resolved = globalKv == null || globalKv.isEmpty
+        ? Map<String, dynamic>.from(modelBom)
+        : deepMerge(
+            Map<String, dynamic>.from(modelBom),
+            Map<String, dynamic>.from(globalKv),
+          );
+
+    if (resolved.isNotEmpty &&
+        (globalKv == null || !_sameKvMap(globalKv, resolved))) {
+      await mergeKvForEntryKey(
+        isar: isar,
+        projectId: activityFacilityId,
+        userType: userType,
+        kvUpdate: resolved,
+      );
+    }
+
+    return resolved;
+  }
+
+  Future<Map<String, dynamic>> getInitialFormValuesForSchema({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+    required String schemaKey,
+  }) async {
+    final globalKv = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    if (globalKv != null && globalKv.isNotEmpty) {
+      final hasLocalForSchema = await hasLocalBomForSchema(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        schemaKey: schemaKey,
+      );
+
+      if (hasLocalForSchema) {
+        return Map<String, dynamic>.from(globalKv);
+      }
+
+      final hasServerBackedBom = await _hasAnyServerBackedBomDoc(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+      if (hasServerBackedBom) {
+        return Map<String, dynamic>.from(globalKv);
+      }
+
+      final hasAnyLocalDocs = await _hasAnyLocalBomDocs(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+      if (!hasAnyLocalDocs) {
+        return Map<String, dynamic>.from(globalKv);
+      }
+    }
+
+    return _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
+  Future<Map<String, dynamic>> getInitialFormValues({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    final backendOrLocal = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+    if (backendOrLocal != null && backendOrLocal.isNotEmpty) {
+      return Map<String, dynamic>.from(backendOrLocal);
+    }
+
+    return _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
   }
 
   Stream<void> watchBomForSchema({
@@ -841,7 +1004,8 @@ class AmcDynamicFormRepository {
 
       return filestoreId;
     } catch (e) {
-      AppLogger.instance.info("error $e");
+      AppLogger.instance
+          .error(title: "Failed to generate BOM PDF", message: "error $e");
       throw Exception("Failed to generate BOM PDF filestoreId");
     }
   }

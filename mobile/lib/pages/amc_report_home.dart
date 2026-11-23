@@ -8,6 +8,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/cards/report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -42,7 +44,7 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Installation Report',
+                  context.translate(i18.amcReportHome.installationReport),
                   textAlign: TextAlign.start,
                   style: textTheme.headingXl.copyWith(
                     color: const DigitColors().light.primary2,
@@ -57,9 +59,9 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                     context.router.push(const AmcSelectFacilityRoute());
                   },
                   icon: Icons.add_box_outlined,
-                  heading: 'New AMC Report',
-                  description:
-                      'View list of assigned health facilities and search for health facility',
+                  heading: context.translate(i18.amcReportHome.newAmcReport),
+                  description: context
+                      .translate(i18.amcReportHome.newAmcReportDescription),
                 ),
                 ReportCard(
                   onPress: () {
@@ -69,8 +71,9 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                     context.router.push(const AmcInboxRoute());
                   },
                   icon: Icons.toc,
-                  heading: 'Inbox',
-                  description: 'View reports that have been approved/rejected',
+                  heading: context.translate(i18.inbox.title),
+                  description:
+                      context.translate(i18.amcReportHome.inboxDescription),
                 ),
                 ReportCard(
                     onPress: () {
@@ -80,9 +83,9 @@ class _AmcReportHomePageState extends State<AmcReportHomePage> {
                       context.router.push(const AmcDraftRoute());
                     },
                     icon: Icons.assignment_late,
-                    heading: 'Pending Approval',
-                    description:
-                        'View all reports (both synced and unsynced) that have been submitted but are pending approval. '),
+                    heading: context.translate(i18.amcDraft.pendingApproval),
+                    description: context.translate(
+                        i18.amcReportHome.pendingApprovalDescription)),
               ],
             ),
           )

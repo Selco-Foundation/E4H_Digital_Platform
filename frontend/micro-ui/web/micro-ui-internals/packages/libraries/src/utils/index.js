@@ -14,6 +14,8 @@ import preProcessMDMSConfig from "./preProcessMDMSConfig";
 import preProcessMDMSConfigInboxSearch from "./preProcessMDMSConfigInboxSearch";
 import * as parsingUtils from "../services/atoms/Utils/ParsingUtils"
 import { BoundaryUtil } from "./BoundaryUtil";
+import { JurisdictionScope } from "./jurisdictionScope";
+import * as mobileChangeRequest from "./mobileChangeRequest";
 const GetParamFromUrl = (key, fallback, search) => {
   if (typeof window !== "undefined") {
     search = search || window.location.search;
@@ -193,7 +195,7 @@ const didEmployeeHasAtleastOneRole = (roles = []) => {
 const pgrAccess = () => {
   const userInfo = Digit.UserService.getUser();
   const userRoles = userInfo?.info?.roles?.map((roleData) => roleData?.code);
-  const pgrRoles = ["COMPLAINT_RESOLVER", "COMPLAINT_ASSESSOR","COMPLAINANT","COMPLAINT_CLOSER","COMPLAINT", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"];
+  const pgrRoles = ["COMPLAINT_RESOLVER", "COMPLAINT_ASSESSOR","COMPLAINANT","COMPLAINT_CLOSER","COMPLAINT", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2", "VIEWER"];
 
   const PGR_ACCESS = userRoles?.filter((role) => pgrRoles.includes(role));
 
@@ -387,5 +389,7 @@ export default {
   getLocaleDefault,
   getLocaleRegion,
   analytics,
-  BoundaryUtil
+  BoundaryUtil,
+  JurisdictionScope,
+  mobileChangeRequest
 };

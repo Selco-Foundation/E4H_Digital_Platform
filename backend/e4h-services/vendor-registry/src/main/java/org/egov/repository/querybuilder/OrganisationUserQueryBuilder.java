@@ -38,12 +38,35 @@ public class OrganisationUserQueryBuilder {
         this.config = config;
     }
 
+    /**
+     * The user uuids this search would match, with no paging applied.
+     *
+     * Used to ask HRMS which of an organisation's users fall inside the caller's jurisdictions
+     * before the real search runs. The answer goes back in as a `userIds` filter, so paging and
+     * the count still happen in SQL over the already-narrowed set.
+     */
+    public String getOrganisationUserIdsQuery(OrgUserSearchRequest orgSearchRequest, URLParams urlParams, List<Object> preparedStmtList) {
+        StringBuilder queryBuilder = new StringBuilder("SELECT DISTINCT ou.userid FROM eg_org_user ou");
+        appendFilters(orgSearchRequest, urlParams, preparedStmtList, queryBuilder);
+        return queryBuilder.toString();
+    }
+
     public String getOrganisationUserSearchQuery(OrgUserSearchRequest orgSearchRequest, URLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery) {
-        log.trace("OrganisationUserQueryBuilder::getOrganisationUserSearchQuery entry");
-        log.debug("Building organisation user search query, isCountQuery: {}", isCountQuery);
-        
         String query = Boolean.TRUE.equals(isCountQuery) ? ORGANISATIONS_USERS_COUNT_QUERY : FETCH_ORGANISATION_USER_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
+
+        appendFilters(orgSearchRequest, urlParams, preparedStmtList, queryBuilder);
+
+        if (Boolean.TRUE.equals(isCountQuery)) {
+            return queryBuilder.toString();
+        }
+
+        Pagination pagination = Pagination.builder().limit(Double.valueOf(urlParams.getLimit()+"")).offset(Double.valueOf(urlParams.getOffset()+"")).build();
+        addOrderByClause(queryBuilder, pagination);
+        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, pagination);
+    }
+
+    private void appendFilters(OrgUserSearchRequest orgSearchRequest, URLParams urlParams, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         OrgUserSearchCriteria searchCriteria = orgSearchRequest.getCriteria();
 
         if (!CollectionUtils.isEmpty(searchCriteria.getId())) {
@@ -66,14 +89,6 @@ public class OrganisationUserQueryBuilder {
 
         //Add clause if includeDeleted is true in request parameter
         addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
-
-        if (Boolean.TRUE.equals(isCountQuery)) {
-            return queryBuilder.toString();
-        }
-
-        Pagination pagination = Pagination.builder().limit(Double.valueOf(urlParams.getLimit()+"")).offset(Double.valueOf(urlParams.getOffset()+"")).build();
-        addOrderByClause(queryBuilder, pagination);
-        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, pagination);
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
@@ -106,39 +121,31 @@ public class OrganisationUserQueryBuilder {
     }
 
     private void addOrderByClause(StringBuilder queryBuilder, Pagination pagination) {
-        log.trace("OrganisationUserQueryBuilder::addOrderByClause entry");
+        log.info("OrganisationQueryBuilder::getOrganisationQuery");
         //default
         if (pagination == null || pagination.getSortBy() == null) {
             queryBuilder.append(" ORDER BY ou.createdtime ");
-            log.debug("Using default sort by createdtime");
         } else {
             switch (pagination.getSortBy()) {
                 case "name":
                     queryBuilder.append(" ORDER BY ou.name ");
-                    log.debug("Sorting by name");
                     break;
                 case "type":
                     queryBuilder.append(" ORDER BY ou.type ");
-                    log.debug("Sorting by type");
                     break;
                 default:
                     queryBuilder.append(" ORDER BY ou.createdtime ");
-                    log.debug("Using default sort by createdtime");
                     break;
             }
         }
 
-        if (pagination != null && pagination.getOrder() == "ASC") {
+        if (pagination != null && pagination.getOrder() == "ASC")
             queryBuilder.append(" ASC ");
-            log.debug("Sort order: ASC");
-        } else {
-            queryBuilder.append(" DESC ");
-            log.debug("Sort order: DESC");
-        }
+        else queryBuilder.append(" DESC ");
     }
 
     private String addPaginationWrapper(String query, List<Object> preparedStmtList, Pagination pagination) {
-        log.trace("OrganisationUserQueryBuilder::addPaginationWrapper entry");
+        log.info("OrganisationQueryBuilder::addPaginationWrapper");
         double limit = config.getDefaultLimit();
         double offset = config.getDefaultOffset();
         String finalQuery = PAGINATION_WRAPPER.replace("{}", query);
@@ -155,8 +162,6 @@ public class OrganisationUserQueryBuilder {
 
         preparedStmtList.add(offset);
         preparedStmtList.add(limit + offset);
-        
-        log.debug("Applied pagination - limit: {}, offset: {}", limit, offset);
 
         return finalQuery;
     }

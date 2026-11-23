@@ -39,8 +39,8 @@ public class ActivityQueryBuilder {
             "FROM facility_activities fa where fa.status is not null AND fa.isdeleted = false ";
     private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id LEFT JOIN public.activities AS ac ON fa.activity_id = ac.id";
 
-    private final String paginationWrapper = "SELECT * FROM " +
-            "(SELECT *, DENSE_RANK() OVER (ORDER BY fa_lastModifiedTime DESC , fa_facilityactivityid) offset_ FROM " +
+    private static final String PAGINATION_WRAPPER_TEMPLATE = "SELECT * FROM " +
+            "(SELECT *, DENSE_RANK() OVER (ORDER BY fa_lastModifiedTime %s , fa_facilityactivityid) offset_ FROM " +
             "({})" +
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
@@ -72,6 +72,17 @@ public class ActivityQueryBuilder {
     }
 
     public String getActivityFacilitySearchQuery(ActivityFacilitySearchRequest request, URLParams urlParams, List<Object> preparedStmtList) {
+        return getActivityFacilitySearchQuery(request, urlParams, preparedStmtList, true);
+    }
+
+    /**
+     * @param scopeToAssignedUser false for internal re-reads - fetching a row the service is about
+     *                            to update, or checking one exists. Those were never permission
+     *                            checks (workflow-v2 authorises the transition), so scoping them
+     *                            turns a missing assignment row into a misleading "not found" on
+     *                            an action the caller is entitled to perform.
+     */
+    public String getActivityFacilitySearchQuery(ActivityFacilitySearchRequest request, URLParams urlParams, List<Object> preparedStmtList, boolean scopeToAssignedUser) {
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         ActivityFacilitySearchCriteria criteria = request.getCriteria();
         String query = criteria.isCountQuery() ? ACTIVITY_COUNT_QUERY : FETCH_ACTIVITY_QUERY;
@@ -82,20 +93,24 @@ public class ActivityQueryBuilder {
         String userUuid = userInfo.getUuid();
         boolean isProjectManager = false;
         boolean isFacilityAdmin = false;
-        boolean isInstallationQcApprover = false;
         if (userInfo.getRoles() != null) {
             isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
             isFacilityAdmin = userInfo.getRoles().stream().anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
-            isInstallationQcApprover = userInfo.getRoles().stream().anyMatch(role -> INSTALLATION_REPORT_APPROVER_QC_TEAM.equalsIgnoreCase(role.getCode()));
+            // INSTALLATION_REPORT_APPROVER_QC_TEAM used to be exempt here too. It is not: a
+            // reviewer is reached by uuid assignment, exactly like field staff and supervisors,
+            // so they scope the same way.
         }
 
-        if (!isProjectManager && !isFacilityAdmin && !isInstallationQcApprover) {
-            queryBuilder.append(" JOIN activity_facility_users fu ON fu.activityfacilityid = fa.id ");
-        }
+        // The assignment scope is one EXISTS predicate in extracted(), not a join here. A join
+        // needed its own copy of the "is this caller privileged, and do we know who they are"
+        // test, and the two copies had already drifted: this one lacked the isNotBlank(userUuid)
+        // guard the predicate had, so a caller with no uuid got an unfiltered inner join - every
+        // row, multiplied once per staffed user.
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
 
-        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, userUuid, isProjectManager, isFacilityAdmin, isInstallationQcApprover);
+        boolean applyAssignmentScope = scopeToAssignedUser && !isProjectManager && !isFacilityAdmin;
+        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, userUuid, applyAssignmentScope);
 
         // Add clause if includeDeleted is true in request parameter
         addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
@@ -105,10 +120,10 @@ public class ActivityQueryBuilder {
         }
 
         //Wrap constructed SQL query with where criteria in pagination query
-        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
+        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset(), criteria.getSortDirection());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean isProjectManager, boolean isFacilityAdmin, boolean isInstallationQcApprover) {
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean applyAssignmentScope) {
 
         if (!CollectionUtils.isEmpty(activityFacility.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -165,10 +180,15 @@ public class ActivityQueryBuilder {
             preparedStmtList.addAll(activityFacility.getBoundaryCodes());
         }
 
-        // Check if not project manager or facility admin role
-        if (!isProjectManager && !isFacilityAdmin && !isInstallationQcApprover && StringUtils.isNotBlank(userUuid)) {
+        // Everyone except a project manager or facility admin sees only what they are assigned to.
+        //
+        // EXISTS rather than a join: it cannot multiply rows, so the fetch query needs no DISTINCT
+        // and ACTIVITY_COUNT_QUERY - a bare COUNT(*) assembled by a different path - stays correct
+        // without a matching edit.
+        if (applyAssignmentScope && StringUtils.isNotBlank(userUuid)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fu.userid = ? ");
+            queryBuilder.append(" EXISTS (SELECT 1 FROM activity_facility_users fu " +
+                    "WHERE fu.activityfacilityid = fa.id AND fu.isdeleted = false AND fu.userid = ?) ");
             preparedStmtList.add(userUuid);
         }
 
@@ -203,10 +223,11 @@ public class ActivityQueryBuilder {
         }
     }
 
-    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
+    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam, String sortDirection) {
         int limit = config.getDefaultLimit();
         int offset = config.getDefaultOffset();
-        String finalQuery = paginationWrapper.replace("{}", query);
+        String direction = "ASC".equalsIgnoreCase(sortDirection) ? "ASC" : "DESC";
+        String finalQuery = String.format(PAGINATION_WRAPPER_TEMPLATE, direction).replace("{}", query);
 
         if (limitParam != null) {
             if (limitParam <= config.getMaxLimit())

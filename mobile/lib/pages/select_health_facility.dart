@@ -23,7 +23,9 @@ import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
+import '../widgets/cards/report_detail_row.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -36,6 +38,8 @@ class SelectHealthFacilityPage extends StatefulWidget {
 }
 
 class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
+  static const _scrollThreshold = 200.0;
+
   String? _sortDirection;
   String _searchQuery = '';
 
@@ -50,14 +54,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   }
 
   void _fetchProject() {
-    final userType = context.read<UserTypeBloc>().state;
-    final statuses = [
-      userType.maybeWhen(
-        supervisor: () =>
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
-        orElse: () => WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
-      ),
-    ];
+    final statuses = _workflowStatuses();
 
     if (_searchQuery.isNotEmpty) {
       context.read<ActivityFacilityBloc>().add(
@@ -81,6 +78,23 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     }
   }
 
+  List<String> _workflowStatuses() {
+    return [
+      WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
+      WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
+    ];
+  }
+
+  void _tryLoadMore() {
+    context.read<ActivityFacilityBloc>().add(
+          ActivityFacilityEvent.loadMoreActivityFacility(
+            workflowStatuses: _workflowStatuses(),
+            query: _searchQuery.isNotEmpty ? _searchQuery : null,
+            sortDirection: _sortDirection,
+          ),
+        );
+  }
+
   void _handleProjectTap(ActivityFacilityWorkflow project) {
     context.read<CacheActivityFacilityAssetBloc>().add(
           CacheActivityFacilityAssetEvent.add(CacheActivityFacilityAsset(
@@ -89,7 +103,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     context
         .read<SelectedActivityFacilityBloc>()
         .add(SelectedActivityFacilityEvent.select(project));
-    context.router.push(const AssetCountRoute());
+    // context.router.push(const AssetCountRoute());
+    context.router.push(OverallAssetSummaryRoute(
+        refresh: DateTime.now().millisecondsSinceEpoch));
   }
 
   double _fractionForProject(String projectId) {
@@ -123,7 +139,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               bool changed = false;
               for (final e in list) {
                 final pid = e.activityFacilityId;
-                final type = (e.assetType ?? '').toLowerCase().trim();
+                final type = e.assetType.toLowerCase().trim();
                 final p = (e.progress ?? 0);
                 if (pid.isEmpty || type.isEmpty) continue;
 
@@ -139,67 +155,85 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
             orElse: () {},
           );
         },
-        child: ScrollableContent(
-          backgroundColor: theme.colorTheme.generic.background,
-          children: [
-            const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: spacer4, vertical: spacer2),
-                  child: _buildSearchAndSortControls(textTheme, theme),
-                ),
-                const SizedBox(height: spacer2),
-                BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                  builder: (context, state) {
-                    return state.maybeWhen(
-                      initial: () => _loadingIndicator(),
-                      loading: () => _loadingIndicator(),
-                      fetched: (projectList) {
-                        for (final p in projectList) {
-                          for (final t in const [
-                            'inverter',
-                            'battery',
-                            'panel'
-                          ]) {
-                            context.read<CacheAssetCountBloc>().add(
-                                CacheAssetCountEvent.get(
-                                    p.activityFacility.id, t));
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final max = notification.metrics.maxScrollExtent;
+              final current = notification.metrics.pixels;
+              if (current > max - _scrollThreshold) {
+                _tryLoadMore();
+              }
+            }
+            return false;
+          },
+          child: ScrollableContent(
+            backgroundColor: theme.colorTheme.generic.background,
+            children: [
+              const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer4, vertical: spacer2),
+                    child: _buildSearchAndSortControls(textTheme, theme),
+                  ),
+                  const SizedBox(height: spacer2),
+                  BlocListener<ActivityFacilityBloc, ActivityFacilityState>(
+                    listenWhen: (prev, curr) => prev != curr,
+                    listener: (context, state) {
+                      state.maybeWhen(
+                        paginatedLoaded: (items, hasMore, totalCount, fromCache,
+                            isLoadingMore, rawFetchedCount) {
+                          for (final p in items) {
+                            for (final t in const [
+                              'inverter',
+                              'battery',
+                              'panel'
+                            ]) {
+                              context.read<CacheAssetCountBloc>().add(
+                                  CacheAssetCountEvent.get(
+                                      p.activityFacility.id, t));
+                            }
                           }
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildProjectList(projectList),
-                          ],
+                        },
+                        orElse: () {},
+                      );
+                    },
+                    child: BlocBuilder<ActivityFacilityBloc,
+                        ActivityFacilityState>(
+                      builder: (context, state) {
+                        return state.maybeWhen(
+                          initial: () => _loadingIndicator(),
+                          loading: () => _loadingIndicator(),
+                          paginatedLoaded: (items, hasMore, totalCount,
+                              fromCache, isLoadingMore, rawFetchedCount) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildProjectList(items),
+                                if (isLoadingMore)
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: spacer4),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                          searchLoading: () => _loadingIndicator(),
+                          orElse: () => const SizedBox.shrink(),
                         );
                       },
-                      searchLoading: () => _loadingIndicator(),
-                      searchResults: (searchList) {
-                        for (final p in searchList) {
-                          for (final t in const [
-                            'inverter',
-                            'battery',
-                            'panel'
-                          ]) {
-                            context.read<CacheAssetCountBloc>().add(
-                                CacheAssetCountEvent.get(
-                                    p.activityFacility.id, t));
-                          }
-                        }
-                        return _buildProjectList(searchList);
-                      },
-                      orElse: () => const SizedBox.shrink(),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -222,7 +256,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select Health Facility',
+              context.translate(i18.selectHealthFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -260,9 +294,11 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 
   Widget _buildProjectList(List<ActivityFacilityWorkflow> projects) {
     if (projects.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: spacer4),
-        child: Center(child: Text('No projects found')),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: spacer4),
+        child: Center(
+            child: Text(
+                context.translate(i18.selectHealthFacility.noProjectsFound))),
       );
     }
     return Padding(
@@ -272,19 +308,27 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final project in projects) ...[
-            InstallationReportCard(
-              onPress: () => _handleProjectTap(project),
-              activityFacility: project,
-              projectId: project.activityFacility.id,
-              title: project.activityFacility.facility?.facilityName ?? '—',
-              dateAssigned:
-                  project.activityFacility.scheduledAt ?? DateTime.now(),
-              status: project.status ?? '—',
-              systemDesignCode: project.activityFacility.facility
-                      ?.facilityDetails?.solar_solution_design_type ??
-                  '',
-              fraction: _fractionForProject(project.activityFacility.id),
-            ),
+            Builder(builder: (context) {
+              final locality = parseBoundaryCodeLocality(
+                project.activityFacility.facility?.boundaryCode,
+              );
+              return InstallationReportCard(
+                onPress: () => _handleProjectTap(project),
+                activityFacility: project,
+                projectId: project.activityFacility.id,
+                title: project.activityFacility.facility?.facilityName ?? '—',
+                dateAssigned:
+                    project.activityFacility.scheduledAt ?? DateTime.now(),
+                status: project.status ?? '—',
+                systemDesignCode: project.activityFacility.facility
+                        ?.facilityDetails?.solar_solution_design_type ??
+                    '',
+                fraction: _fractionForProject(project.activityFacility.id),
+                state: locality.state,
+                district: locality.district,
+                block: locality.block,
+              );
+            }),
             const SizedBox(height: spacer5),
           ],
         ],
@@ -298,11 +342,11 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text('Submission Date',
+            Text(context.translate(i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
@@ -312,15 +356,19 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               onChanged: (value) =>
                   popupSetState(() => _sortDirection = value.code),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
               ],
             ),
             Row(
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
+                    label: context.translate(i18.common.clear),
                     onPressed: () => Navigator.of(ctx).pop(),
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
@@ -330,21 +378,12 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                 const SizedBox(width: spacer5),
                 Expanded(
                   child: DigitButton(
-                    label: 'Sort',
+                    label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
-                      final userType = context.read<UserTypeBloc>().state;
-                      final statuses = [
-                        userType.maybeWhen(
-                          supervisor: () => WORKFLOW_STATUS_FIELD_SUPERVISOR
-                              .ASSIGNED_TO_FIELD_SUPERVISOR.name,
-                          orElse: () => WORKFLOW_STATUS_FIELD_STAFF
-                              .ASSIGNED_TO_FIELD_STAFF.name,
-                        ),
-                      ];
                       context.read<ActivityFacilityBloc>().add(
                             ActivityFacilityEvent.fetchActivityFacilitySorted(
-                              workflowStatuses: statuses,
+                              workflowStatuses: _workflowStatuses(),
                               sortDirection: _sortDirection!,
                             ),
                           );
@@ -369,6 +408,9 @@ class InstallationReportCard extends StatelessWidget {
   final String? projectId;
   final String? title;
   final String? status;
+  final String? state;
+  final String? district;
+  final String? block;
   final DateTime dateAssigned;
   final String? systemDesignCode;
   final Function() onPress;
@@ -380,6 +422,9 @@ class InstallationReportCard extends StatelessWidget {
     this.projectId,
     this.title,
     this.status,
+    this.state,
+    this.district,
+    this.block,
     required this.dateAssigned,
     this.systemDesignCode,
     required this.onPress,
@@ -421,90 +466,61 @@ class InstallationReportCard extends StatelessWidget {
                 ),
                 const SizedBox(height: spacer4),
                 const DigitDivider(dividerType: DividerType.small),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: spacer4),
-                          Text(
-                            'Status',
-                            style: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          ),
-                          const SizedBox(height: spacer4),
-                          Text(
-                            'Date Assigned',
-                            style: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          ),
-                          const SizedBox(height: spacer4),
-                          Text(
-                            'Solution Doc',
-                            style: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          )
-                        ],
+                ReportDetailRow(
+                  label: context.translate(i18.common.status),
+                  value: _detailText(
+                    context.translate('$status'),
+                    textTheme,
+                    theme,
+                  ),
+                ),
+                ReportDetailRow(
+                  label: context.translate(i18.common.dateAssigned),
+                  value: _detailText(formattedDate, textTheme, theme),
+                ),
+                ReportDetailRow(
+                  label: context.translate(i18.common.solutionDoc),
+                  value: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf,
+                        color: theme.colorTheme.primary.primary1,
                       ),
-                    ),
-                    const SizedBox(width: spacer12),
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: spacer4),
-                          Text(
-                            context.translate('$status'),
+                      const SizedBox(width: spacer1),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (solutionDocsUrl.isNotEmpty) {
+                              context.router.push(PdfViewerRoute(
+                                  path: "$fileStoreFileUrl$solutionDocsUrl"));
+                            }
+                          },
+                          child: Text(
+                            context.translate(i18.common.solutionDoc),
                             style: textTheme.bodyL.copyWith(
-                              color: theme.colorTheme.text.primary,
+                              color: theme.colorTheme.text.disabled,
+                              fontSize: spacer3,
                             ),
                             softWrap: true,
                             overflow: TextOverflow.visible,
                           ),
-                          const SizedBox(height: spacer4),
-                          Text(
-                            formattedDate,
-                            style: textTheme.bodyL.copyWith(
-                              color: theme.colorTheme.text.primary,
-                            ),
-                          ),
-                          const SizedBox(height: spacer4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.picture_as_pdf,
-                                color: theme.colorTheme.primary.primary1,
-                              ),
-                              const SizedBox(width: spacer1),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    if (solutionDocsUrl.isNotEmpty) {
-                                      context.router.push(PdfViewerRoute(
-                                          path:
-                                              "$fileStoreFileUrl$solutionDocsUrl"));
-                                    }
-                                  },
-                                  child: Text(
-                                    "Solution Doc",
-                                    style: textTheme.bodyL.copyWith(
-                                      color: theme.colorTheme.text.disabled,
-                                      fontSize: spacer3,
-                                    ),
-                                    softWrap: true,
-                                    overflow: TextOverflow.visible,
-                                  ),
-                                ),
-                              )
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                ReportDetailRow(
+                  label: context.translate(i18.common.state),
+                  value: _detailText(_displayValue(state), textTheme, theme),
+                ),
+                ReportDetailRow(
+                  label: context.translate(i18.common.district),
+                  value: _detailText(_displayValue(district), textTheme, theme),
+                ),
+                ReportDetailRow(
+                  label: context.translate(i18.common.block),
+                  value: _detailText(_displayValue(block), textTheme, theme),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: spacer4),
@@ -535,8 +551,10 @@ class InstallationReportCard extends StatelessWidget {
                 DigitButton(
                   mainAxisSize: MainAxisSize.max,
                   label: (fraction * 100).round() > 0
-                      ? 'Resume Installation Report'
-                      : 'Start Installation Report',
+                      ? context.translate(
+                          i18.selectHealthFacility.resumeInstallationReport)
+                      : context.translate(
+                          i18.selectHealthFacility.startInstallationReport),
                   onPressed: onPress,
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
@@ -544,7 +562,8 @@ class InstallationReportCard extends StatelessWidget {
                 const SizedBox(height: spacer4),
                 DigitButton(
                   mainAxisSize: MainAxisSize.max,
-                  label: 'Submit For Approval',
+                  label: context
+                      .translate(i18.selectHealthFacility.submitForApproval),
                   onPressed: () {
                     context.read<SelectedActivityFacilityBloc>().add(
                         SelectedActivityFacilityEvent.select(
@@ -561,6 +580,20 @@ class InstallationReportCard extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  String _displayValue(String? value) {
+    final normalized = value?.trim() ?? '';
+    return normalized.isEmpty ? '---' : normalized;
+  }
+
+  Widget _detailText(String value, dynamic textTheme, ThemeData theme) {
+    return Text(
+      value,
+      style: textTheme.bodyL.copyWith(color: theme.colorTheme.text.primary),
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
   }
 }

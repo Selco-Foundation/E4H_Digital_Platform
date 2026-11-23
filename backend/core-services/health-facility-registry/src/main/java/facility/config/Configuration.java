@@ -80,6 +80,9 @@ public class Configuration {
     @Value("${egov.hrms.create.endpoint}")
     private String hrmsCreateEndPoint;
 
+    @Value("${egov.hrms.update.username.endpoint}")
+    private String hrmsUpdateUsernameEndPoint;
+
 //    @Value("${egov.hrms.create.endpoint}")
 //    private String hrmsCreateEndpoint;
 
@@ -110,6 +113,29 @@ public class Configuration {
     //Facility Search
     @Value("${onm-non-ready.allowed.roles}")
     private List<String> onmNonReadyAllowedRoles;
+
+    // Jurisdiction scoping of facility search. See RoleScopeResolver.
+
+    /**
+     * off | warn | enforce. Validated at startup, so a typo cannot silently mean "off".
+     * Not refreshable - changing it needs a pod restart.
+     */
+    @Value("${facility.jurisdiction.scope.mode:off}")
+    private String jurisdictionScopeMode;
+
+    /**
+     * Role codes that identify a service rather than a person, and so are never scoped.
+     *
+     * Deliberately its own property rather than reusing {@code onm-non-ready.allowed.roles}, which
+     * happens to end in SYSTEM: that list is about O&M readiness, and borrowing it would quietly
+     * make every role on it a jurisdiction bypass.
+     */
+    @Value("${facility.jurisdiction.system.roles:INTERNAL_MICROSERVICE_ROLE,SYSTEM_USER,SYSTEM}")
+    private List<String> jurisdictionSystemRoles;
+
+    /** Blank when not configured, in which case the uuid check is skipped. */
+    @Value("${egov.internal.microservice.user.uuid:}")
+    private String internalMicroserviceUserUuid;
 
     //Localization
     @Value("${egov.localization.host}")
@@ -158,6 +184,18 @@ public class Configuration {
     @Value("${facility.kibana.reindex.enabled:false}")
     private boolean facilityKibanaReindexEnabled;
 
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-project-name}. Disabled by default.
+     */
+    @Value("${facility.project-name.backfill.enabled:false}")
+    private boolean facilityProjectNameBackfillEnabled;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-mapped-vendor}. Disabled by default.
+     */
+    @Value("${facility.mapped-vendor.backfill.enabled:false}")
+    private boolean facilityMappedVendorBackfillEnabled;
+
     @Value("${egov.vendor.host:}")
     private String vendorHost;
 
@@ -166,4 +204,15 @@ public class Configuration {
 
     @Value("${egov.vendor.organisation.user.search.path:/vendor/organisation/v1/user/_search}")
     private String vendorOrganisationUserSearchPath;
+
+    /**
+     * Project service base URL (e.g. {@code http://localhost:8081}) used to resolve the
+     * project name mapped to a facility for the health facility index. When blank, the
+     * projectName lookup is skipped.
+     */
+    @Value("${egov.project.host:}")
+    private String projectHost;
+
+    @Value("${egov.project.fetch-by-facilities.path:/project/v1/fetchProjectsByFacilities}")
+    private String projectFetchByFacilitiesPath;
 }

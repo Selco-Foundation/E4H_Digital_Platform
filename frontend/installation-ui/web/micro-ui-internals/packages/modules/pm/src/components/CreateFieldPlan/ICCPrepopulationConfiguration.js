@@ -29,13 +29,13 @@ const getDefaultRows = () => [getEmptyRow()];
 const getOption = (value) => value ? ({ code: value, name: value }) : null;
 
 const getCapacityDisplayValue = (capacity) => {
-  const value = (capacity?.name || capacity?.code || "").toString().trim();
+  const value = capacity?.name || capacity?.code || "";
 
   if (!value) {
     return "";
   }
 
-  return /kwp$/i.test(value) ? value : `${value} kWp`;
+  return /\bkwp\b/i.test(value.toString()) ? value : `${value} kWp`;
 };
 
 const getMDMSSystemTypeCode = (systemType = {}) => systemType?.data?.code || systemType?.code || systemType?.uniqueIdentifier;
@@ -90,7 +90,7 @@ const normalizeCapacity = (value) => {
 const getICCReportFormData = (row, file, fieldPlanId, tenantId) => {
   const formData = new FormData();
   const items = [{
-    id: row.template?.id || "",
+    id: isSavedFieldPlanTemplate(row, fieldPlanId) ? row.template.id : "",
     systemType: row.systemType?.code,
     totalSystemCapacity: normalizeCapacity(row.totalSystemCapacity?.code || row.totalSystemCapacity?.name),
     rectificationSite: Boolean(row.isRectification),
@@ -110,6 +110,12 @@ const getRowKey = (row = {}) => {
 
   return withRectificationKey(systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "", row.isRectification);
 };
+
+const isSavedFieldPlanTemplate = (row = {}, fieldPlanId) => (
+  !!row.template?.id &&
+  !!row.template?.fieldPlanId &&
+  (!fieldPlanId || row.template.fieldPlanId === fieldPlanId)
+);
 
 const getUniqueRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
   const rowKey = getRowKey(row);
@@ -766,7 +772,7 @@ const ICCPrepopulationConfiguration = ({ data = {}, setValue, props }) => {
       const formData = getICCReportFormData(selectedRow, uploadedFile, fieldPlanId, tenantId);
       let uploadResponse;
 
-      if (selectedRow.template?.id) {
+      if (isSavedFieldPlanTemplate(selectedRow, fieldPlanId)) {
         uploadResponse = await IngestionService.upsertICCReports(formData);
       } else {
         uploadResponse = await IngestionService.uploadICCReports(formData);

@@ -6,6 +6,7 @@ import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,20 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class HRMSUtils {
+
+    /**
+     * The HRMS role a vendor user holds. A facility's mapped vendor is the holder of this role whose
+     * jurisdictions carry that facility's boundary - the same role im-services resolves a ticket's
+     * mapped vendor by ({@code IMConstants.ROLE_COMPLAINT_RESOLVER}).
+     */
+    /** Key wrapping the RequestInfo in every egov service-call body. */
+    private static final String REQUEST_INFO_KEY = "RequestInfo";
+
+    private static final String ROLE_COMPLAINT_RESOLVER = "COMPLAINT_RESOLVER";
+
+    /** Jurisdiction boundary type carrying a facility mapping, as vendor-registry writes it. */
+    private static final String FACILITY_BOUNDARY_TYPE = "Facility";
+
     private final ServiceRequestRepository serviceRequestRepository;
 
     private final Configuration config;
@@ -49,6 +64,114 @@ public class HRMSUtils {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with username: " + codes);
         }
         return employeeResponse.getEmployees().get(0);
+    }
+
+    /**
+     * Searches for the first employee (active or inactive) assigned to the given boundary
+     * (facility) code. Does not filter by active status so callers can detect and reactivate an
+     * existing-but-inactive POC employee rather than mistakenly creating a duplicate.
+     * Returns null (rather than throwing) when no employee is found, since that is a valid
+     * outcome for callers reconciling a facility's HRMS-side username.
+     */
+    public Employee getEmployeeByBoundaryCode(Object requestInfo, String boundaryCode) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&roles=COMPLAINANT&searchOnlyInBoundary=true";
+        Map<String, Object> searchRequest = new HashMap<>();
+        searchRequest.put(REQUEST_INFO_KEY, requestInfo);
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            return null;
+        }
+        return employeeResponse.getEmployees().get(0);
+    }
+
+    /**
+     * The vendor user HRMS currently maps to a facility: the active {@code COMPLAINT_RESOLVER}
+     * holding an active {@code Facility} jurisdiction on {@code boundaryCode}.
+     *
+     * <p>HRMS is the upstream owner of this mapping - vendor-registry writes the jurisdiction onto
+     * the vendor's employee record first and only then pushes the resulting name/username down onto
+     * the facility row. Reading it back from here lets the index be built from the mapping itself
+     * rather than from a copy that may never have been written.
+     *
+     * <p>The boundary carried by each returned employee is re-checked locally rather than trusting
+     * {@code searchOnlyInBoundary} alone: an employee whose jurisdiction sits at block or district
+     * level covers this facility without being mapped to it, and indexing that vendor would be worse
+     * than indexing none. For the same reason a search that matches nothing verifiable returns null
+     * instead of the first hit, leaving the caller on its own fallback.
+     *
+     * <p>Never throws: a facility index push must not fail because HRMS is unreachable.
+     *
+     * @return the mapped vendor's employee record, or {@code null} when HRMS holds no such mapping
+     *         or could not be reached
+     */
+    public Employee getMappedVendorByBoundaryCode(Object requestInfo, String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        // tenantId=in like the sibling lookups above: HRMS holds these employees at the national
+        // tenant regardless of which sub-tenant the facility itself lives in.
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&boundaryCodes=" + boundaryCode.trim()
+                + "&roles=" + ROLE_COMPLAINT_RESOLVER
+                + "&searchOnlyInBoundary=true&isActive=true";
+        try {
+            Map<String, Object> searchRequest = new HashMap<>();
+            searchRequest.put(REQUEST_INFO_KEY, requestInfo);
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+            if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+                return null;
+            }
+            for (Employee employee : employeeResponse.getEmployees()) {
+                if (employee != null && hasActiveFacilityJurisdiction(employee, boundaryCode)) {
+                    return employee;
+                }
+            }
+            log.info("HRMS holds no mapped vendor for boundaryCode {}", boundaryCode);
+            return null;
+        } catch (Exception e) {
+            log.warn("Unable to resolve mapped vendor from HRMS for boundaryCode {}: {}",
+                    boundaryCode, e.getMessage());
+            return null;
+        }
+    }
+
+    private static boolean hasActiveFacilityJurisdiction(Employee employee, String boundaryCode) {
+        if (employee.getJurisdictions() == null) {
+            return false;
+        }
+        return employee.getJurisdictions().stream()
+                .filter(Objects::nonNull)
+                .filter(j -> j.getIsActive() == null || Boolean.TRUE.equals(j.getIsActive()))
+                .filter(j -> FACILITY_BOUNDARY_TYPE.equalsIgnoreCase(Objects.toString(j.getBoundaryType(), "")))
+                .anyMatch(j -> boundaryCode.trim().equalsIgnoreCase(Objects.toString(j.getBoundary(), "")));
+    }
+
+    /**
+     * Calls egov-hrms {@code /employees/_update_username} to force eg_user.username to match
+     * eg_hrms_employee.code for the given employee uuid.
+     */
+    public boolean updateHrmsUsername(Object requestInfo, String uuid, String code, String tenantId) {
+        String url = config.getHrmsHost() + config.getHrmsUpdateUsernameEndPoint();
+        Map<String, Object> employee = new HashMap<>();
+        employee.put("tenantId", tenantId);
+        employee.put("uuid", uuid);
+        employee.put("code", code);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put(REQUEST_INFO_KEY, requestInfo);
+        body.put("employee", employee);
+        try {
+            serviceRequestRepository.fetchResult(new StringBuilder(url), body);
+            return true;
+        } catch (Exception e) {
+            log.error("Error calling HRMS update-username for uuid {}: {}", uuid, e.getMessage(), e);
+            return false;
+        }
     }
 
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
@@ -213,6 +336,60 @@ public class HRMSUtils {
                 .build();
     }
 
+    /**
+     * The caller's own active jurisdictions. Never throws.
+     *
+     * Deliberately not {@link #getUserById}: that throws {@code EMPLOYEE_NOT_FOUND} on an empty
+     * result, and {@code ServiceRequestRepository.fetchResult} throws on transport errors, so both
+     * would surface as a 500 and be indistinguishable to the caller. Scoping needs to tell them
+     * apart - one is a correct answer about a user, the other is an outage.
+     *
+     * Hits the v2 employee search, which is the version that returns the roles attached to each
+     * jurisdiction.
+     */
+    public JurisdictionGrants getActiveJurisdictionsForCaller(RequestInfo requestInfo) {
+        String uuid = requestInfo != null && requestInfo.getUserInfo() != null
+                ? requestInfo.getUserInfo().getUuid()
+                : null;
+        if (uuid == null || uuid.trim().isEmpty()) {
+            log.warn("No caller uuid on the request; cannot resolve jurisdictions");
+            return JurisdictionGrants.failed(JurisdictionGrants.Status.NO_CALLER_UUID);
+        }
 
+        try {
+            String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                    + "?tenantId=in&isActive=true&uuids=" + uuid;
+            Map<String, Object> body = new HashMap<>();
+            body.put("RequestInfo", requestInfo);
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), body);
 
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+            if (employeeResponse == null || employeeResponse.getEmployees() == null
+                    || employeeResponse.getEmployees().isEmpty()) {
+                log.warn("HRMS returned no employee for caller {}", uuid);
+                return JurisdictionGrants.failed(JurisdictionGrants.Status.EMPLOYEE_NOT_FOUND);
+            }
+
+            List<Jurisdiction> active = new ArrayList<>();
+            List<Jurisdiction> stored = employeeResponse.getEmployees().get(0).getJurisdictions();
+            if (stored != null) {
+                for (Jurisdiction jurisdiction : stored) {
+                    if (jurisdiction == null || jurisdiction.getBoundary() == null) {
+                        continue;
+                    }
+                    // Only an explicit FALSE deactivates. Rows written before the column existed
+                    // carry null, and those are live grants.
+                    if (Boolean.FALSE.equals(jurisdiction.getIsActive())) {
+                        continue;
+                    }
+                    active.add(jurisdiction);
+                }
+            }
+            return JurisdictionGrants.ok(active);
+        } catch (Exception e) {
+            log.error("Could not read jurisdictions from HRMS for caller {}", uuid, e);
+            return JurisdictionGrants.failed(JurisdictionGrants.Status.HRMS_UNAVAILABLE);
+        }
+    }
 }

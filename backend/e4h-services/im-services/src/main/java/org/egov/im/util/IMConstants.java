@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @NoArgsConstructor
@@ -48,6 +49,13 @@ public class IMConstants {
     // Login user-analytics event constants
     public static final String USER_LOGIN_EVENT_TYPE = "USER_LOGIN";
     public static final String USER_LOGIN_ENTITY_TYPE = "USER";
+
+    // Kibana login user-analytics event constants
+    public static final String KIBANA_LOGIN_EVENT_TYPE = "KIBANA_LOGIN";
+    public static final String KIBANA_APPLICATION = "KIBANA";
+    public static final String KIBANA_LOGIN_ENTITY_TYPE = "KIBANA_USER";
+    /** Value of the {@code event} field on the Kibana audit messages we translate. */
+    public static final String KIBANA_LOGIN_SOURCE_EVENT = "kibana_login";
 
     /**
      * Applications allowed to report a login. Kept as a regex so it can be used directly in the
@@ -128,6 +136,13 @@ public class IMConstants {
     public static final String OUT_OF_WARRANTY_ON_HOLD = "OUT_OF_WARRANTY_ON_HOLD";
 
     public static final String IM_WF_ON_HOLD = "ON_HOLD";
+
+    public static final String SYSTEM_FUNCTIONAL_FUNCTIONAL = "FUNCTIONAL";
+
+    public static final String SYSTEM_FUNCTIONAL_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+
+    /** systemFunctional of a ticket while it sits in {@link #OUT_OF_WARRANTY_ON_HOLD}. */
+    public static final String SYSTEM_FUNCTIONAL_ON_HOLD = "ON_HOLD";
 
     public static final String ON_HOLD_REASON_FUND_UNAVAILABLE = "ON_HOLD_REASON_FUND_UNAVAILABLE";
 
@@ -262,10 +277,11 @@ public class IMConstants {
     public static final String ROLE_COMPLAINT_FACILITATOR_1 = "COMPLAINT_FACILITATOR_1";
     public static final String ROLE_COMPLAINT_FACILITATOR_2 = "COMPLAINT_FACILITATOR_2";
 
-    // Roles registered at the state level (jurisdiction "India_<State>"), not at the facility boundary.
-    // HRMS searches for these roles must not be restricted to the facility boundary, otherwise no employee is found.
-    public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
-            ROLE_COMPLAINT_ASSESSOR, ROLE_COMPLAINT_FACILITATOR_1, ROLE_COMPLAINT_FACILITATOR_2);
+    // STATE_LEVEL_ROLES removed: HRMS searches now walk the ticket's ancestor chain, so there is no
+    // list of roles-held-above-the-facility to keep in sync. Any role may be held at any level.
+
+    // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
+    public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
 
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 
@@ -278,6 +294,12 @@ public class IMConstants {
     public static final String APPROVE_ACTION = "APPROVE";
 
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
+
+    public static final Set<String> SLA_CLOCK_STOPPED_STATUSES =
+            Set.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION);
+
+    // A ticket counts as nearing SLA once this share of its state SLA (or less) is left.
+    public static final double NEARING_SLA_REMAINING_RATIO = 0.3;
 
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
 
@@ -303,13 +325,9 @@ public class IMConstants {
             ROLE_COMPLAINT_FACILITATOR_1,   // State SPOC
             ROLE_COMPLAINT_FACILITATOR_2)); // Tech POC
 
-    /**
-     * Workflow roles that no real user holds. They appear on auto-escalation and system-close actions,
-     * so they say nothing about who a state is waiting on and are ignored when deciding whether a
-     * state is pooled.
-     */
-    public static final List<String> MACHINE_ROLES = Collections.unmodifiableList(Arrays.asList(
-            ROLE_SYSTEM, "AUTO_ESCALATE", "COMPLAINT_CLOSER"));
+    // Machine roles - the ones no real user holds - moved to im.workflow.machine.roles. They now
+    // decide whether an action skips the jurisdiction check, and the workflow definition that grants
+    // them is a database row that can change without a release, so the list is configuration.
 
     /**
      * Statuses in which a vendor holds the ticket. The most recent transition into one of them names

@@ -41,3 +41,23 @@ class NetworkException implements Exception {
   @override
   String toString() => message;
 }
+
+enum LoginErrorCode {
+  noNetwork,
+  noInternet,
+  connectionFailed,
+  requestTimeout,
+  serverError,
+  invalidCredentials,
+  unknown,
+}
+
+class AppNetworkException implements Exception {
+  final LoginErrorCode code;
+  final String? rawMessage;
+
+  const AppNetworkException(this.code, {this.rawMessage});
+
+  @override
+  String toString() => rawMessage ?? code.name;
+}

@@ -110,6 +110,12 @@ public class IMConfiguration {
     @Value("${im.kafka.update.topic}")
     private String updateTopic;
 
+    @Value("${im.kafka.save.report.topic}")
+    private String saveReportTopic;
+
+    @Value("${im.kafka.update.migration.topic}")
+    private String updateMigrationTopic;
+
     @Value("${im.kafka.create.topic.indexer}")
     private String createTopicIndexer;
 
@@ -127,6 +133,26 @@ public class IMConfiguration {
 
     @Value("${im.kafka.user.analytics.topic}")
     private String userAnalyticsTopic;
+
+    @Value("${im.kafka.kibana.login.topic}")
+    private String kibanaLoginTopic;
+
+    @Value("${im.kafka.kibana.login.tenantid}")
+    private String kibanaLoginTenantId;
+
+    // Elasticsearch read-side config. Used to carry the already-indexed mappedVendor forward on
+    // update, so a re-index does not blank a vendor that was set by an earlier assignment.
+    @Value("${egov.es.host}")
+    private String esHost;
+
+    @Value("${egov.es.username}")
+    private String esUsername;
+
+    @Value("${egov.es.password}")
+    private String esPassword;
+
+    @Value("${egov.es.incident.index}")
+    private String esIncidentIndex;
 
     @Value("${im.default.offset}")
     private Integer defaultOffset;
@@ -153,6 +179,19 @@ public class IMConfiguration {
 
     @Value("${egov.hrms.search.endpoint}")
     private String hrmsEndPoint;
+
+    /** v2 only: it is the one version that returns the roles each jurisdiction applies to. */
+    @Value("${egov.hrms.v2.search.endpoint:/egov-hrms/v2/employees/_search}")
+    private String hrmsV2SearchEndpoint;
+
+    /**
+     * Workflow roles no real user holds, so an action carrying one is machine-driven and exempt from
+     * the jurisdiction check. Configurable rather than a constant: the workflow definition lives in a
+     * database row and can gain such an action without a release, and a stale list here would be a
+     * privilege question, not a cosmetic one.
+     */
+    @Value("${im.workflow.machine.roles:SYSTEM,AUTO_ESCALATE,COMPLAINT_CLOSER}")
+    private List<String> machineRoles;
 
     //Vendor registry - resolves which vendor organisation a user belongs to
     @Value("${egov.vendor.host}")

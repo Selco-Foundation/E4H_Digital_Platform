@@ -7,6 +7,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.HRMSUtil;
+import org.egov.im.util.OnHoldSystemFunctional;
 import org.egov.im.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,13 @@ import org.springframework.util.CollectionUtils;
 import java.util.*;
 
 import static org.egov.im.util.IMConstants.*;
+import org.egov.im.service.SLAService;
+import org.egov.im.service.WorkflowService;
+import org.egov.im.util.JurisdictionAuthorizer;
+import org.egov.im.web.models.workflow.Action;
+import org.egov.im.web.models.workflow.BusinessService;
+import org.egov.im.web.models.workflow.State;
+import org.springframework.context.annotation.Lazy;
 
 @Component
 @Slf4j
@@ -28,11 +36,101 @@ public class ServiceRequestValidator {
 
     private HRMSUtil hrmsUtil;
 
+    private final JurisdictionAuthorizer jurisdictionAuthorizer;
+
+    private final WorkflowService workflowService;
+
+    private final SLAService slaService;
+
     @Autowired
-    public ServiceRequestValidator(IMConfiguration config, IMRepository repository, HRMSUtil hrmsUtil) {
+    public ServiceRequestValidator(IMConfiguration config, IMRepository repository, HRMSUtil hrmsUtil,
+                                   JurisdictionAuthorizer jurisdictionAuthorizer,
+                                   @Lazy WorkflowService workflowService, @Lazy SLAService slaService) {
         this.config = config;
         this.repository = repository;
         this.hrmsUtil = hrmsUtil;
+        this.jurisdictionAuthorizer = jurisdictionAuthorizer;
+        this.workflowService = workflowService;
+        this.slaService = slaService;
+    }
+
+    /**
+     * Refuses an action the caller may not take where this ticket is.
+     *
+     * <p>Workflow decides which roles may take an action; HRMS decides where a person holds a role.
+     * Neither sees the other, so without this a Tech POC in one state is offered - and allowed -
+     * Tech POC actions on another state's ticket. Hiding the ticket from their inbox does not help:
+     * a deep link, a search result or a notification all reach it.
+     *
+     * @param boundaryCode must be the STORED boundary on update. The request body is not a source
+     *                     here - a check against the client's own value is defeated by sending a
+     *                     boundary you do hold and acting on a ticket anywhere.
+     */
+    private void validateJurisdiction(IncidentRequest request, String currentState, String boundaryCode) {
+        if (request.getWorkflow() == null || !StringUtils.isNotBlank(request.getWorkflow().getAction())) {
+            return;
+        }
+        String action = request.getWorkflow().getAction();
+        String tenantId = request.getIncident().getTenantId();
+
+        List<String> allowedRoles;
+        try {
+            Priority priority = slaService.getPriorityFromIMPriorityTable(request.getIncident());
+            BusinessService businessService = workflowService.getBusinessService(request, priority);
+            allowedRoles = rolesForAction(businessService, currentState, action);
+        } catch (Exception e) {
+            // Fail closed: without the action's roles there is nothing to check against, and
+            // allowing the transition would make the gate only as strong as this lookup.
+            log.error("Could not resolve the roles for action {} on state {}; refusing", action, currentState, e);
+            throw new CustomException("JURISDICTION_CHECK_UNAVAILABLE",
+                    "Could not establish who may take this action. Please retry.");
+        }
+
+        if (allowedRoles.isEmpty()) {
+            // Workflow owns which actions exist; an unknown one is its error to report, not ours.
+            log.debug("No roles found for action {} on state {}; leaving it to workflow", action, currentState);
+            return;
+        }
+        if (isMachineDriven(allowedRoles)) {
+            log.debug("Action {} is machine-driven; no jurisdiction check", action);
+            return;
+        }
+        if (!jurisdictionAuthorizer.mayActAt(request.getRequestInfo(), allowedRoles, boundaryCode, tenantId)) {
+            throw new CustomException("ACTION_OUTSIDE_JURISDICTION",
+                    "You do not hold a role that can take this action where this ticket is.");
+        }
+    }
+
+    /** True when every role the action allows is one no real user holds. */
+    private boolean isMachineDriven(List<String> allowedRoles) {
+        List<String> machineRoles = config.getMachineRoles();
+        return allowedRoles.stream()
+                .allMatch(role -> machineRoles.stream().anyMatch(role::equalsIgnoreCase));
+    }
+
+    private List<String> rolesForAction(BusinessService businessService, String currentState, String action) {
+        if (businessService == null || CollectionUtils.isEmpty(businessService.getStates())) {
+            return Collections.emptyList();
+        }
+        for (State state : businessService.getStates()) {
+            if (state == null || CollectionUtils.isEmpty(state.getActions())) {
+                continue;
+            }
+            // A start action has no current state on the ticket, so match on the action alone there.
+            boolean stateMatches = !StringUtils.isNotBlank(currentState)
+                    || currentState.equalsIgnoreCase(state.getApplicationStatus())
+                    || currentState.equalsIgnoreCase(state.getState());
+            if (!stateMatches) {
+                continue;
+            }
+            for (Action candidate : state.getActions()) {
+                if (candidate != null && action.equalsIgnoreCase(candidate.getAction())
+                        && !CollectionUtils.isEmpty(candidate.getRoles())) {
+                    return candidate.getRoles();
+                }
+            }
+        }
+        return Collections.emptyList();
     }
 
 
@@ -42,8 +140,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateCreate(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateCreate method invoked");
-        log.info("Validating incident create request");
+        log.info("serviceRequestValidator::Validating incident create request");
         Map<String,String> errorMap = new HashMap<>();
         validateUserData(request,errorMap);
         //validateSource(request.getService().getSource());
@@ -52,6 +149,9 @@ public class ServiceRequestValidator {
         validateBoundary(request, errorMap);
         if(!errorMap.isEmpty())
             throw new CustomException(errorMap);
+        // On create the payload's boundary is the thing being validated, so checking it is correct -
+        // deliberately unlike update, where the stored value is the only trustworthy one.
+        validateJurisdiction(request, null, request.getIncident().getBoundaryCode());
     }
 
 
@@ -61,8 +161,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateUpdate(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateUpdate method invoked");
-        log.info("Validating incident update request");
+        log.info("serviceRequestValidator::Validating incident update request");
         String id = request.getIncident().getId();
         String tenantId = request.getIncident().getTenantId();
         //validateSource(request.getService().getSource());
@@ -77,8 +176,24 @@ public class ServiceRequestValidator {
         if(CollectionUtils.isEmpty(incidentWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
 
-        // TO DO
+        /*
+         * Preserve existing warrantyStatus for updates when it is not explicitly
+         * provided in the incoming request. This avoids resetting OUT_OF_WARRANTY
+         * tickets back to WITHIN_WARRANTY on subsequent workflow actions.
+         */
+        Incident existingIncident = incidentWrappers.get(0).getIncident();
+        if (request.getIncident().getWarrantyStatus() == null && existingIncident != null) {
+            request.getIncident().setWarrantyStatus(existingIncident.getWarrantyStatus());
+        }
 
+        // The stored boundary and the stored state, never the request body's: a check against what
+        // the caller sent is defeated by sending a boundary they do hold.
+        if (existingIncident != null) {
+            validateJurisdiction(request, existingIncident.getApplicationStatus(),
+                    existingIncident.getBoundaryCode());
+        }
+
+        OnHoldSystemFunctional.carryOver(request.getIncident(), existingIncident);
     }
 
     /**
@@ -87,8 +202,7 @@ public class ServiceRequestValidator {
      * @param errorMap HashMap to capture any errors
      */
     private void validateUserData(IncidentRequest request,Map<String, String> errorMap){
-        log.trace("ServiceRequestValidator::validateUserData method invoked");
-        log.debug("Validating user data");
+        log.info("serviceRequestValidator::Validating user data");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getAccountId();
 
@@ -119,8 +233,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     private void validateMDMS(IncidentRequest request, Object mdmsData){
-        log.trace("ServiceRequestValidator::validateMDMS method invoked");
-        log.debug("Validating MDMS data");
+        log.info("serviceRequestValidator::Validating mdms data");
         String serviceCode = request.getIncident().getIncidentSubType();
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}",serviceCode);
 
@@ -193,8 +306,7 @@ public class ServiceRequestValidator {
      * @param request
      */
     private void validateReOpen(IncidentRequest request){
-        log.trace("ServiceRequestValidator::validateReOpen method invoked");
-        log.debug("Validating incident reopen request");
+        log.info("serviceRequestValidator::Validating incident reopen request");
         if(!request.getWorkflow().getAction().equalsIgnoreCase(IM_WF_REOPEN))
             return;
 
@@ -253,8 +365,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     public void validateSearch(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.trace("ServiceRequestValidator::validateSearch method invoked");
-        log.info("Validating incident search criteria");
+        log.info("serviceRequestValidator::Validating incident search criteria");
         /*
         * Checks if tenatId is provided with the search params
         * */
@@ -275,8 +386,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     private void validateSearchParam(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.trace("ServiceRequestValidator::validateSearchParam method invoked");
-        log.debug("Validating incident search parameters");
+        log.info("serviceRequestValidator::Validating incident search param");
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase("EMPLOYEE" ) && criteria.isEmpty())
             throw new CustomException("INVALID_SEARCH","Search without params is not allowed");
 
@@ -312,10 +422,10 @@ public class ServiceRequestValidator {
 
     }
 
-//    /**
-//     * Validates if the source is in the given list configures in application properties
-//     * @param source
-//     */
+    /**
+     * Validates if the source is in the given list configures in application properties
+     * @param source
+     */
 //    private void validateSource(String source){
 //
 //        List<String> allowedSourceStr = Arrays.asList(config.getAllowedSource().split(","));
@@ -327,8 +437,7 @@ public class ServiceRequestValidator {
 
 
     public void validatePlainSearch(RequestSearchCriteria criteria) {
-        log.trace("ServiceRequestValidator::validatePlainSearch method invoked");
-        log.info("Validating incident plain search criteria");
+        log.info("serviceRequestValidator::Validating incident plain search criteria");
         if(CollectionUtils.isEmpty(criteria.getTenantIds())){
             throw new CustomException("TENANT_ID_LIST_EMPTY", "Tenant ids not provided for searching.");
         }

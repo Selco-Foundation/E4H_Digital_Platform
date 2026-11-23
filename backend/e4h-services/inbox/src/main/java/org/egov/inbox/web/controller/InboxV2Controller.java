@@ -8,6 +8,7 @@ import org.egov.inbox.util.ResponseInfoFactory;
 import org.egov.inbox.web.model.InboxRequest;
 import org.egov.inbox.web.model.InboxResponse;
 import org.egov.inbox.web.model.ProjectResponse;
+import org.egov.inbox.web.model.V2.MappedVendorResponse;
 import org.egov.inbox.web.model.V2.SearchRequest;
 import org.egov.inbox.web.model.V2.SearchResponse;
 import org.egov.tracer.config.TracerConfiguration;
@@ -40,72 +41,58 @@ public class InboxV2Controller {
 
     @PostMapping(value = "/_search")
     public ResponseEntity<InboxResponse> searchNewInbox(@Valid @RequestBody  InboxRequest inboxRequest) {
-        log.trace("Method invoked: searchNewInbox");
-        String tenantId = inboxRequest.getInbox() != null ? inboxRequest.getInbox().getTenantId() : null;
-        String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null 
-                ? inboxRequest.getInbox().getProcessSearchCriteria().getModuleName() : null;
-        
-        log.info("Received inbox search request - tenantId: {}, module: {}", tenantId, moduleName);
+        log.info("Received request to search inbox with filters: {}", inboxRequest);
         try {
-            log.debug("Processing inbox search request");
             InboxResponse inboxResponse = inboxService.getInboxResponse(inboxRequest);
-            int itemCount = inboxResponse != null && inboxResponse.getItems() != null
-                    ? inboxResponse.getItems().size() : 0;
-            log.info("Inbox search completed successfully - itemCount: {}", itemCount);
+            log.info("Successfully fetched inbox results: {} items",
+                    inboxResponse != null && inboxResponse.getItems() != null
+                            ? inboxResponse.getItems().size() : 0);
 
             return new ResponseEntity<>(inboxResponse, HttpStatus.OK);
 
         } catch (Exception e) {
-            log.error("Error occurred while searching inbox - tenantId: {}, module: {}", tenantId, moduleName, e);
+            log.error("Error occurred while searching inbox with request: {}", inboxRequest, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PostMapping(value = "/project/_search")
     public ResponseEntity<ProjectResponse> searchNewInboxProject(@Valid @RequestBody  InboxRequest inboxRequest) {
-        log.trace("Method invoked: searchNewInboxProject");
-        String tenantId = inboxRequest.getInbox() != null ? inboxRequest.getInbox().getTenantId() : null;
-        String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null 
-                ? inboxRequest.getInbox().getProcessSearchCriteria().getModuleName() : null;
-        
-        log.info("Received project inbox search request - tenantId: {}, module: {}", tenantId, moduleName);
+        log.info("Received request to search project inbox with filters: {}", inboxRequest);
 
         try {
-            log.debug("Processing project inbox search request");
             ProjectResponse projectResponse = inboxService.getInboxResponseProject(inboxRequest);
-            int itemCount = projectResponse != null && projectResponse.getItems() != null
-                    ? projectResponse.getItems().size() : 0;
-            log.info("Project inbox search completed successfully - itemCount: {}", itemCount);
+            log.info("Successfully fetched project inbox results for request: {}", inboxRequest);
 
             return new ResponseEntity<>(projectResponse, HttpStatus.OK);
 
         } catch (Exception e) {
-            log.error("Error occurred while searching project inbox - tenantId: {}, module: {}", tenantId, moduleName, e);
+            log.error("Error occurred while searching project inbox with request: {} {}", inboxRequest, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
 
+    /**
+     * Distinct mapped vendors for the vendor filter dropdown. Takes the same body as /v2/_search so the
+     * list stays in step with whatever the inbox is currently scoped to, minus any mappedVendorName the
+     * UI has already applied.
+     */
+    @PostMapping(value = "/mappedVendor/_search")
+    public ResponseEntity<MappedVendorResponse> searchMappedVendors(@Valid @RequestBody InboxRequest inboxRequest) {
+        log.info("Received request to list mapped vendors with filters: {}", inboxRequest);
+
+        MappedVendorResponse mappedVendorResponse = inboxService.getMappedVendors(inboxRequest);
+        mappedVendorResponse.setResponseInfo(
+                responseInfoFactory.createResponseInfoFromRequestInfo(inboxRequest.getRequestInfo(), true));
+
+        return new ResponseEntity<>(mappedVendorResponse, HttpStatus.OK);
+    }
+
     @PostMapping(value = "/_getFields")
     public ResponseEntity<SearchResponse> searchFields(@Valid @RequestBody SearchRequest searchRequest) {
-        log.trace("Method invoked: searchFields");
-        String tenantId = searchRequest.getIndexSearchCriteria() != null 
-                ? searchRequest.getIndexSearchCriteria().getTenantId() : null;
-        String moduleName = searchRequest.getIndexSearchCriteria() != null 
-                ? searchRequest.getIndexSearchCriteria().getModuleName() : null;
-        
-        log.info("Received search fields request - tenantId: {}, module: {}", tenantId, moduleName);
-        try {
-            log.debug("Processing search fields request");
-            SearchResponse searchResponse = inboxService.getSpecificFieldsFromESIndex(searchRequest);
-            int fieldCount = searchResponse != null && searchResponse.getData() != null
-                    ? searchResponse.getData().size() : 0;
-            log.info("Search fields completed successfully - fieldCount: {}", fieldCount);
-            return new ResponseEntity<>(searchResponse, HttpStatus.OK);
-        } catch (Exception e) {
-            log.error("Error occurred while searching fields - tenantId: {}, module: {}", tenantId, moduleName, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+        SearchResponse searchResponse = inboxService.getSpecificFieldsFromESIndex(searchRequest);
+        return new ResponseEntity<>(searchResponse, HttpStatus.OK);
     }
 }
 

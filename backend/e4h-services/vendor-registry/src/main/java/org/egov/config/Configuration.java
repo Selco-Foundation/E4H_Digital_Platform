@@ -12,6 +12,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import java.util.TimeZone;
 
 @Component
@@ -94,11 +95,8 @@ public class Configuration {
     @Value("${egov.facility.host}")
     private String facilityHost;
 
-    @Value("${egov.facility.search.path}")
-    private String facilitySearchPath;
-
-    @Value("${egov.facility.update.path}")
-    private String facilityUpdatePath;
+    @Value("${egov.facility.mapped-vendor.update.path:/facility-service/v2/facility/_update-mapped-vendor}")
+    private String facilityMappedVendorUpdatePath;
 
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;
@@ -201,6 +199,18 @@ public class Configuration {
 
     @Value("${egov.location.hierarchy.type}")
     private String locationHierarchyType;
+
+    //Jurisdiction scope
+
+    /**
+     * Roles that administer org users without a jurisdiction restriction.
+     *
+     * Configuration rather than a constant because the set is a policy decision that an
+     * environment may need to change without a release - and because getting it wrong in either
+     * direction is visible immediately (a locked-out admin, or an unscoped one).
+     */
+    @Value("${vendor.jurisdiction.unscoped.roles:ORG_PLATFORM_ADMIN}")
+    private List<String> jurisdictionUnscopedRoles;
 
     //Notification
     @Value("${notification.sms.enabled}")
