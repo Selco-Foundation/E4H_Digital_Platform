@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../lib/data/api_interceptors.dart';
+import '../../lib/data/remote_client.dart';
 import '../../lib/data/secure_storage/secureStore.dart';
 import '../../lib/repositories/auth_repo.dart';
 import '../../lib/model/response/responsemodel.dart';
@@ -34,13 +35,17 @@ class FakeAuthRepository extends AuthRepository {
 }
 
 class SessionAdapter implements HttpClientAdapter {
-  SessionAdapter(this.status);
+  SessionAdapter(this.status, {this.errorType});
   final int Function(int call) status;
+  final DioExceptionType? errorType;
   final requests = <RequestOptions>[];
   @override
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     requests.add(options.copyWith(data: jsonDecode(jsonEncode(options.data))));
+    if (errorType != null) {
+      throw DioException(requestOptions: options, type: errorType!);
+    }
     return ResponseBody.fromString('{}', status(requests.length), headers: {
       Headers.contentTypeHeader: [Headers.jsonContentType]
     });
@@ -60,6 +65,7 @@ void main() {
   setUp(() async {
     FlutterSecureStorage.setMockInitialValues({});
     await envConfig.initialize();
+    DioClient().dio.httpClientAdapter = SessionAdapter((_) => 200);
     await SecureStore().setAccessToken('old-token');
     AuthTokenInterceptor.resetLogoutGuard();
     notifications = 0;
@@ -86,6 +92,65 @@ void main() {
           options: Options(extra: {suppressSessionExpiryExtraKey: suppressed}));
   Matcher expired() => isA<DioException>()
       .having((e) => e.message, 'message', 'SESSION_EXPIRED');
+
+  test('logout sends the stored token and injected request info before cleanup',
+      () async {
+    final logoutAdapter = SessionAdapter((_) => 200);
+    DioClient().dio.httpClientAdapter = logoutAdapter;
+    await SecureStore().setSelectedIndividual('selected');
+
+    await auth.logout();
+
+    final request = logoutAdapter.requests.single;
+    expect(request.method, 'POST');
+    expect(request.path, 'user/_logout');
+    expect(request.queryParameters['tenantId'], envConfig.variables.tenantId);
+    expect(request.data['access_token'], 'old-token');
+    expect(request.data['RequestInfo']['authToken'], 'old-token');
+    expect(request.extra[suppressBodyLoggingExtraKey], true);
+    expect(await SecureStore().getAccessToken(), isNull);
+    expect(await SecureStore().getSelectedIndividual(), isNull);
+  });
+
+  for (final status in [401, 500]) {
+    test('logout HTTP $status still clears credentials without refreshing',
+        () async {
+      final logoutAdapter = SessionAdapter((_) => status);
+      DioClient().dio.httpClientAdapter = logoutAdapter;
+
+      await auth.logout();
+
+      expect(logoutAdapter.requests, hasLength(1));
+      expect(auth.refreshes, 0);
+      expect(notifications, 0);
+      expect(await SecureStore().getAccessToken(), isNull);
+    });
+  }
+
+  test('logout without a token skips the backend request', () async {
+    final logoutAdapter = SessionAdapter((_) => 200);
+    DioClient().dio.httpClientAdapter = logoutAdapter;
+    await SecureStore().deleteAccessToken();
+    await SecureStore().setSelectedIndividual('selected');
+
+    await auth.logout();
+
+    expect(logoutAdapter.requests, isEmpty);
+    expect(await SecureStore().getSelectedIndividual(), isNull);
+  });
+
+  test('logout timeout still clears local credentials', () async {
+    DioClient().dio.httpClientAdapter = SessionAdapter(
+      (_) => 200,
+      errorType: DioExceptionType.receiveTimeout,
+    );
+
+    await auth.logout();
+
+    expect(await SecureStore().getAccessToken(), isNull);
+    expect(await SecureStore().getAccessInfo(), isNull);
+    expect(auth.refreshes, 0);
+  });
 
   test('401 refreshes and replays with new credentials and original payload',
       () async {

@@ -99,9 +99,31 @@ class AuthRepository {
   Future<void> logout() async {
     AuthTokenInterceptor.invalidateSession();
     final secureStore = SecureStore();
-    await secureStore.deleteAccessToken();
-    await secureStore.deleteAccessInfo();
-    await secureStore.deleteSelectedIndividual();
+    try {
+      final accessToken = await secureStore.getAccessToken();
+      if (accessToken != null && accessToken.trim().isNotEmpty) {
+        await DioClient().dio.post(
+          'user/_logout',
+          queryParameters: {'tenantId': envConfig.variables.tenantId},
+          data: {'access_token': accessToken},
+          options: Options(extra: const {
+            suppressSessionExpiryExtraKey: true,
+            suppressBodyLoggingExtraKey: true,
+          }),
+        );
+      }
+    } catch (error) {
+      AppLogger.instance.error(
+        title: 'Logout request failed',
+        message: error is DioException
+            ? 'HTTP ${error.response?.statusCode}, ${error.type.name}'
+            : error.runtimeType.toString(),
+      );
+    } finally {
+      await secureStore.deleteAccessToken();
+      await secureStore.deleteAccessInfo();
+      await secureStore.deleteSelectedIndividual();
+    }
   }
 
   Future<String> refreshToken() async {
