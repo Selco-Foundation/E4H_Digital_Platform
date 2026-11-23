@@ -19,6 +19,7 @@ import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.PasswordPolicy;
+import org.egov.util.OrgAdminScopeResolver;
 import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,8 @@ public class OrganisationUserServiceValidator {
 
     private final ObjectMapper mapper;
     private final JurisdictionScopeResolver jurisdictionScopeResolver;
+
+    private final OrgAdminScopeResolver orgAdminScopeResolver;
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
@@ -72,7 +75,8 @@ public class OrganisationUserServiceValidator {
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
                                             OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper,
-                                            JurisdictionScopeResolver jurisdictionScopeResolver) {
+                                            JurisdictionScopeResolver jurisdictionScopeResolver,
+                                            OrgAdminScopeResolver orgAdminScopeResolver) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -83,6 +87,7 @@ public class OrganisationUserServiceValidator {
         this.facilityUtil = facilityUtil;
         this.mapper = mapper;
         this.jurisdictionScopeResolver = jurisdictionScopeResolver;
+        this.orgAdminScopeResolver = orgAdminScopeResolver;
 
     }
 
@@ -406,6 +411,21 @@ public class OrganisationUserServiceValidator {
     }
 
     private void requireCallerAdministers(RequestInfo requestInfo, Employee employee, String mobileNumber) {
+        // An ORG_ADMIN is not scoped by jurisdiction, so the check below would let them through for
+        // anyone. Their rule is the organisation: the existing account must already belong to their
+        // own org, and must not be a platform admin - otherwise entering that person's mobile number
+        // would set their password and take the account over.
+        if (OrgAdminScopeResolver.isOrgAdmin(requestInfo)) {
+            OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(requestInfo);
+            String uuid = employee.getUser() != null ? employee.getUser().getUuid() : null;
+            boolean inOwnOrg = uuid != null && userRepository.isUserLinkedToOrg(uuid, orgScope.orgId());
+            if (!inOwnOrg || holdsRole(employee.getUser(), ORG_PLATFORM_ADMIN_ROLE_CODE)) {
+                log.error("ORG_ADMIN attempted to create over existing user with phone {} outside their organisation or a platform admin", mobileNumber);
+                throw new CustomException("USER_OUT_OF_SCOPE",
+                        "A user with this mobile number already exists and cannot be added by you");
+            }
+            return;
+        }
         JurisdictionScopeResolver.Scope callerScope = jurisdictionScopeResolver.resolve(requestInfo);
         if (!callerScope.unscoped() && callerScope.within(employee.getJurisdictions()).isEmpty()) {
             log.error("Caller attempted to create over existing user with phone {} who holds no jurisdiction in their scope", mobileNumber);
@@ -522,6 +542,16 @@ public class OrganisationUserServiceValidator {
 
         // Get employee details fetched from HRMS
         Employee employee = employees.get(0);
+
+        // The HRMS user is found by the payload's userName; it must be the user this row links.
+        // Otherwise any row id the caller may touch could carry someone else's userName, and that
+        // other person - in another organisation, or a platform admin - is the one edited.
+        String employeeUuid = employee.getUser() != null ? employee.getUser().getUuid() : null;
+        if (employeeUuid == null || !employeeUuid.equals(existingOrgUser.getUserId())) {
+            log.error("Org user {} links user {}, but userName {} resolves to {}",
+                    existingOrgUser.getId(), existingOrgUser.getUserId(), orgUser.getUserName(), employeeUuid);
+            throw new CustomException("USER_MISMATCH", "The userName does not belong to this org user");
+        }
 
         // An update may keep ORG_PLATFORM_ADMIN on a user who already holds it, never grant it.
         rejectPlatformAdminRole(orgUser, employee.getUser());

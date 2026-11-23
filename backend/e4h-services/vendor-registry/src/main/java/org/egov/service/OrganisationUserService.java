@@ -12,6 +12,8 @@ import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
 import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.OrgAdminScopeResolver;
+
+import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
 import org.egov.validator.OrganisationUserServiceValidator;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -198,19 +201,48 @@ public class OrganisationUserService {
     }
 
     /**
-     * An ORG_ADMIN may only act on a user row of their own organisation. An unknown row and another
-     * organisation's row get the same answer, so the response does not reveal which it was.
+     * What an ORG_ADMIN may edit or delete: a user row of their own organisation, whose user does
+     * not hold ORG_PLATFORM_ADMIN.
+     *
+     * An unknown row and another organisation's row get the same answer, so the response does not
+     * reveal which it was.
+     *
+     * A platform administrator outranks the org admin, so the whole user is off limits - not just
+     * the role. Editing them would otherwise hand over the account: a new mobile number or email
+     * (OTP login and reset), or the password itself, which user/_update now sets (MH2-06). The check is on the target, not on the fields sent, so a field added to the update
+     * later is covered without revisiting this. Roles are read from HRMS as stored, never from the
+     * payload, which could simply leave the role out. Platform admins stay visible in search.
+     *
+     * Fails closed: a target HRMS cannot return is refused.
      */
-    private void requireOrgUserInCallerOrg(org.egov.common.contract.request.RequestInfo requestInfo, String orgUserId) {
+    private void requireEditableByCaller(org.egov.common.contract.request.RequestInfo requestInfo, String orgUserId) {
         OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(requestInfo);
         if (!orgScope.restricted()) {
             return;
         }
-        boolean inOrg = orgUserId != null && userRepository.getOrganizationIdOfOrgUser(orgUserId)
-                .map(orgScope::allows).orElse(false);
-        if (!inOrg) {
+        Optional<OrganisationUserRepository.OrgUserLink> link = orgUserId == null
+                ? Optional.empty() : userRepository.getOrgUserLink(orgUserId);
+        if (link.isEmpty() || !orgScope.allows(link.get().organizationId())) {
             log.error("ORG_ADMIN attempted to act on org user {} outside their organisation", orgUserId);
             throw new CustomException("Organization", "This org user id do not exist");
+        }
+
+        Employee target = link.get().userId() == null ? null
+                : hrmsUtils.getUserById(org.egov.common.contract.models.RequestInfoWrapper.builder()
+                        .requestInfo(requestInfo).build(), link.get().userId());
+        if (target == null || target.getUser() == null) {
+            log.error("ORG_ADMIN target {} could not be read from HRMS; refusing", orgUserId);
+            throw new CustomException("Organization", "This org user could not be verified");
+        }
+        boolean platformAdmin = target.getUser().getRoles() != null && target.getUser().getRoles().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(Role::getCode)
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(code -> ORG_PLATFORM_ADMIN_ROLE_CODE.equalsIgnoreCase(code.trim()));
+        if (platformAdmin) {
+            log.error("ORG_ADMIN attempted to modify platform admin {}", link.get().userId());
+            throw new CustomException("USER_NOT_EDITABLE",
+                    "Organisation admins cannot modify a user holding " + ORG_PLATFORM_ADMIN_ROLE_CODE);
         }
     }
 
@@ -272,7 +304,7 @@ public class OrganisationUserService {
         log.info("received request to update org user {} ", request );
 
         // The target must be in the caller's organisation, and an ORG_ADMIN cannot move it out.
-        requireOrgUserInCallerOrg(request.getRequestInfo(), request.getId());
+        requireEditableByCaller(request.getRequestInfo(), request.getId());
         OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
         if (orgScope.restricted() && !orgScope.allows(request.getOrganizationId())) {
             log.error("ORG_ADMIN attempted to move org user {} to organisation {}", request.getId(), request.getOrganizationId());
@@ -295,7 +327,7 @@ public class OrganisationUserService {
 
     public DeleteOrgUserRequest deleteUserOrg(DeleteOrgUserRequest request) {
         log.info("received request to delete org user {}", request.getId());
-        requireOrgUserInCallerOrg(request.getRequestInfo(), request.getId());
+        requireEditableByCaller(request.getRequestInfo(), request.getId());
         validator.validateDeleteOrgUserRequest(request);
         try {
             deactivateHrmsUser(request);

@@ -106,11 +106,23 @@ public class OrganisationUserRepository {
         return jdbcTemplate.query(query, (rs, i) -> new UserOrgLink(rs.getString(1), rs.getString(2)), userUuid);
     }
 
-    /** The organisation an org-user row belongs to, deleted rows included; empty when no such row. */
-    public Optional<String> getOrganizationIdOfOrgUser(String orgUserId) {
-        List<String> ids = jdbcTemplate.queryForList(
-                "SELECT organizationid FROM eg_org_user WHERE id = ?", String.class, orgUserId);
-        return ids.isEmpty() ? Optional.empty() : Optional.ofNullable(ids.get(0));
+    /** Whether this user has ever been linked to this organisation, deleted links included. */
+    public boolean isUserLinkedToOrg(String userUuid, String organizationId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM eg_org_user WHERE userid = ? AND organizationid = ?",
+                Integer.class, userUuid, organizationId);
+        return count != null && count > 0;
+    }
+
+    /** Who an org-user row links, and to which organisation. */
+    public record OrgUserLink(String organizationId, String userId) {}
+
+    /** The organisation and user of an org-user row, deleted rows included; empty when no such row. */
+    public Optional<OrgUserLink> getOrgUserLink(String orgUserId) {
+        List<OrgUserLink> rows = jdbcTemplate.query(
+                "SELECT organizationid, userid FROM eg_org_user WHERE id = ?",
+                (rs, i) -> new OrgUserLink(rs.getString(1), rs.getString(2)), orgUserId);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
