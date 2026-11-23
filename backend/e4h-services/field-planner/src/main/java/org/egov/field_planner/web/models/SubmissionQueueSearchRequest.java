@@ -28,4 +28,16 @@ public class SubmissionQueueSearchRequest {
     @JsonProperty("tenantId")
     @NotNull
     private String tenantId;
+
+    @JsonProperty("filters")
+    private SubmissionQueueFilters filters;
+
+    @JsonProperty("sort")
+    private SubmissionQueueSort sort;
+
+    @JsonProperty("limit")
+    private Integer limit;
+
+    @JsonProperty("offset")
+    private Integer offset;
 }

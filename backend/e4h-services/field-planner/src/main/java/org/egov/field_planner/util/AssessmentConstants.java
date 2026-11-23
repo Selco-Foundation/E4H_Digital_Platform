@@ -11,6 +11,7 @@ public final class AssessmentConstants {
     public static final String PLAN_TYPE_ASSESSMENT = "ASSESSMENT";
     public static final String ACTIVITY_CODE_ASSESSMENT = "ASSESSMENT";
 
+    public static final String PLAN_STATUS_DRAFT = "DRAFT";
     public static final String PLAN_STATUS_ACTIVE = "ACTIVE";
     public static final String PLAN_STATUS_CLOSED = "CLOSED";
 
@@ -40,11 +41,16 @@ public final class AssessmentConstants {
     public static final String PHASE_PHONE = "PHONE";
     public static final String PHASE_FIELD = "FIELD";
 
+    /** additionalDetails keys holding the assessment form chosen for a plan facility at include time. */
+    public static final String DETAIL_ON_REMOTE_QUESTIONNAIRE = "onRemoteQuestionnaire";
+    public static final String DETAIL_ON_SITE_QUESTIONNAIRE = "onSiteQuestionnaire";
+
     public static final String CATEGORY_HEALTH = "HEALTH";
     public static final String CATEGORY_ANGANWADI = "ANGANWADI";
 
     public static final String ROLE_ENUMERATOR = "ENUMERATOR";
     public static final String ROLE_FIELD_POC = "FIELD_POC";
+    public static final String ROLE_PROJECT_MANAGER = "PROJECT_MANAGER";
     public static final String ROLE_SYSTEM_USER = "SYSTEM_USER";
     public static final String ACTOR_SYSTEM = "SYSTEM";
 
@@ -83,6 +89,11 @@ public final class AssessmentConstants {
     public static final String ASSESSMENT_INVALID_GEOGRAPHY = "ASSESSMENT_INVALID_GEOGRAPHY";
     public static final String ASSESSMENT_PROJECT_NOT_FOUND = "ASSESSMENT_PROJECT_NOT_FOUND";
     public static final String ASSESSMENT_PLAN_HAS_PENDING_FACILITIES = "ASSESSMENT_PLAN_HAS_PENDING_FACILITIES";
+    public static final String ASSESSMENT_PLAN_FACILITIES_REQUIRED = "ASSESSMENT_PLAN_FACILITIES_REQUIRED";
+    public static final String ASSESSMENT_PLAN_NO_FACILITIES = "ASSESSMENT_PLAN_NO_FACILITIES";
+    public static final String ASSESSMENT_PLAN_ASSESSORS_REQUIRED = "ASSESSMENT_PLAN_ASSESSORS_REQUIRED";
+    public static final String ASSESSMENT_PLAN_NOT_ACTIVE = "ASSESSMENT_PLAN_NOT_ACTIVE";
+    public static final String ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION = "ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION";
     public static final String ASSESSMENT_FACILITY_ALREADY_ON_PLAN = "ASSESSMENT_FACILITY_ALREADY_ON_PLAN";
     public static final String ASSESSMENT_FACILITY_NOT_ON_PROJECT = "ASSESSMENT_FACILITY_NOT_ON_PROJECT";
     public static final String ASSESSMENT_FACILITY_ELIGIBLE_ACTIVE = "ASSESSMENT_FACILITY_ELIGIBLE_ACTIVE";

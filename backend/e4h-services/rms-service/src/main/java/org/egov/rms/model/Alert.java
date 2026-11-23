@@ -1,5 +1,6 @@
 package org.egov.rms.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,6 +51,9 @@ public class Alert {
 
     @JsonProperty("lastSuppressedAt")
     private Instant lastSuppressedAt;
+
+    @JsonIgnore
+    private String boundaryCode; // Facility boundary code resolved during processing; not persisted
 
     public enum AlertType {
         PANEL,

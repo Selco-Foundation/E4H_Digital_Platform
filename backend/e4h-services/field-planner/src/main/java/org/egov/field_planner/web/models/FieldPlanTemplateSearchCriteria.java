@@ -32,6 +32,10 @@ public class FieldPlanTemplateSearchCriteria {
     @JsonProperty("fileStoreId")
     private List<String> fileStoreId;
 
+    // null -> both regular and rectification templates
+    @JsonProperty("rectificationSite")
+    private Boolean rectificationSite;
+
     private String tenantId;
 
     private boolean countQuery;

@@ -11,6 +11,7 @@ import org.egov.amc.util.BoundaryUtil;
 import org.egov.amc.util.FacilityPocPhoneUtil;
 import org.egov.amc.util.LocalizationUtil;
 import org.egov.amc.util.MDMSUtils;
+import org.egov.amc.util.MappedVendorUtil;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
@@ -38,6 +39,12 @@ import static org.egov.amc.util.AmcConstants.*;
 @Slf4j
 public class ScheduledVisitService {
 
+    /**
+     * Number of visits whose workflow history is fetched per egov-workflow-v2 search during a reindex.
+     * Kept well under the service's 100-record page cap (a visit has only a handful of transitions) so a
+     * batch normally resolves in a single call while still cutting the round trips by an order of magnitude.
+     */
+
     private final ScheduledVisitValidator scheduledVisitsValidator;
     private final ScheduledVisitRepository scheduledVisitsRepository;
     private final ServiceRequestRepository requestRepository;
@@ -47,6 +54,7 @@ public class ScheduledVisitService {
     private final AMCServiceConfiguration amcServiceConfiguration;
     private final AmcConfigurationService amcConfigurationService;
     private final VisitWorkflowService workflowService;
+    private final ActualVisitDateEnricher actualVisitDateEnricher;
     private final JdbcTemplate jdbcTemplate;
     private final MDMSUtils mdmsUtils;
     private BoundaryUtil boundaryUtil;
@@ -54,6 +62,8 @@ public class ScheduledVisitService {
     private final AmcVisitReportPdfService amcVisitReportPdfService;
     private final LocalizationUtil localizationUtil;
     private final AmcAnalyticsService amcAnalyticsService;
+    private final FacilityAmcIndexSyncService facilityAmcIndexSyncService;
+    private final MappedVendorUtil mappedVendorUtil;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -62,9 +72,10 @@ public class ScheduledVisitService {
     @Autowired
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
-            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
+            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, ActualVisitDateEnricher actualVisitDateEnricher, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
             FacilityPocPhoneUtil facilityPocPhoneUtil, AmcVisitReportPdfService amcVisitReportPdfService,
-            LocalizationUtil localizationUtil, AmcAnalyticsService amcAnalyticsService) {
+            LocalizationUtil localizationUtil, AmcAnalyticsService amcAnalyticsService,
+            FacilityAmcIndexSyncService facilityAmcIndexSyncService, MappedVendorUtil mappedVendorUtil) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -74,6 +85,7 @@ public class ScheduledVisitService {
             this.amcConfigurationServiceUtil = scheduledVisitsServiceUtil;
         this.amcConfigurationService = amcConfigurationService;
         this.workflowService = workflowService;
+        this.actualVisitDateEnricher = actualVisitDateEnricher;
         this.amcVisitReportPdfService = amcVisitReportPdfService;
         this.jdbcTemplate = jdbcTemplate;
         this.mdmsUtils = mdmsUtils;
@@ -81,9 +93,13 @@ public class ScheduledVisitService {
         this.facilityPocPhoneUtil = facilityPocPhoneUtil;
         this.localizationUtil = localizationUtil;
         this.amcAnalyticsService = amcAnalyticsService;
+        this.facilityAmcIndexSyncService = facilityAmcIndexSyncService;
+        this.mappedVendorUtil = mappedVendorUtil;
     }
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
+        log.trace("Entering createScheduledVisit method");
+        log.info("Creating {} scheduled visit(s)", request.getScheduledVisits().size());
         scheduledVisitsValidator.validateCreateScheduledVisitRequest(request);
         validateUniqueVisitNumbers(request);
         for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
@@ -100,12 +116,35 @@ public class ScheduledVisitService {
                     .toList();
             scheduledVisit.setAssignments(assignments);
             scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(scheduledVisit, request.getRequestInfo());
-            log.info("Enriched with AMC Ids and AuditDetails {}", scheduledVisit);
-            log.info("Pushed to kafka");
+            log.trace("Enriching scheduled visit on create for visitId: {}", scheduledVisit.getId());
+            log.info("Scheduled visit enriched with AMC configuration ID: {}", scheduledVisit.getAmcConfigurationId());
+            log.debug("Enriched scheduled visit details - visitNumber: {}, projectId: {}, facilityId: {}",
+                    scheduledVisit.getVisitNumber(), scheduledVisit.getProjectId(), scheduledVisit.getFacilityId());
+            log.info("Pushed scheduled visit to kafka topic");
         }
         producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(), request);
         pushNonDraftVisitsToIndex(request.getRequestInfo(), request.getScheduledVisits(), amcServiceConfiguration.getSaveScheduledVisitIndexTopic());
+        syncFacilityAmcIndex(request.getScheduledVisits(), request.getRequestInfo());
         return request;
+    }
+
+    /**
+     * Pushes the AMC facility-index snapshot once per distinct facility touched by these visits -
+     * due dates are pre-scheduled at creation, actual visit dates fill in as reports are submitted.
+     * Best-effort: {@link FacilityAmcIndexSyncService} itself catches and logs.
+     */
+    private void syncFacilityAmcIndex(List<ScheduledVisit> visits, RequestInfo requestInfo) {
+        Map<String, List<ScheduledVisit>> visitsByFacilityId = new LinkedHashMap<>();
+        for (ScheduledVisit visit : visits) {
+            if (visit.getFacilityId() != null) {
+                visitsByFacilityId.computeIfAbsent(visit.getFacilityId(), k -> new ArrayList<>()).add(visit);
+            }
+        }
+        // The visits are handed over rather than re-read: they are persisted asynchronously, so the
+        // DB does not have them yet at this point.
+        visitsByFacilityId.forEach((facilityId, facilityVisits) ->
+                facilityAmcIndexSyncService.syncFacilityAmcSnapshot(
+                        facilityId, facilityVisits.get(0).getTenantId(), requestInfo, facilityVisits));
     }
 
     /**
@@ -120,6 +159,7 @@ public class ScheduledVisitService {
             return 0;
         }
         enrichBoundaryLocalization(requestInfo, nonDraftVisits);
+        enrichMappedVendor(requestInfo, nonDraftVisits);
         ScheduledVisitRequest indexRequest = ScheduledVisitRequest.builder()
                 .requestInfo(requestInfo)
                 .scheduledVisits(nonDraftVisits)
@@ -155,7 +195,13 @@ public class ScheduledVisitService {
                 break;
             }
 
+            actualVisitDateEnricher.enrichActualVisitDateFromWorkflow(requestInfo, visits);
             int indexedInBatch = pushNonDraftVisitsToIndex(requestInfo, visits, amcServiceConfiguration.getSaveScheduledVisitIndexTopic());
+            // The recovered actualVisitDate is what the AMC Data Dump's "AMC Visit" columns read, so the
+            // facility index has to be refreshed too - otherwise this backfill repairs the visit index
+            // and silently leaves the facility index stale. The visits are handed over because
+            // the enricher only enriches in memory; the DB row may still be null.
+            syncFacilityAmcIndex(visits, requestInfo);
             totalIndexed += indexedInBatch;
             log.info("Reindex batch offset={} fetched={} indexed={} totalIndexed={}",
                     offset, visits.size(), indexedInBatch, totalIndexed);
@@ -217,6 +263,112 @@ public class ScheduledVisitService {
         }
     }
 
+    /**
+     * Stamps each visit with the AMC field staff it is mapped to: the first active assignment whose
+     * HRMS user holds the role in {@code amc.mapped.vendor.role.code}.
+     *
+     * <p>Called from {@link #pushNonDraftVisitsToIndex}, which every route to the index funnels
+     * through, so create/update/expire and the {@code /index/_reindex} backfill all derive the value
+     * the same way.
+     *
+     * <p>Roles are fetched from HRMS rather than read off any user object already hanging on the
+     * assignment: create-flow assignments carry nothing but an {@code assignedUser} uuid, so that
+     * object is often absent. {@link MappedVendorUtil} batches those lookups so one search covers a
+     * whole page of assignees instead of one call per assignment.
+     *
+     * <p>A visit whose assignees include no field staff keeps both fields null - the index then
+     * distinguishes "nobody mapped" from a real name. An HRMS failure degrades the affected batch to
+     * that same null rather than aborting the push, since an unmapped visit is still worth indexing.
+     */
+    private void enrichMappedVendor(RequestInfo requestInfo, List<ScheduledVisit> visits) {
+        String roleCode = amcServiceConfiguration.getMappedVendorRoleCode();
+        if (roleCode == null || roleCode.trim().isEmpty()) {
+            log.warn("amc.mapped.vendor.role.code is not configured; indexing {} visit(s) without a mapped vendor.",
+                    visits.size());
+            return;
+        }
+
+        Map<String, List<String>> assigneesByVisitId = resolveAssigneesForIndexing(visits);
+        List<String> assigneeUuids = assigneesByVisitId.values().stream()
+                .flatMap(List::stream)
+                .distinct()
+                .toList();
+        if (assigneeUuids.isEmpty()) {
+            return;
+        }
+
+        Map<String, User> fieldStaffByUuid = mappedVendorUtil.getFieldStaffByUuid(requestInfo, assigneeUuids, roleCode);
+        if (fieldStaffByUuid.isEmpty()) {
+            log.info("None of the {} active assignee(s) in this batch hold role {}; indexing them without a "
+                    + "mapped vendor.", assigneeUuids.size(), roleCode);
+            return;
+        }
+
+        for (ScheduledVisit visit : visits) {
+            for (String assigneeUuid : assigneesByVisitId.getOrDefault(visit.getId(), List.of())) {
+                User fieldStaff = fieldStaffByUuid.get(assigneeUuid);
+                if (fieldStaff == null) {
+                    continue;
+                }
+                visit.setMappedVendorName(fieldStaff.getName());
+                visit.setMappedVendorUserName(fieldStaff.getUserName());
+                // First active field-staff assignee wins; later ones (e.g. a reviewer also on the visit)
+                // are ignored so the index carries a single, stable mapped vendor.
+                break;
+            }
+        }
+    }
+
+    /**
+     * visitId -> the assignee uuids the mapped-vendor lookup should consider, read from the
+     * assignments table rather than from {@code visit.getAssignments()}.
+     *
+     * <p>The visits reaching the index come from {@link #searchScheduledVisit}, which scopes
+     * non-PROJECT_MANAGER callers to their own assignment row - and since that same row feeds the
+     * query's {@code jsonb_agg}, the assignments hanging off the visit are just the caller's. Indexing
+     * off that list means the mapped vendor can only ever be the caller, and a visit scheduled by an
+     * AMC SPOC on behalf of field staff resolves to nothing. The API keeps that scoping (callers must
+     * not see each other's assignments); the index simply reads the full roster separately.
+     *
+     * <p>Falls back to the in-memory assignments per visit when the table has no rows for it - on the
+     * create path the visit has only just been pushed onto the persister topic and is not in the
+     * database yet, so the request object is the only source there.
+     */
+    private Map<String, List<String>> resolveAssigneesForIndexing(List<ScheduledVisit> visits) {
+        List<String> visitIds = visits.stream()
+                .map(ScheduledVisit::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<String, List<String>> assigneesByVisitId;
+        try {
+            assigneesByVisitId = new HashMap<>(
+                    scheduledVisitsRepository.getActiveAssigneeUuidsByVisitIds(visitIds));
+        } catch (Exception e) {
+            log.error("Could not read assignments for {} visit(s) while resolving the mapped vendor; "
+                    + "falling back to the assignments on the request.", visitIds.size(), e);
+            assigneesByVisitId = new HashMap<>();
+        }
+
+        for (ScheduledVisit visit : visits) {
+            if (visit.getId() == null || assigneesByVisitId.containsKey(visit.getId())
+                    || visit.getAssignments() == null) {
+                continue;
+            }
+            List<String> fromRequest = visit.getAssignments().stream()
+                    .filter(ScheduledVisitAssignment::isActive)
+                    .map(ScheduledVisitAssignment::getAssignedUser)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (!fromRequest.isEmpty()) {
+                assigneesByVisitId.put(visit.getId(), fromRequest);
+            }
+        }
+        return assigneesByVisitId;
+    }
+
     public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
         if (request == null)
             throw new CustomException("GENERATE_VISIT_ERROR", "The request is empty");
@@ -224,7 +376,8 @@ public class ScheduledVisitService {
         if (request.getConfigurationId() == null || request.getConfigurationId().isEmpty())
             throw new CustomException("GENERATE_VISIT_ERROR", "Configuration ID is mandatory");
 
-        log.info("Generating scheduled visits for AMC configuration {}", request.getConfigurationId());
+        log.trace("Entering generateScheduledVisits method for configurationId: {}", request.getConfigurationId());
+        log.info("Generating scheduled visits for AMC configuration: {}", request.getConfigurationId());
         // Check id configuration ID exist
         AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(List.of(request.getConfigurationId())).tenantId(request.getRequestInfo().getUserInfo().getTenantId()).build();
         AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
@@ -312,8 +465,10 @@ public class ScheduledVisitService {
             i++;
         }
 
+        log.debug("Generated {} scheduled visits for configuration {}", scheduledVisitList.size(), request.getConfigurationId());
         ScheduledVisitRequest scheduledVisitRequest = ScheduledVisitRequest.builder().requestInfo(request.getRequestInfo()).scheduledVisits(scheduledVisitList).build();
         ScheduledVisitRequest response = createScheduledVisit(scheduledVisitRequest);
+        log.info("Successfully generated {} scheduled visits for configuration {}", response.getScheduledVisits().size(), request.getConfigurationId());
 
         return ScheduledVisitResponse.builder()
                 .scheduledVisits(response.getScheduledVisits())
@@ -439,7 +594,7 @@ public class ScheduledVisitService {
         log.info("Resolved HRMS lookup for resend OTP visitId={} facilityId={} boundaryCode={}",
                 existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-        Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+        Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
         if (employee != null && employee.getUser() != null && employee.getUser().getMobileNumber() != null && !employee.getUser().getMobileNumber().isEmpty()) {
             OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
             if (otpResponse != null && otpResponse.getOtp() != null) {
@@ -455,6 +610,8 @@ public class ScheduledVisitService {
     }
 
     public List<ScheduledVisit> updateVisitWorkflow(VisitReportSubmissionRequest request) throws Exception {
+        log.trace("Entering updateVisitWorkflow method for visitId: {}", request.getVisitId());
+        log.info("Updating visit workflow for visitId: {}, action: {}", request.getVisitId(), request.getWorkflow().getAction());
         if(request.getRequestInfo()==null || request.getRequestInfo().getUserInfo() ==null || request.getRequestInfo().getUserInfo().getUuid().isEmpty())
             throw new CustomException("UPDATE_WORKFLOW", "User ID is not found in requestInfo");
 
@@ -472,9 +629,16 @@ public class ScheduledVisitService {
         String priorStatus = existingVisit.getStatus();
 
         // Step 2: if action is SUBMIT_VISIT_REPORT, check if send OTP is successful or not
-        if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
+        if (SUBMIT_VISIT_REPORT_ACTION.equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to update visit report on existing visit
             existingVisit.setVisitReport(request.getVisitReport());
+            // The report is filled in on site, so this submission is the moment the visit actually
+            // happened - the only point in the workflow that stands for it. Stamped here, at the top
+            // of the branch, because attachAmcInstallationFormDocument below renders it into the AMC
+            // report PDF (actual_scheduled_amc_date); stamping any later would leave the PDF blank.
+            // A re-submission out of REJECTED intentionally overwrites it, so the stored date always
+            // matches the PDF generated in the same call.
+            existingVisit.setActualVisitDate(System.currentTimeMillis());
             log.info("SUBMIT_VISIT_REPORT started for visitId={} tenantId={}", existingVisit.getId(), existingVisit.getTenantId());
             // We need to send OTP to facility POC resolved by facility boundary (HCR user)
             if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
@@ -492,11 +656,13 @@ public class ScheduledVisitService {
             log.info("Resolved HRMS lookup for visitId={} facilityId={} boundaryCode={}",
                     existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-            Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+            Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                log.trace("Creating OTP for visit report submission, visitId: {}", existingVisit.getId());
                 OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
                 if (otpResponse !=null && otpResponse.getOtp()!=null){
-                    log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                    log.debug("OTP generated successfully for visitId: {}", existingVisit.getId());
+                    log.info("OTP generated for visit report submission, visitId: {}", existingVisit.getId());
                     existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
                     sendOtpSms(employee.getUser().getMobileNumber(), otpResponse.getOtp().getOtp(), existingVisit.getTenantId());
                 }
@@ -544,7 +710,7 @@ public class ScheduledVisitService {
                 log.info("Resolved HRMS lookup for OTP validation visitId={} facilityId={} boundaryCode={}",
                         existingVisit.getId(), existingVisit.getFacilityId(), facility.getBoundaryCode());
 
-                Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode());
+                Employee employee = getEmployeeByBoundaryCode(request, facility.getBoundaryCode(), ROLE_COMPLAINANT);
                 if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                     OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
                     if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -573,8 +739,7 @@ public class ScheduledVisitService {
                     request.getWorkflow().getComment()
             );
         } catch (Exception e) {
-//            e.printStackTrace();
-            log.error(e.getMessage());
+            log.error("Workflow transition failed for visitId: {}, action: {}", request.getVisitId(), request.getWorkflow().getAction(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getVisitId());
         }
@@ -612,6 +777,7 @@ public class ScheduledVisitService {
         // handleUpdateScheduledVisit), so both this workflow-driven update and the plain /_update endpoint
         // push consistently, including the first DRAFT -> SCHEDULED transition regardless of which endpoint drove it.
         handleUpdateScheduledVisit(enrichedRequest, updatedScheduledVisit, existingVisit);
+        log.info("Successfully updated visit workflow for visitId: {}, new status: {}", updatedScheduledVisit.getId(), updatedScheduledVisit.getStatus());
 
         // 8. Publish the user-analytics event - best-effort, never breaks the workflow update.
         amcAnalyticsService.publishVisitWorkflowEvent(existingVisit, request.getWorkflow().getAction(), priorStatus,
@@ -620,13 +786,37 @@ public class ScheduledVisitService {
         return List.of(updatedScheduledVisit);
     }
 
+    /**
+     * Drops any AMC_INSTALLATION_FORM document already on the workflow - carried over from an earlier
+     * submission - so a regenerated form never ends up duplicated alongside the stale one.
+     */
+    private void removeExistingAmcInstallationFormDocument(Workflow workflow) {
+        List<Document> documents = workflow.getDocuments();
+        if (documents == null || documents.isEmpty()) {
+            return;
+        }
+        // Filtered on a copy: the list comes straight from the request body and nothing guarantees
+        // it is modifiable.
+        List<Document> remainingDocuments = new ArrayList<>(documents);
+        boolean removed = remainingDocuments.removeIf(document -> document != null
+                && AMC_INSTALLATION_FORM_DOCUMENT_TYPE.equalsIgnoreCase(document.getDocumentType()));
+        if (removed) {
+            log.info("Dropped {} stale AMC installation form document(s) from the workflow",
+                    documents.size() - remainingDocuments.size());
+            workflow.setDocuments(remainingDocuments);
+        }
+    }
+
     private void attachAmcInstallationFormDocument(VisitReportSubmissionRequest request, ScheduledVisit existingVisit, Facility facility) {
         log.trace("Entering attachAmcInstallationFormDocument method for visitId: {}", existingVisit.getId());
+        // Regenerate on every (re)submission so the form reflects the current visit report - drop any
+        // stale AMC form document first, otherwise a re-submission would carry two of them.
+        removeExistingAmcInstallationFormDocument(request.getWorkflow());
         String fileStoreId = amcVisitReportPdfService.generateAmcVisitReportPdf(request, existingVisit, facility);
         GeoLocation geoLocation = amcVisitReportPdfService.resolveGeoLocation(request.getVisitReport());
 
         Document pdfDocument = Document.builder()
-                .documentType("AMC_INSTALLATION_FORM")
+                .documentType(AMC_INSTALLATION_FORM_DOCUMENT_TYPE)
                 .fileStoreId(fileStoreId)
                 .documentUid("AMC-FORM-" + existingVisit.getId() + "-" + System.currentTimeMillis())
                 .geoLocation(geoLocation)
@@ -649,16 +839,18 @@ public class ScheduledVisitService {
         if(transaction.getTransactionId() == null || transaction.getTransactionId().isEmpty()) {
             transaction.setTransactionId(UUID.randomUUID().toString());
         }
-
+        log.debug("Pushing transaction to kafka for visitId: {}, transactionId: {}", transaction.getVisitId(), transaction.getTransactionId());
         producer.push(amcServiceConfiguration.getTransactionPersistTopic(), new TransactionRequest(List.of(transaction)));
+        log.info("Transaction persisted for visitId: {}", transaction.getVisitId());
     }
 
     public ScheduledVisitRequest updateScheduledVisit(ScheduledVisitRequest request) {
         /*
          * Validate the update scheduledVisits request
          */
+        log.trace("Entering updateScheduledVisit method");
         scheduledVisitsValidator.validateUpdateScheduledVisitRequest(request);
-        log.info("Update asset_amc request validated");
+        log.info("Update scheduled visit request validated, visit count: {}", request.getScheduledVisits().size());
 
         /*
          * Search for asset_amc based on asset_amc IDs provided in the request
@@ -667,7 +859,8 @@ public class ScheduledVisitService {
                 getSearchScheduledVisitRequest(request.getScheduledVisits(), request.getRequestInfo()),
                 amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(),
                 request.getScheduledVisits().get(0).getTenantId(), false, null);
-        log.info("Fetched scheduledVisits for update request");
+        log.debug("Fetched {} scheduled visits from database for update request", scheduleVisitFromDB.size());
+        log.info("Fetched scheduled visits for update request");
 
         /*
          * Validate the update asset_amc request against the asset_amcs fetched from the database
@@ -677,15 +870,21 @@ public class ScheduledVisitService {
         /*
          * Process each scheduledVisits in the update request
          */
+        log.debug("Processing {} scheduled visit(s) for update", request.getScheduledVisits().size());
         for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
             processScheduledVisitUpdate(request, scheduledVisit, scheduleVisitFromDB);
         }
+        log.info("Successfully processed update for {} scheduled visit(s)", request.getScheduledVisits().size());
 
         return request;
     }
 
     public List<Transaction> getTransactionsForVisit(List<String> projectIds) {
-        if (projectIds == null || projectIds.isEmpty()) return Collections.emptyList();
+        log.trace("Entering getTransactionsForVisit method for {} visit IDs", projectIds != null ? projectIds.size() : 0);
+        if (projectIds == null || projectIds.isEmpty()) {
+            log.debug("No visit IDs provided, returning empty transaction list");
+            return Collections.emptyList();
+        }
 
         String sql = "SELECT id, visit_id, process_instance_id, visit_report, created_by, last_modified_by, created_time, last_modified_time " +
                 "FROM visit_transaction WHERE visit_id = ANY(?)";
@@ -728,10 +927,25 @@ public class ScheduledVisitService {
     }
 
     public List<ScheduledVisit> searchScheduledVisit(ScheduledVisitSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("Entering searchScheduledVisit method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         scheduledVisitsValidator.validateSearchScheduledVisitRequest(request, limit, offset, tenantId);
         List<ScheduledVisit> amcConfigurationList = scheduledVisitsRepository.getScheduledVisit(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        log.debug("Found {} scheduled visits matching search criteria", amcConfigurationList.size());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        // Cache Organisation lookups within this search call: many visits share the same AMC
+        // configuration/vendor, and getVendorById is one vendor-registry call per id.
+        Map<String, Organisation> vendorOrganisationCache = new HashMap<>();
+        log.info("Enriching {} scheduled visits with boundary and employee data", amcConfigurationList.size());
         for (ScheduledVisit scheduledVisit : amcConfigurationList){
+            AmcConfiguration amcConfiguration = scheduledVisit.getAmcConfiguration();
+            if (amcConfiguration != null && amcConfiguration.getVendorId() != null) {
+                Organisation organisation = vendorOrganisationCache.computeIfAbsent(
+                        amcConfiguration.getVendorId(),
+                        vendorId -> amcConfigurationService.getVendorById(request.getRequestInfo(), vendorId));
+                if (organisation != null) {
+                    amcConfiguration.setVendor(organisation);
+                }
+            }
             Facility facility = scheduledVisit.getFacility();
             if (facility != null) {
                 facilityPocPhoneUtil.decryptPocPhoneIfPresent(facility);
@@ -756,10 +970,11 @@ public class ScheduledVisitService {
                     }
                 }
                 catch(Exception e){
-                    log.error("error while calling hrms {} ", e.getMessage());
+                    log.error("Error while calling HRMS service for userId: {}, visitId: {}", assignment.getAssignedUser(), scheduledVisit.getId(), e);
                 }
             }
         }
+        log.info("Completed enrichment of scheduled visits");
         return amcConfigurationList;
     }
 
@@ -902,6 +1117,7 @@ public class ScheduledVisitService {
         /*
          * Check and enrich cascading scheduledVisits dates and push the update to the message broker
          */
+        log.debug("Pushing scheduled visit update to kafka for visitId: {}", scheduledVisits.getId());
         producer.push(amcServiceConfiguration.getUpdateScheduledVisitTopic(), request);
 
         /*
@@ -920,6 +1136,13 @@ public class ScheduledVisitService {
         scheduledVisitsFromDB.setAdditionalDetails(scheduledVisits.getAdditionalDetails());
         scheduledVisitsFromDB.setAuditDetails(scheduledVisits.getAuditDetails());
         pushNonDraftVisitsToIndex(request.getRequestInfo(), List.of(scheduledVisitsFromDB), amcServiceConfiguration.getUpdateScheduledVisitIndexTopic());
+        // actualVisitDate (set on SUBMIT_VISIT_REPORT) and other cascading date changes land here for
+        // both callers of this method - refresh the facility-index snapshot. Best-effort. The visit is
+        // passed in because it is only persisted asynchronously (see the persister push above), so the
+        // snapshot must not re-read it from the DB.
+        facilityAmcIndexSyncService.syncFacilityAmcSnapshot(
+                scheduledVisitsFromDB.getFacilityId(), scheduledVisitsFromDB.getTenantId(), request.getRequestInfo(),
+                List.of(scheduledVisitsFromDB));
     }
 
     private boolean isValidCascadingUpdate(ScheduledVisit scheduledVisitsFromDB, ScheduledVisit scheduledVisits) {
@@ -1069,6 +1292,8 @@ public class ScheduledVisitService {
         visit.setStatus(expiredStatus);
         visit.setAuditDetails(expiredVisit.getAuditDetails());
         pushNonDraftVisitsToIndex(requestInfo, List.of(visit), amcServiceConfiguration.getUpdateScheduledVisitIndexTopic());
+        // Keep the facility index in step: an expired visit is one the AMC snapshot reports on too.
+        syncFacilityAmcIndex(List.of(visit), requestInfo);
     }
 
     /**
@@ -1090,12 +1315,14 @@ public class ScheduledVisitService {
             }
 
             // Fetch notice period from MDMS
+            log.debug("Fetching notice period from MDMS for tenantId: {}", visit.getTenantId());
             AmcConfigurationRequest mdmsRequest = AmcConfigurationRequest.builder()
                     .requestInfo(requestInfo)
                     .amcConfigurations(new ArrayList<>())
                     .build();
             Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest, visit.getTenantId());
             Integer noticePeriod = parseNoticePeriodFromMDMS(mdmsData, visit.getTenantId());
+            log.debug("Notice period from MDMS: {} days for tenantId: {}", noticePeriod, visit.getTenantId());
 
             if (noticePeriod == null) {
                 log.warn("Could not fetch notice period from MDMS for tenant: {}. Skipping auto-schedule check.", visit.getTenantId());
@@ -1220,7 +1447,9 @@ public class ScheduledVisitService {
     }
 
     public OtpResponse createOTP(String identity, String tenantId) {
+        log.trace("Entering createOTP method for tenantId: {}", tenantId);
         String url = amcServiceConfiguration.getOtpServiceHost() + amcServiceConfiguration.getOtpServiceCreateUrl();
+        log.debug("Calling OTP service at URL: {}", url);
         Otp otp = Otp.builder()
                 .tenantId(tenantId)
                 .identity(identity)
@@ -1259,7 +1488,9 @@ public class ScheduledVisitService {
     }
 
     public OtpResponse validateOTP(String identity, String tenantId, String otpCode) {
+        log.trace("Entering validateOTP method for tenantId: {}", tenantId);
         String url = amcServiceConfiguration.getOtpServiceHost() + amcServiceConfiguration.getOtpServiceValidateUrl();
+        log.debug("Calling OTP validation service at URL: {}", url);
         Otp otp = Otp.builder()
                 .tenantId(tenantId)
                 .identity(identity)
@@ -1280,8 +1511,9 @@ public class ScheduledVisitService {
     }
 
     public Employee getUserById(Object request, String userId) {
-
+        log.trace("Entering getUserById method for userId: {}", userId);
         String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
+        log.debug("Calling HRMS service to fetch employee details for userId: {}", userId);
         Object response = requestRepository.fetchResult(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
@@ -1292,20 +1524,34 @@ public class ScheduledVisitService {
     }
 
     public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode) {
+        return getEmployeeByBoundaryCode(request, boundaryCode, null);
+    }
+
+    /**
+     * @param role optional HRMS role code to narrow the search to, e.g. ROLE_COMPLAINANT
+     *             for the HCR. When null every employee of the boundary is eligible.
+     */
+    public Employee getEmployeeByBoundaryCode(Object request, String boundaryCode, String role) {
         if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Boundary code is required for employee search");
         }
-        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()
-                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&searchOnlyInBoundary=true";
-        log.debug("Calling HRMS employee search by boundaryCode={}", boundaryCode);
-        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+        StringBuilder url = new StringBuilder(amcServiceConfiguration.getHrmsHost())
+                .append(amcServiceConfiguration.getHrmsSearchUrl())
+                .append("?tenantId=in&boundaryCodes=").append(boundaryCode)
+                .append("&searchOnlyInBoundary=true");
+        if (role != null && !role.trim().isEmpty()) {
+            url.append("&roles=").append(role);
+        }
+        log.debug("Calling HRMS employee search by boundaryCode={} role={}", boundaryCode, role);
+        Object response = requestRepository.fetchResult(url, request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            log.warn("No HRMS employee found for boundaryCode={}", boundaryCode);
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found for boundaryCode: " + boundaryCode);
+            log.warn("No HRMS employee found for boundaryCode={} role={}", boundaryCode, role);
+            throw new CustomException("EMPLOYEE_NOT_FOUND",
+                    "Employee not found for boundaryCode: " + boundaryCode + (role != null ? " and role: " + role : ""));
         }
-        log.debug("HRMS employee found for boundaryCode={}", boundaryCode);
+        log.debug("HRMS employee found for boundaryCode={} role={}", boundaryCode, role);
         return employeeResponse.getEmployees().get(0);
     }
 

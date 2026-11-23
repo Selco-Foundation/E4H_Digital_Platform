@@ -3,6 +3,7 @@ import useActivity from "../../../hooks/useActivity";
 import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import Filter from "./Filter";
 import { Link } from "react-router-dom";
+import { WithRectificationBadge } from "../../Custom/RectificationBadge";
 
 const ActivityTable = ({ t, facilityId }) => {
 
@@ -37,7 +38,11 @@ const ActivityTable = ({ t, facilityId }) => {
     {
       Header: t("CS_ACTIVITY_TYPE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["activityType"] ? row.original["activityType"] : "-");
+        return (
+          <WithRectificationBadge show={row.original["isRectificationSite"]}>
+            {GetCell(row.original["activityType"] ? row.original["activityType"] : "-")}
+          </WithRectificationBadge>
+        );
       },
     },
     {
@@ -47,7 +52,7 @@ const ActivityTable = ({ t, facilityId }) => {
       },
     },
     {
-      Header: t("FIELD_PLAN_ID"),
+      Header: t("ACTIVITY_ID"),
       Cell: ({ row }) => {
         return GetCell(row.original["fieldPlanCode"] ? row.original["fieldPlanCode"] : "-");
       },
@@ -67,11 +72,15 @@ const ActivityTable = ({ t, facilityId }) => {
     {
       Header: t("ACTIVITY_REPORT"),
       Cell: ({ row }) => {
+        const isAssessment = row.original["activityType"]?.toUpperCase() === "ASSESSMENT";
+        const detailsPath = isAssessment
+          ? `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(facilityId)}/assessments/${row.original["id"]}`
+          : `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(facilityId)}/activities/${row.original["id"]}`;
         return (
           <div>
             <span className="link">
               <Link
-                to={`/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(facilityId)}/activities/${row.original["id"]}`}
+                to={detailsPath}
                 style={{ color: "#C84C0E" }}
               >
                 {t("VIEW_REPORTS")}

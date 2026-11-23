@@ -5,6 +5,7 @@ import org.egov.im.repository.rowmapper.IMQueryBuilder;
 import org.egov.im.repository.rowmapper.IMRowMapper;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.IMConstants;
+import org.egov.im.util.OnHoldSystemFunctional;
 import org.egov.im.web.models.IncidentWrapper;
 import org.egov.im.web.models.RequestSearchCriteria;
 import org.egov.im.web.models.Incident;
@@ -13,6 +14,7 @@ import org.egov.tracer.model.CustomException;
 import org.egov.common.exception.InvalidTenantIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -157,6 +159,85 @@ public class IMRepository {
 		int updated = jdbcTemplate.update(query, newBoundaryCode, newBlockCode, now, lastModifiedBy, facilityId, tenantId);
 		log.info("Updated boundarycode/block on {} incident row(s) for facilityId={}", updated, facilityId);
 		return updated;
+	}
+
+	/**
+	 * Returns the uuid of the mapped vendor persisted against an incident, or null if the ticket has
+	 * never been handed to a resolver.
+	 *
+	 * <p>Only the one column is selected: this sits on the ticket-update request path and the caller
+	 * has no use for the rest of the row. A null column and an unknown incident are indistinguishable
+	 * here, and both send the caller on to its next fallback.
+	 */
+	public String fetchMappedVendorUuid(String tenantId, String id) {
+		log.trace("IMRepository::fetchMappedVendorUuid method invoked");
+		if (id == null || id.isEmpty()) {
+			return null;
+		}
+
+		String query = "SELECT mapped_vendor_uuid FROM {schema}.eg_incident_v2 WHERE id = ?";
+		try {
+			query = utils.replaceSchemaPlaceholder(query, tenantId);
+		} catch (Exception e) {
+			log.error("Failed to replace schema placeholder for mapped vendor lookup, tenantId: {}", tenantId, e);
+			throw new CustomException("PGR_SEARCH_ERROR",
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
+
+		ResultSetExtractor<String> extractor = rs -> {
+			if (!rs.next()) {
+				log.info("No incident row found for id={}, mapped vendor cannot be carried forward from db", id);
+				return null;
+			}
+			String uuid = rs.getString("mapped_vendor_uuid");
+			return uuid == null || uuid.isEmpty() ? null : uuid;
+		};
+		return jdbcTemplate.query(query, extractor, id);
+	}
+
+	/**
+	 * Every ticket currently in {@code OUT_OF_WARRANTY_ON_HOLD} under the given state tenant, oldest first.
+	 */
+	public List<Map<String, Object>> fetchOnHoldTickets(String tenantId) {
+		log.trace("IMRepository::fetchOnHoldTickets method invoked");
+		String query = "SELECT id, incidentid, tenantid, boundarycode, systemfunctional FROM {schema}.eg_incident_v2 "
+				+ "WHERE applicationstatus = ? AND (tenantid = ? OR tenantid LIKE ?) ORDER BY createdtime";
+		query = replaceSchema(query, tenantId, "PGR_SEARCH_ERROR");
+		return jdbcTemplate.queryForList(query, IMConstants.OUT_OF_WARRANTY_ON_HOLD, tenantId, tenantId + ".%");
+	}
+
+	/**
+	 * Sets {@code systemfunctional = ON_HOLD} on every on-hold ticket under the given state tenant that
+	 * does not have it yet, saving the previous value in {@code additionaldetails.systemFunctionalBeforeOnHold}
+	 * so it is restored when the ticket leaves hold. {@code lastmodifiedtime} is left alone.
+	 *
+	 * @return number of rows updated
+	 */
+	public int markOnHoldTicketsSystemFunctional(String tenantId) {
+		log.trace("IMRepository::markOnHoldTicketsSystemFunctional method invoked");
+		String query = "UPDATE {schema}.eg_incident_v2 SET "
+				+ "additionaldetails = jsonb_set("
+				+ "  CASE WHEN jsonb_typeof(additionaldetails) = 'object' THEN additionaldetails ELSE '{}'::jsonb END, "
+				+ "  '{" + OnHoldSystemFunctional.BEFORE_ON_HOLD_KEY + "}', "
+				+ "  COALESCE(to_jsonb(systemfunctional), 'null'::jsonb)), "
+				+ "systemfunctional = ? "
+				+ "WHERE applicationstatus = ? AND systemfunctional IS DISTINCT FROM ? "
+				+ "AND (tenantid = ? OR tenantid LIKE ?)";
+		query = replaceSchema(query, tenantId, "PGR_UPDATE_ERROR");
+		int updated = jdbcTemplate.update(query, IMConstants.SYSTEM_FUNCTIONAL_ON_HOLD, IMConstants.OUT_OF_WARRANTY_ON_HOLD,
+				IMConstants.SYSTEM_FUNCTIONAL_ON_HOLD, tenantId, tenantId + ".%");
+		log.info("Marked {} on-hold incident row(s) with systemfunctional=ON_HOLD for tenantId={}", updated, tenantId);
+		return updated;
+	}
+
+	private String replaceSchema(String query, String tenantId, String errorCode) {
+		try {
+			return utils.replaceSchemaPlaceholder(query, tenantId);
+		} catch (Exception e) {
+			log.error("Failed to replace schema placeholder, tenantId: {}", tenantId, e);
+			throw new CustomException(errorCode,
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
 	}
 
 

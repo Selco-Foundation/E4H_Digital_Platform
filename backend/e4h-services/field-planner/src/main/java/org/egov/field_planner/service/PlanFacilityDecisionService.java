@@ -82,7 +82,7 @@ public class PlanFacilityDecisionService {
                     "Assign for on-site preconditions not met");
         }
 
-        workflowService.transitionWorkflow(facility.getPlanFacilityId(), "in",
+        workflowService.transitionWorkflow(facility.getPlanFacilityId(), resolveWorkflowTenantId(requestInfo),
                 AssessmentConstants.WF_ACTION_ASSIGN_FOR_FIELD, requestInfo, null);
 
         long now = System.currentTimeMillis();
@@ -133,18 +133,13 @@ public class PlanFacilityDecisionService {
         String wfAction = AssessmentConstants.OVERALL_ELIGIBLE.equals(targetStatus)
                 ? AssessmentConstants.WF_ACTION_MARK_ELIGIBLE
                 : AssessmentConstants.WF_ACTION_MARK_NOT_ELIGIBLE;
-        workflowService.transitionWorkflow(facility.getPlanFacilityId(), "in", wfAction, requestInfo,
-                item.getRemarks());
+        workflowService.transitionWorkflow(facility.getPlanFacilityId(), resolveWorkflowTenantId(requestInfo),
+                wfAction, requestInfo, item.getRemarks());
 
         long now = System.currentTimeMillis();
         Map<String, Object> assessmentUpdates = new HashMap<>();
         assessmentUpdates.put("overallManuallySet", true);
-        if (StringUtils.isNotBlank(item.getEligibleReason())) {
-            assessmentUpdates.put("eligibleReason", item.getEligibleReason());
-        }
-        if (StringUtils.isNotBlank(item.getIneligibleReason())) {
-            assessmentUpdates.put("ineligibleReason", item.getIneligibleReason());
-        }
+        assessmentUpdates.put("remarks", StringUtils.isNotBlank(item.getRemarks()) ? item.getRemarks() : null);
         Map<String, Object> additionalDetails = searchService.buildAssessmentMetadataUpdate(facility, assessmentUpdates);
         additionalDetails = AssessmentAdditionalDetailsHelper.appendAuditEvent(
                 additionalDetails,
@@ -180,17 +175,19 @@ public class PlanFacilityDecisionService {
                                     String planFacilityId) {
         if (AssessmentConstants.OUTCOME_NOT_QUALIFIED.equals(phoneOutcome)
                 && AssessmentConstants.OUTCOME_NOT_QUALIFIED.equals(fieldOutcome)
-                && StringUtils.isBlank(item.getEligibleReason())) {
+                && StringUtils.isBlank(item.getRemarks())) {
             throw new CustomException(AssessmentConstants.ASSESSMENT_ELIGIBLE_REASON_REQUIRED,
-                    "eligibleReason required when both outcomes are NOT_QUALIFIED");
+                    "remarks is required when both outcomes are NOT_QUALIFIED");
         }
     }
 
     private void validateNotEligible(PlanFacilityDecisionItem item, String phoneOutcome, String fieldOutcome,
                                       String planFacilityId) {
-        if (StringUtils.isBlank(item.getIneligibleReason())) {
+        if (AssessmentConstants.OUTCOME_QUALIFIED.equals(phoneOutcome)
+                && AssessmentConstants.OUTCOME_QUALIFIED.equals(fieldOutcome)
+                && StringUtils.isBlank(item.getRemarks())) {
             throw new CustomException(AssessmentConstants.ASSESSMENT_INELIGIBLE_REASON_REQUIRED,
-                    "ineligibleReason is required for NOT_ELIGIBLE");
+                    "remarks is required when both outcomes are QUALIFIED");
         }
     }
 
@@ -199,9 +196,17 @@ public class PlanFacilityDecisionService {
                 .planFacilityId(request.getPlanFacilityId())
                 .assignForField(request.getAssignForField())
                 .overallStatus(request.getOverallStatus())
-                .eligibleReason(request.getEligibleReason())
-                .ineligibleReason(request.getIneligibleReason())
                 .remarks(request.getRemarks())
                 .build();
+    }
+
+    private String resolveWorkflowTenantId(RequestInfo requestInfo) {
+        if (requestInfo != null && requestInfo.getUserInfo() != null
+                && StringUtils.isNotBlank(requestInfo.getUserInfo().getTenantId())) {
+            String tenantId = requestInfo.getUserInfo().getTenantId();
+            int dotIndex = tenantId.indexOf('.');
+            return dotIndex > 0 ? tenantId.substring(0, dotIndex) : tenantId;
+        }
+        return "in";
     }
 }

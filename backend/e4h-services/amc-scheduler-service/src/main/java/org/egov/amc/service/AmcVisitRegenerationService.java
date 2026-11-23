@@ -29,8 +29,8 @@ import static org.egov.amc.util.AmcConstants.DRAFT_STATUS;
 import static org.egov.amc.util.AmcConstants.EXPIRED_STATUS;
 
 /**
- * Rebuilds the scheduled-visit series of an AMC configuration when its cadence changes
- * (durationMonths and/or visitFrequencyMonths).
+ * Rebuilds the scheduled-visit series of an AMC configuration when its schedule changes
+ * (durationMonths, visitFrequencyMonths and/or configurationStartDate).
  *
  * <p>This lives in its own bean rather than inside {@link AmcConfigurationService} on purpose:
  * {@code ScheduledVisitService} and {@code ScheduledVisitEnrichment} both inject
@@ -64,29 +64,37 @@ public class AmcVisitRegenerationService {
     }
 
     /**
-     * Regenerates the future visits of a configuration if - and only if - its cadence changed.
+     * Regenerates the future visits of a configuration if - and only if - its schedule changed:
+     * duration, visit frequency, or the AMC Start Date (configurationStartDate) itself. The latter
+     * is set from the Installation Report Submission Date by default and can be corrected later by
+     * re-uploading the AMC configuration Excel (see /amcConfigurationBulkIngest) - either kind of
+     * change moves every not-yet-due visit date, so both need the same rebuild.
      *
      * <p>Visits that are terminal (APPROVED/EXPIRED) or already due are kept untouched; the
-     * remaining ones are deleted and replaced by a fresh series computed from the updated end date
-     * and frequency. New visit numbers continue from the highest kept one, because
+     * remaining ones are deleted and replaced by a fresh series computed from the updated start
+     * date, end date and frequency. New visit numbers continue from the highest kept one, because
      * {@code ux_scheduled_visits_unique_visit_per_amc (amc_configuration_id, visit_number)} forbids
      * restarting at 1.
      *
-     * @return true when the visit series was actually rewritten
+     * @return the visits whose rows were rewritten - deactivated ones carry {@code isActive = false},
+     *         regenerated ones are active - or an empty list when the series was left as-is. Callers
+     *         need these to index the new schedule without re-reading it: the rows are persisted
+     *         asynchronously through Kafka, so the DB does not hold them yet on return.
      */
-    public boolean regenerateIfCadenceChanged(AmcConfiguration configurationFromDB,
-                                              AmcConfiguration updatedConfiguration,
-                                              RequestInfo requestInfo) {
+    public List<ScheduledVisit> regenerateIfCadenceChanged(AmcConfiguration configurationFromDB,
+                                                           AmcConfiguration updatedConfiguration,
+                                                           RequestInfo requestInfo) {
         if (configurationFromDB == null || updatedConfiguration == null) {
-            return false;
+            return List.of();
         }
 
-        boolean cadenceChanged =
+        boolean scheduleChanged =
                 !Objects.equals(configurationFromDB.getDurationMonths(), updatedConfiguration.getDurationMonths())
-                        || !Objects.equals(configurationFromDB.getVisitFrequencyMonths(), updatedConfiguration.getVisitFrequencyMonths());
-        if (!cadenceChanged) {
-            log.debug("Cadence unchanged for configurationId: {}, visits left as-is", updatedConfiguration.getId());
-            return false;
+                        || !Objects.equals(configurationFromDB.getVisitFrequencyMonths(), updatedConfiguration.getVisitFrequencyMonths())
+                        || !Objects.equals(configurationFromDB.getConfigurationStartDate(), updatedConfiguration.getConfigurationStartDate());
+        if (!scheduleChanged) {
+            log.debug("Schedule unchanged for configurationId: {}, visits left as-is", updatedConfiguration.getId());
+            List.of();
         }
 
         Long startDate = updatedConfiguration.getConfigurationStartDate() != null
@@ -103,7 +111,7 @@ public class AmcVisitRegenerationService {
             log.warn("Skipping visit regeneration for configurationId: {} - incomplete schedule "
                             + "(startDate: {}, endDate: {}, frequencyMonths: {})",
                     updatedConfiguration.getId(), startDate, endDate, frequencyMonths);
-            return false;
+            return List.of();
         }
 
         long now = System.currentTimeMillis();
@@ -140,8 +148,10 @@ public class AmcVisitRegenerationService {
 
         if (visitsToDelete.isEmpty() && futureDates.isEmpty()) {
             log.info("Cadence changed for configurationId: {} but no future visit to rewrite", updatedConfiguration.getId());
-            return false;
+            return List.of();
         }
+
+        List<ScheduledVisit> rewrittenVisits = new ArrayList<>();
 
         if (!visitsToDelete.isEmpty()) {
             log.info("Deactivating {} not-yet-due visit(s) of configurationId: {} before regeneration",
@@ -149,6 +159,7 @@ public class AmcVisitRegenerationService {
             deactivate(visitsToDelete, requestInfo);
             producer.push(amcServiceConfiguration.getDeleteScheduledVisitTopic(),
                     ScheduledVisitRequest.builder().requestInfo(requestInfo).scheduledVisits(visitsToDelete).build());
+            rewrittenVisits.addAll(visitsToDelete);
         }
 
         if (!futureDates.isEmpty()) {
@@ -158,9 +169,10 @@ public class AmcVisitRegenerationService {
             log.info("Creating {} regenerated visit(s) for configurationId: {}", newVisits.size(), updatedConfiguration.getId());
             producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(),
                     ScheduledVisitRequest.builder().requestInfo(requestInfo).scheduledVisits(newVisits).build());
+            rewrittenVisits.addAll(newVisits);
         }
 
-        return true;
+        return rewrittenVisits;
     }
 
     /**

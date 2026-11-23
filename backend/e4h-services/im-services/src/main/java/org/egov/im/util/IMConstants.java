@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @NoArgsConstructor
@@ -127,6 +128,27 @@ public class IMConstants {
     public static final String OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2 = "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2";
 
     public static final String PENDING_ASSIGNMENT_OUT_OF_WARRANTY = "PENDING_ASSIGNMENT_OUT_OF_WARRANTY";
+
+    /**
+     * State SPOC has put an approved out-of-warranty ticket on hold (e.g. funds unavailable). No SLA
+     * runs here, and the SLA starts afresh once the ticket leaves this state.
+     */
+    public static final String OUT_OF_WARRANTY_ON_HOLD = "OUT_OF_WARRANTY_ON_HOLD";
+
+    public static final String IM_WF_ON_HOLD = "ON_HOLD";
+
+    public static final String SYSTEM_FUNCTIONAL_FUNCTIONAL = "FUNCTIONAL";
+
+    public static final String SYSTEM_FUNCTIONAL_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+
+    /** systemFunctional of a ticket while it sits in {@link #OUT_OF_WARRANTY_ON_HOLD}. */
+    public static final String SYSTEM_FUNCTIONAL_ON_HOLD = "ON_HOLD";
+
+    public static final String ON_HOLD_REASON_FUND_UNAVAILABLE = "ON_HOLD_REASON_FUND_UNAVAILABLE";
+
+    public static final String ON_HOLD_REASON_OTHER = "ON_HOLD_REASON_OTHER";
+
+    public static final int ON_HOLD_COMMENT_MAX_LENGTH = 500;
 
     public static final String PENDING_RESOLUTION_OUT_OF_SCOPE = "PENDING_RESOLUTION_OUT_OF_SCOPE";
 
@@ -262,7 +284,15 @@ public class IMConstants {
     public static final List<String> STATE_LEVEL_ROLES = Arrays.asList(
             ROLE_COMPLAINT_ASSESSOR);
 
+    // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
+    public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
+
+    // currentOwner indexed for a ticket in OUT_OF_WARRANTY_ON_HOLD: it is waiting on no one.
+    public static final String CURRENT_OWNER_NOT_APPLICABLE = "Not Applicable";
+
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
+
+    public static final String PENDING_RESOLUTION_SPARE_PART_NEEDED = "PENDING_RESOLUTION_SPARE_PART_NEEDED";
 
     public static final String OUT_OF_WARRANTY_ACTION = "OUT_OF_WARRANTY";
     public static final String MARK_OUT_OF_SCOPE_ACTION = "MARK_OUT_OF_SCOPE";
@@ -272,5 +302,53 @@ public class IMConstants {
 
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
 
+    public static final Set<String> SLA_CLOCK_STOPPED_STATUSES =
+            Set.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION);
+
+    // A ticket counts as nearing SLA once this share of its state SLA (or less) is left.
+    public static final double NEARING_SLA_REMAINING_RATIO = 0.3;
+
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
+
+    /**
+     * Assigns an out-of-scope ticket to a vendor other than the one that already worked it, landing in
+     * PENDINGRESOLUTION instead of PENDING_RESOLUTION_OUT_OF_SCOPE. Emitted only by
+     * WorkflowService, never by a client: the workflow action carries the SYSTEM role so that it stays
+     * out of the actions offered to the SPOC.
+     */
+    public static final String ASSIGN_NEW_VENDOR = "ASSIGN_NEW_VENDOR";
+
+    /** Role the workflow config grants to machine-driven transitions (the CLOSE action carries it too). */
+    public static final String ROLE_SYSTEM = "SYSTEM";
+
+    /**
+     * Roles whose work is pooled rather than owned: a ticket waiting on one of them is left with no
+     * assignee, exactly as a freshly raised ticket waiting on CRM is, so that every holder of the role
+     * with jurisdiction over the ticket's boundary sees it and can act on it.
+     *
+     * @see org.egov.im.service.WorkflowService#clearAssigneesForPooledState
+     */
+    public static final List<String> POOLED_ROLES = Collections.unmodifiableList(Arrays.asList(
+            ROLE_COMPLAINT_FACILITATOR_1,   // State SPOC
+            ROLE_COMPLAINT_FACILITATOR_2)); // Tech POC
+
+    /**
+     * Workflow roles that no real user holds. They appear on auto-escalation and system-close actions,
+     * so they say nothing about who a state is waiting on and are ignored when deciding whether a
+     * state is pooled.
+     */
+    public static final List<String> MACHINE_ROLES = Collections.unmodifiableList(Arrays.asList(
+            ROLE_SYSTEM, "AUTO_ESCALATE", "COMPLAINT_CLOSER"));
+
+    /**
+     * Statuses in which a vendor holds the ticket. The most recent transition into one of them names
+     * the vendor that was working the ticket - there is no vendor column on the incident, the
+     * assignment lives only in the workflow history.
+     */
+    public static final List<String> VENDOR_HOLDING_STATUSES = Collections.unmodifiableList(Arrays.asList(
+            PENDINGATVENDOR,                        // "PENDINGRESOLUTION"
+            RMS_DEVICE_PENDINGRESOLUTION,
+            PENDING_RESOLUTION_OUT_OF_SCOPE,
+            PENDING_RESOLUTION_OUT_OF_WARRANTY,
+            PENDING_RESOLUTION_SPARE_PART_NEEDED));
 }

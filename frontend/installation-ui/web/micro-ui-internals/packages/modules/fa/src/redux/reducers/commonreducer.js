@@ -1,5 +1,5 @@
 import {
-  LANGUAGE_SELECT, POPULATE_WORKING_FACILITY, POPULATE_RESPONSE, POPULATE_WORKING_ACTIVITY
+  LANGUAGE_SELECT, POPULATE_WORKING_FACILITY, POPULATE_RESPONSE, POPULATE_WORKING_ACTIVITY, POPULATE_WORKING_ASSESSMENT
 } from "../../constants/ReduxActions";
 
 export const commonReducer = (defaultData) => (state = defaultData, action) => {
@@ -14,6 +14,9 @@ export const commonReducer = (defaultData) => (state = defaultData, action) => {
       return { ...state, responseData: action.payload };
     case POPULATE_WORKING_ACTIVITY:
       return { ...state, workingActivity: action.payload };
+
+    case POPULATE_WORKING_ASSESSMENT:
+      return { ...state, workingAssessment: action.payload };
 
     default:
       return state;

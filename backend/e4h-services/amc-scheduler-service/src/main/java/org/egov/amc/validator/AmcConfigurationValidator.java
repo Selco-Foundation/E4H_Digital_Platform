@@ -269,6 +269,10 @@ public class AmcConfigurationValidator {
             throw new CustomException("Amc Configuration Assignment", "Assignment are mandatory");
         }
 
+        // All assignments on one AMC configuration represent the same PO/work-order, so pocNumber
+        // must be present on every assignment and identical across the list - collected here and
+        // checked once after the loop rather than per-assignment.
+        Set<String> distinctPocNumbers = new LinkedHashSet<>();
         for (AmcConfigurationAssignment assignment : request) {
             if (assignment == null) {
                 log.error("Amc Configuration Assignment is mandatory in AmcConfiguration");
@@ -284,6 +288,19 @@ public class AmcConfigurationValidator {
                 log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
                 errorMap.put("TENANT_ID_ASSIGNMENT", "Tenant ID is mandatory");
             }
+
+            if (StringUtils.isBlank(assignment.getPocNumber())) {
+                log.error("pocNumber is mandatory in Amc Configuration Assignment for assignedUser: {}", assignment.getAssignedUser());
+                errorMap.put("POC_NUMBER_ASSIGNMENT", " PO/WO/CNT is mandatory for every AMC configuration assignment");
+            } else {
+                distinctPocNumbers.add(assignment.getPocNumber().trim());
+            }
+        }
+
+        if (distinctPocNumbers.size() > 1) {
+            log.error("AMC configuration assignments have differing pocNumber values: {}", distinctPocNumbers);
+            errorMap.put("POC_NUMBER_MISMATCH",
+                    "All AMC configuration assignments must have the same  PO/WO/CNT; found: " + distinctPocNumbers);
         }
 
         if (!errorMap.isEmpty())
@@ -704,18 +721,15 @@ public class AmcConfigurationValidator {
         }
     }
 
+    /**
+     * configurationStartDate is intentionally NOT restricted to "not already started"/"24h in
+     * advance" here (unlike configurationEndDate below): it now reflects an external fact - the
+     * Installation Report Submission Date - which is virtually always in the past by the time an
+     * AMC configuration is set up or corrected, so a forward-planning-style restriction would block
+     * legitimate updates. Only presence is still required.
+     */
     private static String getErrorMessage(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
-        if (amcConfiguration.getConfigurationStartDate() != null) {
-            // Check if the project start date is different from the one in the database
-            if (amcConfiguration.getConfigurationStartDate().compareTo(amcConfigurationFromDB.getConfigurationStartDate()) != 0) {
-                // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
-                if (amcConfigurationFromDB.getConfigurationStartDate().compareTo(currentTimestamp) < 0) {
-                    errorMessage = "The amcConfiguration start date cannot be updated as the amcConfiguration has already started.";
-                } else if (amcConfiguration.getConfigurationStartDate().compareTo(nextDateTimestampUTC) < 0) {
-                    errorMessage = "The amcConfiguration start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
-                }
-            }
-        } else {
+        if (amcConfiguration.getConfigurationStartDate() == null) {
             errorMessage = "The project start date cannot be updated as it is null.";
         }
         return errorMessage;

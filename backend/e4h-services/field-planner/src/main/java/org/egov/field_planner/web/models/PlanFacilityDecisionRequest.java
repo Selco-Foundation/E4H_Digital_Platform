@@ -31,12 +31,6 @@ public class PlanFacilityDecisionRequest {
     @JsonProperty("overallStatus")
     private String overallStatus;
 
-    @JsonProperty("eligibleReason")
-    private String eligibleReason;
-
-    @JsonProperty("ineligibleReason")
-    private String ineligibleReason;
-
     @JsonProperty("remarks")
     private String remarks;
 }

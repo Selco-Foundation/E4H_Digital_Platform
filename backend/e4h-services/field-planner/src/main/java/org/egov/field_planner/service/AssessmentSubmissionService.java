@@ -28,6 +28,10 @@ public class AssessmentSubmissionService {
     private final AssessmentWorkflowService workflowService;
     private final AllowedActionsService allowedActionsService;
     private final PlanFacilitySearchService searchService;
+    private final AssessmentFacilityMetadataService facilityMetadataService;
+
+    private static final int DEFAULT_QUEUE_LIMIT = 50;
+    private static final int MAX_QUEUE_LIMIT = 500;
 
     public SubmissionQueueSearchResponse searchQueue(SubmissionQueueSearchRequest request) {
         String role = AssessmentConstants.PHASE_PHONE.equals(request.getAssessmentPhase())
@@ -35,22 +39,64 @@ public class AssessmentSubmissionService {
                 : AssessmentConstants.ROLE_FIELD_POC;
         List<String> planIds = assessorService.getAssignedPlanIds(
                 request.getRequestInfo(), request.getTenantId(), role);
-        List<PlanFacility> facilities = facilityRepository.findQueueFacilities(planIds, request.getAssessmentPhase());
+        SubmissionQueueFilters effectiveFilters = facilityMetadataService.expandQueueFilters(request.getFilters());
+        int offset = request.getOffset() != null && request.getOffset() >= 0 ? request.getOffset() : 0;
+        int total = facilityRepository.countQueueFacilities(planIds, request.getAssessmentPhase(), effectiveFilters);
+        if (request.getLimit() != null && request.getLimit() == 0) {
+            return SubmissionQueueSearchResponse.builder()
+                    .queue(List.of())
+                    .count(total)
+                    .total(total)
+                    .pagination(Pagination.builder().offset(offset).limit(0).total(total).build())
+                    .build();
+        }
+        int limit = resolveLimit(request.getLimit());
+        List<PlanFacility> facilities = facilityRepository.findQueueFacilities(
+                planIds, request.getAssessmentPhase(), effectiveFilters, request.getSort(), limit, offset);
+        String tenantId = request.getTenantId();
+        facilities.forEach(f -> facilityMetadataService.enrichDisplayFields(f, request.getRequestInfo(), tenantId));
         List<SubmissionQueueItem> queue = facilities.stream()
-                .map(f -> SubmissionQueueItem.builder()
-                        .planFacilityId(f.getPlanFacilityId())
-                        .planId(f.getAssessmentPlanId())
-                        .facilityId(f.getFacilityId())
-                        .facilityName(f.getFacilityName())
-                        .facilityCategory(f.getFacilityCategory())
-                        .phoneStatus(f.getPhoneStatus())
-                        .fieldStatus(f.getFieldStatus())
-                        .build())
+                .map(this::toQueueItem)
                 .toList();
         return SubmissionQueueSearchResponse.builder()
                 .queue(queue)
-                .total(queue.size())
+                .count(total)
+                .total(total)
+                .pagination(Pagination.builder().offset(offset).limit(limit).total(total).build())
                 .build();
+    }
+
+    private SubmissionQueueItem toQueueItem(PlanFacility facility) {
+        return SubmissionQueueItem.builder()
+                .planFacilityId(facility.getPlanFacilityId())
+                .planId(facility.getAssessmentPlanId())
+                .planName(facility.getPlanName())
+                .facilityId(facility.getFacilityId())
+                .facilityName(facility.getFacilityName())
+                .facilityCategory(facility.getFacilityCategory())
+                .facilityType(facility.getFacilityType())
+                .state(facility.getState())
+                .district(facility.getDistrict())
+                .block(facility.getBlock())
+                .phoneStatus(facility.getPhoneStatus())
+                .fieldStatus(facility.getFieldStatus())
+                .lastActionTime(facility.getLastActionTime())
+                .onSiteQuestionnaire(detailAsString(facility, AssessmentConstants.DETAIL_ON_SITE_QUESTIONNAIRE))
+                .onRemoteQuestionnaire(detailAsString(facility, AssessmentConstants.DETAIL_ON_REMOTE_QUESTIONNAIRE))
+                .build();
+    }
+
+    private String detailAsString(PlanFacility facility, String key) {
+        Map<String, Object> details = facility.getAdditionalDetails();
+        Object value = details != null ? details.get(key) : null;
+        return value != null ? value.toString() : null;
+    }
+
+    private int resolveLimit(Integer limit) {
+        if (limit == null || limit < 0) {
+            return DEFAULT_QUEUE_LIMIT;
+        }
+        return Math.min(limit, MAX_QUEUE_LIMIT);
     }
 
     public SubmissionFormResolveResponse resolveForm(SubmissionFormResolveRequest request) {
@@ -62,7 +108,8 @@ public class AssessmentSubmissionService {
             throw new CustomException(AssessmentConstants.ASSESSMENT_CATEGORY_MISMATCH,
                     "facilityCategory does not match plan facility snapshot");
         }
-        String formType = mdmsService.resolveFormType(request.getFacilityCategory(), request.getAssessmentPhase());
+        String formType = mdmsService.resolveFormType(
+                facility, request.getFacilityCategory(), request.getAssessmentPhase());
         String tenantId = resolveTenantId(request.getTenantId());
         AssessmentFormSchema schema = mdmsService.getFormSchema(
                 request.getRequestInfo(), tenantId, formType);
@@ -89,7 +136,8 @@ public class AssessmentSubmissionService {
                     "Remote assessment already completed");
         }
 
-        String formType = mdmsService.resolveFormType(request.getFacilityCategory(), AssessmentConstants.PHASE_PHONE);
+        String formType = mdmsService.resolveFormType(
+                facility, request.getFacilityCategory(), AssessmentConstants.PHASE_PHONE);
         String tenantId = resolveTenantId(request.getTenantId());
         AssessmentFormSchema schema = mdmsService.getFormSchema(
                 request.getRequestInfo(), tenantId, formType);
@@ -152,7 +200,8 @@ public class AssessmentSubmissionService {
                     "On-site assessment must be assigned (field_status=PENDING) before submit");
         }
 
-        String formType = mdmsService.resolveFormType(request.getFacilityCategory(), AssessmentConstants.PHASE_FIELD);
+        String formType = mdmsService.resolveFormType(
+                facility, request.getFacilityCategory(), AssessmentConstants.PHASE_FIELD);
         String tenantId = resolveTenantId(request.getTenantId());
         AssessmentFormSchema schema = mdmsService.getFormSchema(
                 request.getRequestInfo(), tenantId, formType);

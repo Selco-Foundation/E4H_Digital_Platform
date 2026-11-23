@@ -18,7 +18,7 @@ from app.schemas.vendor_ingestion_shema_response import (
     MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
     MDMSDataSource, ResponseInfo)
 
-from app.utils.facility_validator import format_col_name
+from app.utils.facility_validator import format_col_name, parse_coordinate
 from app.utils.facility_solar_config_validator import (
     COLUMN_CODE_FACILITY_TYPE,
     COLUMN_CODE_SOLUTION_DESIGN,
@@ -118,7 +118,7 @@ def format_facility_data_for_template(
             # Add "Include in Project" column value (find the actual column name)
             include_column_name = None
             for header in headers:
-                if "Included in Field Plan" in header:
+                if "Included in Installation Plan" in header:
                     include_column_name = header
                     break
 
@@ -157,6 +157,11 @@ def format_facility_data_for_template(
 
             if include_column_name:
                 row[include_column_name] = facility.get("include_in_assessment_plan", "")
+
+            # Values the caller already resolved for its own columns (e.g. saved questionnaires).
+            for header, value in (facility.get("template_prefill") or {}).items():
+                if header in headers:
+                    row[header] = value
 
             formatted_rows.append(row)
 
@@ -558,6 +563,7 @@ def build_field_plan_facility_additional_details(
     solution_design_type_column: Optional[str] = None,
     custom_solution_design_column: Optional[str] = None,
     custom_total_system_capacity_column: Optional[str] = None,
+    rectification_site_column: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Extract facility type + solar configuration values from an Excel row, resolved to their MDMS
@@ -599,6 +605,13 @@ def build_field_plan_facility_additional_details(
         custom_total_system_capacity = _cell_str(row.get(custom_total_system_capacity_column, ""))
         if custom_total_system_capacity:
             details["customTotalSystemCapacity"] = custom_total_system_capacity
+    if rectification_site_column:
+        rectification_site = _cell_str(row.get(rectification_site_column, ""))
+        if rectification_site:
+            # enum-yes-no column - normalized to "Yes"/"No" like the template's yes/no rendering
+            details["rectificationSite"] = (
+                "Yes" if rectification_site.lower() in ("true", "yes", "1") else "No"
+            )
     return details or None
 
 
@@ -638,6 +651,10 @@ def build_field_plan_facility_additional_fields(
                 "value": str(additional_details["customTotalSystemCapacity"]),
             }
         )
+    if additional_details.get("rectificationSite"):
+        fields.append(
+            {"key": "rectificationSite", "value": str(additional_details["rectificationSite"])}
+        )
     if not fields:
         return None
     return {
@@ -657,6 +674,7 @@ FIELD_PLAN_FACILITY_ADDITIONAL_FIELD_TO_SCHEMA_PATH = {
     "totalSystemCapacity": "total_system_capacity",
     "customSolarSolutionDesignType": "custom_solar_solution_design",
     "customTotalSystemCapacity": "custom_solar_system_capacity",
+    "rectificationSite": "rectificationSite",
 }
 
 
@@ -668,7 +686,7 @@ def apply_field_plan_facility_additional_fields(
     Overlay a linked FieldPlanFacility's additionalFields codes (facilityType/systemType/
     solarSolutionDesignType/totalSystemCapacity/customSolarSolutionDesignType/
     customTotalSystemCapacity, as written by build_field_plan_facility_additional_fields
-    when the facility was included in the field plan) onto `facility`, in place, at the same
+    when the facility was included in the installation plan) onto `facility`, in place, at the same
     schema-code paths format_facility_data_for_template already resolves code -> label from via
     facility_schema's mdms_values - so the Excel template shows the label, not the raw code.
     """
@@ -700,6 +718,7 @@ def build_field_plan_facility_bulk_entry(
     solution_design_type_column: Optional[str] = None,
     custom_solution_design_column: Optional[str] = None,
     custom_total_system_capacity_column: Optional[str] = None,
+    rectification_site_column: Optional[str] = None,
 ) -> Dict[str, Any]:
     additional_details = build_field_plan_facility_additional_details(
         row,
@@ -710,6 +729,7 @@ def build_field_plan_facility_bulk_entry(
         solution_design_type_column=solution_design_type_column,
         custom_solution_design_column=custom_solution_design_column,
         custom_total_system_capacity_column=custom_total_system_capacity_column,
+        rectification_site_column=rectification_site_column,
     )
     entry: Dict[str, Any] = {"facilityId": facility_id}
     additional_fields = build_field_plan_facility_additional_fields(additional_details)
@@ -751,8 +771,8 @@ def create_facility_payload(
         'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
         'address': {
             'tenantId': 'in',
-            'latitude': safe_get(row, 'Latitude'),
-            'longitude': safe_get(row, 'Longitude'),
+            'latitude': parse_coordinate(safe_get(row, 'Latitude')),
+            'longitude': parse_coordinate(safe_get(row, 'Longitude')),
             'addressLine1': safe_get(row, 'Address'),
             'state': safe_get(row, 'State (Mandatory)'),
             'district': safe_get(row, 'District (Mandatory)'),

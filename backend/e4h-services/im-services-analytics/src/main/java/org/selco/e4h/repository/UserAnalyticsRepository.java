@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -225,12 +226,19 @@ public class UserAnalyticsRepository {
     }
 
     /**
-     * Ranks the top users within each value of {@code groupField}, counting every event except
-     * {@code USER_LOGIN} — signing in is not activity worth crowning someone for.
+     * Ranks the top user-and-role pairs within each value of {@code groupField}, counting every event
+     * except {@code USER_LOGIN} — signing in is not activity worth crowning someone for.
      * <p>
-     * The users {@code terms} orders on {@code doc_count} by default, which is exactly the ranking
-     * wanted, and a one-hit {@code top_hits} carries the name and login id back so the report does
-     * not have to resolve uuids against the user service afterwards.
+     * The ranked entity is a role together with a user, so the users {@code terms} sits underneath a
+     * role {@code terms} rather than beside it. Asking for the top {@link
+     * UserAnalyticsProperties#getChampionCount() championCount} users of <em>every</em> role and
+     * ranking the pairs in {@link #parseChampionUsers(Map)} gives the same answer as ranking the
+     * pairs in Elasticsearch would: a pair that belongs in the group's top N is necessarily in its
+     * own role's top N as well.
+     * <p>
+     * Both {@code terms} order on {@code doc_count} by default, and a one-hit {@code top_hits}
+     * carries the name and login id back so the report does not have to resolve uuids against the
+     * user service afterwards.
      */
     private Map<String, Object> championsAggregation(String groupField) {
         Map<String, Object> topUsers = Map.of(
@@ -243,6 +251,15 @@ public class UserAnalyticsRepository {
                                 "_source", Map.of("includes",
                                         List.of(USER_NAME_SOURCE_PATH, USER_USERNAME_SOURCE_PATH))))));
 
+        Map<String, Object> byRole = Map.of(
+                "terms", Map.of(
+                        "field", properties.getRoleField(),
+                        "size", properties.getTermsSize()),
+                // topUsers is an aggregation body, so it has to be keyed by its name here — handing
+                // it to "aggs" bare makes Elasticsearch read "terms" as the aggregation's name
+                // rather than its type.
+                "aggs", Map.of(AGG_TOP_USERS, topUsers));
+
         return Map.of(
                 "filter", Map.of("bool", Map.of("must_not",
                         List.of(Map.of("term", Map.of(properties.getEventTypeField(), USER_LOGIN_EVENT_TYPE))))),
@@ -250,10 +267,7 @@ public class UserAnalyticsRepository {
                         "terms", Map.of(
                                 "field", groupField,
                                 "size", properties.getTermsSize()),
-                        // topUsers is an aggregation body, so it has to be keyed by its name here —
-                        // handing it to "aggs" bare makes Elasticsearch read "terms" as the
-                        // aggregation's name rather than its type.
-                        "aggs", Map.of(AGG_TOP_USERS, topUsers))));
+                        "aggs", Map.of(AGG_BY_ROLE, byRole))));
     }
 
     /** Turns a {@code terms} aggregation into bucket key -> metrics. */
@@ -346,18 +360,28 @@ public class UserAnalyticsRepository {
         return byKey;
     }
 
+    /**
+     * Flattens the role and user buckets into one ranking of user-and-role pairs, busiest first, cut
+     * back to the champion count the group is meant to list.
+     */
     private List<ChampionUser> parseChampionUsers(Map<String, Object> group) {
         List<ChampionUser> champions = new ArrayList<>();
-        for (Map<String, Object> userBucket : buckets(group, AGG_TOP_USERS)) {
-            Map<String, Object> user = championUserSource(userBucket);
-            champions.add(ChampionUser.builder()
-                    .uuid(asString(userBucket.get("key")))
-                    .userName(asString(user.get("userName")))
-                    .name(asString(user.get("name")))
-                    .activityCount(asLong(userBucket.get("doc_count")))
-                    .build());
+        for (Map<String, Object> roleBucket : buckets(group, AGG_BY_ROLE)) {
+            String role = asString(roleBucket.get("key"));
+            for (Map<String, Object> userBucket : buckets(roleBucket, AGG_TOP_USERS)) {
+                Map<String, Object> user = championUserSource(userBucket);
+                champions.add(ChampionUser.builder()
+                        .uuid(asString(userBucket.get("key")))
+                        .role(role)
+                        .userName(asString(user.get("userName")))
+                        .name(asString(user.get("name")))
+                        .activityCount(asLong(userBucket.get("doc_count")))
+                        .build());
+            }
         }
-        return champions;
+        champions.sort(Comparator.comparingLong(ChampionUser::getActivityCount).reversed());
+        int limit = Math.min(champions.size(), properties.getChampionCount());
+        return new ArrayList<>(champions.subList(0, limit));
     }
 
     /**

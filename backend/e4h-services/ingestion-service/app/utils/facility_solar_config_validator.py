@@ -36,7 +36,7 @@ ERR_SOLAR_COLUMNS_MISSING = (
     "Health Facility Type, System Type, Solution Design Type and Total System Capacity are required."
 )
 ERR_SOLAR_FIELD_MANDATORY_WHEN_INCLUDED = (
-    "{field} is mandatory when Included in Field Plan is Yes."
+    "{field} is mandatory when Included in Installation Plan is Yes."
 )
 ERR_SOLAR_CUSTOM_ONLY_UNCOVERED = (
     "For Health Facility Type '{facility_type}' and System Type '{system_type}', "
@@ -216,10 +216,20 @@ def _format_allowed_pairs(
 
 
 def _is_included_in_field_plan_row(row: pd.Series, df: pd.DataFrame, column_list: List[Dict[str, Any]]) -> bool:
-    header = resolve_spreadsheet_header_for_schema_code(df, column_list, "include_in_fieldplan")
+    # The "Included in Installation Plan" column's actual MDMS code is "isActive" (see
+    # data-ingestion.FieldPlanFacilityIngestionSchema) - "include_in_fieldplan" is kept as a
+    # fallback code for older/other schema versions that might still use it.
+    header = (
+        resolve_spreadsheet_header_for_schema_code(df, column_list, "isActive")
+        or resolve_spreadsheet_header_for_schema_code(df, column_list, "include_in_fieldplan")
+    )
     if not header:
         for col_name in df.columns:
-            if "included in field plan" in str(col_name).lower():
+            normalized = str(col_name).lower()
+            # "Included in Field Plan" is the legacy header text; "Included in Installation Plan"
+            # is the current one (MDMS-driven label) - accept either so this fallback doesn't
+            # silently stop matching whenever the label wording changes upstream.
+            if "included in field plan" in normalized or "included in installation plan" in normalized:
                 header = col_name
                 break
     if not header:

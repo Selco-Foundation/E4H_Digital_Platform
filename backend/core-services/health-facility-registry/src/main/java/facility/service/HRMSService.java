@@ -136,6 +136,55 @@ public class HRMSService {
         }
     }
 
+    /** Codes per HRMS search call, kept well under HRMS's default page size of 200. */
+    private static final int HRMS_CODE_SEARCH_CHUNK_SIZE = 50;
+
+    /**
+     * Returns the subset of {@code codes} already taken by an HRMS employee (active or inactive)
+     * in the tenant. A facility POC user is created with one of these codes as its username, and
+     * HRMS rejects a username that another employee already has.
+     * <p>
+     * Fails open like {@link #employeeExistsByUsername}: if HRMS cannot be reached the codes are
+     * treated as free, so an HRMS outage does not block facility creation.
+     */
+    public Set<String> findExistingEmployeeCodes(Collection<String> codes, String tenantId, RequestInfo requestInfo) {
+        Set<String> existing = new HashSet<>();
+        if (codes == null || codes.isEmpty()) {
+            return existing;
+        }
+        List<String> codeList = new ArrayList<>(new LinkedHashSet<>(codes));
+        for (int start = 0; start < codeList.size(); start += HRMS_CODE_SEARCH_CHUNK_SIZE) {
+            List<String> chunk = codeList.subList(start, Math.min(start + HRMS_CODE_SEARCH_CHUNK_SIZE, codeList.size()));
+            try {
+                String uri = UriComponentsBuilder
+                        .fromUriString(configs.getHrmsHost())
+                        .path(configs.getHrmsSearchEndPoint())
+                        .queryParam("codes", String.join(",", chunk))
+                        .queryParam("tenantId", tenantId)
+                        .queryParam("limit", chunk.size())
+                        .toUriString();
+                Map<String, Object> searchRequest = new HashMap<>();
+                searchRequest.put("RequestInfo", requestInfo);
+
+                Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
+                        new StringBuilder(uri), searchRequest
+                );
+                if (response == null || !(response.get("Employees") instanceof List<?> employees)) {
+                    continue;
+                }
+                for (Object employee : employees) {
+                    if (employee instanceof Map<?, ?> employeeMap && employeeMap.get("code") != null) {
+                        existing.add(employeeMap.get("code").toString().trim());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Error checking {} employee codes in HRMS for tenant {}; treating them as unused: {}",
+                        chunk.size(), tenantId, e.getMessage(), e);
+            }
+        }
+        return existing;
+    }
+
     /**
      * Creates an HRMS employee for the facility POC user with HCR role.
      * 

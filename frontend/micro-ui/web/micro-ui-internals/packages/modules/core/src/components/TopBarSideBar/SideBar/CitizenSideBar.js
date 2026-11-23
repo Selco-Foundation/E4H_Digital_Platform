@@ -140,12 +140,12 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
               links: [
                 {
                   label: translateWithFallback("CORE_PRIVACY_POLICY", "Privacy Policy"),
-                  navigationURL: `/${window.contextPath}/privacy-policy`,
+                  navigationURL: `/${window.contextPath}/employee/privacy-policy`,
                   orderNumber: 1,
                 },
                 {
                   label: translateWithFallback("CORE_TERMS_OF_USE", "Terms of Use"),
-                  navigationURL: `/${window.contextPath}/terms-of-use`,
+                  navigationURL: `/${window.contextPath}/employee/terms-of-use`,
                   orderNumber: 2,
                 },
               ],

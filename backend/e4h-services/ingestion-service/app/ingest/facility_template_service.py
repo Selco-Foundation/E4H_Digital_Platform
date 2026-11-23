@@ -1,6 +1,6 @@
 # services/facility_service.py
 import os
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 import pandas as pd
 import requests
@@ -12,7 +12,7 @@ from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
 from app.utils.convertor import convert_json_to_boundary, format_facility_data_for_template
 from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns, add_validations_to_excel, \
     lock_prefilled_rows_in_excel, add_non_blank_validations_to_file, autofit_columns, \
-    add_facility_category_conditional_validations
+    add_facility_category_conditional_validations, add_dependent_boundary_dropdowns
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer, remove_default_empty_sheet
 from app.utils.localization_service_client import LocalizationServiceClient
 
@@ -24,6 +24,11 @@ boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 vendor_service_url = os.getenv("VENDOR_SERVICE_URL")
 localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
+# Main-sheet columns whose dropdowns come from the boundary hierarchy, not MDMS.
+BOUNDARY_COLUMNS = {"state", "district", "block"}
+# Codes per localization _search: a country-wide template carries ~10k, too many for one body.
+LOCALIZATION_LOOKUP_BATCH = 500
+
 EDITABLE_SOLAR_COLUMN_CODES = {
     "facility_type",
     "system_type",
@@ -33,6 +38,34 @@ EDITABLE_SOLAR_COLUMN_CODES = {
     "custom_solar_solution_design",
     "custom_solar_system_capacity",
 }
+
+ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES = {
+    *EDITABLE_SOLAR_COLUMN_CODES,
+    # "isActive" is the real MDMS code for "Included in Installation Plan" in
+    # data-ingestion.FieldPlanFacilityIngestionSchema; the other two are kept for older/other
+    # schema versions that might still use them.
+    "isActive",
+    "include_in_fieldplan",
+    "included_in_field_plan",
+    "rectificationSite",
+}
+# Column codes are compared lowercased, so MDMS codes can be listed above as written (camelCase).
+_ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES_LOWER = {
+    code.lower() for code in ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES
+}
+
+ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS = (
+    "include in field plan",
+    "included in field plan",
+    "include in installation plan",
+    "included in installation plan",
+    "include in project",
+    "system type",
+    "total system capacity",
+    "solution design type",
+    "custom solution design",
+    "custom total system capacity",
+)
 
 FACILITY_TYPE_DROPDOWN_FALLBACK = ["Sub Center", "Primary Health Centre", "Anganwadi"]
 SYSTEM_TYPE_DROPDOWN_FALLBACK = ["DC Off-grid", "AC Off-grid", "AC Hybrid"]
@@ -44,16 +77,18 @@ SOLUTION_DESIGN_DROPDOWN_FALLBACK = ["Custom Solution Design"]
 
 
 def _skip_column_for_assessment_include(col: Dict[str, Any]) -> bool:
-    """Assessment include template uses only project facilities + Include in Assessment Plan."""
+    """Assessment include template: project facility snapshot + Include in Assessment Plan only."""
     column_code = (col.get("code") or "").strip().lower()
     col_name = (col.get("name") or "").strip().lower()
-    if column_code in {"include_in_fieldplan", "included_in_field_plan"}:
+    if column_code in _ASSESSMENT_INCLUDE_EXCLUDED_COLUMN_CODES_LOWER:
         return True
-    if "include in field plan" in col_name or "included in field plan" in col_name:
-        return True
-    if "include in project" in col_name:
+    if any(fragment in col_name for fragment in ASSESSMENT_INCLUDE_EXCLUDED_NAME_FRAGMENTS):
         return True
     return False
+
+
+def filter_assessment_include_schema(facility_schema: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [col for col in facility_schema if not _skip_column_for_assessment_include(col)]
 
 
 class FacilityTemplateService:
@@ -92,7 +127,8 @@ class FacilityTemplateService:
                                facility_data: List[Dict[str, Any]],
                                extra_append_rows: int,
                                type: str = None,
-                               optimize_for_performance: bool = False
+                               optimize_for_performance: bool = False,
+                               mandatory_dropdown_columns: Optional[Dict[str, List[str]]] = None
                                ) -> None:
         """
             Generates FacilityIngestionTemplate.xlsx with:
@@ -115,10 +151,7 @@ class FacilityTemplateService:
 
             schema_for_template = facility_schema
             if type == "assessment_include":
-                schema_for_template = [
-                    col for col in facility_schema
-                    if not _skip_column_for_assessment_include(col)
-                ]
+                schema_for_template = filter_assessment_include_schema(facility_schema)
 
             for col in schema_for_template:
                 column_code = col.get("code")
@@ -183,8 +216,18 @@ class FacilityTemplateService:
                     output_list.append(include_column)
                     dropdowns_map[include_column] = ["Yes", "No"]
                     editable_columns.append(include_column)
-                    allow_blank_map[include_column] = True
+                    allow_blank_map[include_column] = False
                     logger.info(f"Added assessment include column: {include_column}")
+
+            # Columns the caller adds after the schema ones (e.g. the assessment questionnaires).
+            for header_name, options in (mandatory_dropdown_columns or {}).items():
+                if header_name in output_list:
+                    continue
+                output_list.append(header_name)
+                if options:
+                    dropdowns_map[header_name] = options
+                editable_columns.append(header_name)
+                allow_blank_map[header_name] = False
 
             if type != "assessment_include":
                 existing_include_column = None
@@ -321,6 +364,11 @@ class FacilityTemplateService:
 
                 allow_blank_map[header_name] = not col.get("required", False)
 
+                # State/District/Block get cascading lists from the boundaries below; a
+                # flat list here would stack a second validation on the same cells.
+                if str(col_name).strip().lower() in BOUNDARY_COLUMNS:
+                    continue
+
                 mdms_values = col.get("mdms_values")
                 if mdms_values:
                     dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
@@ -354,6 +402,15 @@ class FacilityTemplateService:
             )
             boundary_writer.write_data(df_boundary)
 
+            # Cascading State -> District -> Block lists built from the same rows, so the
+            # sheet offers exactly the boundaries in BlockBoundaryCodes (the geography the
+            # user picked, when they picked one) and uploads still resolve by display name.
+            add_dependent_boundary_dropdowns(
+                file_path=output_path,
+                sheet_name="FacilityIngestionTemplate",
+                boundary_records=boundary_records,
+            )
+
             df_vendor = pd.DataFrame(vendor_data)
             vendor_writer = create_excel_data_writer(
                 output_path,
@@ -378,25 +435,28 @@ class FacilityTemplateService:
                 if val:
                     all_raw_codes.add(val)
 
-        loc_codes = [f"Boundary_{code}" for code in all_raw_codes]
+        loc_codes = sorted(f"Boundary_{code}" for code in all_raw_codes)
 
         localization_map: Dict[str, str] = {}
         if localization_service_url and loc_codes:
-            try:
-                loc_client = LocalizationServiceClient(localization_service_url)
-                loc_response = loc_client.search_messages(
-                    tenant_id="in",
-                    locale="en_IN",
-                    module="rainmaker-in",
-                    codes=loc_codes,
-                )
-                for m in loc_response.get("messages", []):
-                    code = (m.get("code") or "").strip()
-                    message = m.get("message", "")
-                    if code and message:
-                        localization_map[code] = message
-            except Exception as e:
-                logger.error(f"Error fetching boundary localizations: {e}", exc_info=True)
+            loc_client = LocalizationServiceClient(localization_service_url)
+            # Batched, so a country-wide template doesn't send ~10k codes in one body. A failed
+            # batch only leaves its own names unlocalized.
+            for start in range(0, len(loc_codes), LOCALIZATION_LOOKUP_BATCH):
+                try:
+                    loc_response = loc_client.search_messages(
+                        tenant_id="in",
+                        locale="en_IN",
+                        module="rainmaker-in",
+                        codes=loc_codes[start:start + LOCALIZATION_LOOKUP_BATCH],
+                    )
+                    for m in loc_response.get("messages", []):
+                        code = (m.get("code") or "").strip()
+                        message = m.get("message", "")
+                        if code and message:
+                            localization_map[code] = message
+                except Exception as e:
+                    logger.error(f"Error fetching boundary localizations: {e}", exc_info=True)
 
         def localized(raw_code: str) -> str:
             if not raw_code:

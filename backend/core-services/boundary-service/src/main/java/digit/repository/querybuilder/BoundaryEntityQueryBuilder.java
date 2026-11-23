@@ -15,7 +15,7 @@ public class BoundaryEntityQueryBuilder {
 
     private ApplicationProperties config;
 
-    private static final String SEARCH_BOUNDARY_ENTITY_QUERY = "SELECT boundary.id , boundary.tenantid , boundary.createdtime , boundary.createdby , boundary.lastmodifiedby , boundary.lastmodifiedtime, boundary.code, boundary.geometry, boundary.additionaldetails FROM boundary";
+    private static final String SEARCH_BOUNDARY_ENTITY_QUERY = "SELECT boundary.id , boundary.tenantid , boundary.createdtime , boundary.createdby , boundary.lastmodifiedby , boundary.lastmodifiedtime, boundary.code, boundary.geometry, boundary.additionaldetails, boundary.lgd_state_code, boundary.lgd_district_code, boundary.lgd_block_code, boundary.lgd_block_tier FROM boundary";
 
     private static final String BOUNDARY_DATA_QUERY_ORDER_BY_CLAUSE = " order by createdtime desc ";
 
@@ -53,14 +53,14 @@ public class BoundaryEntityQueryBuilder {
         if (!Objects.isNull(boundarySearchCriteria.getCodes())) {
             QueryUtil.addClauseIfRequired(builder , preparedStmtList);
             boolean ignoreCase = Boolean.TRUE.equals(boundarySearchCriteria.getIgnoreCase());
-            if (ignoreCase) {
-                builder.append(" LOWER(boundary.code) IN ( ").append(QueryUtil.createQuery(boundarySearchCriteria.getCodes().size())).append(" )");
-            } else {
-                builder.append(" boundary.code IN ( ").append(QueryUtil.createQuery(boundarySearchCriteria.getCodes().size())).append(" )");
-            }
             Set<String> codes = boundarySearchCriteria.getCodes().stream()
                     .map(code -> ignoreCase ? code.toLowerCase(Locale.ROOT) : code)
                     .collect(Collectors.toCollection(HashSet::new));
+            if (ignoreCase) {
+                builder.append(" LOWER(boundary.code) IN ( ").append(QueryUtil.createQuery(codes.size())).append(" )");
+            } else {
+                builder.append(" boundary.code IN ( ").append(QueryUtil.createQuery(codes.size())).append(" )");
+            }
             QueryUtil.addToPreparedStatement(preparedStmtList , codes);
         }
         return builder.toString();

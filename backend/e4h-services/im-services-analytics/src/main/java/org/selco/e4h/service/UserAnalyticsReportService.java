@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.selco.e4h.config.UserAnalyticsProperties;
+import org.selco.e4h.repository.KibanaDashboardRepository;
 import org.selco.e4h.repository.UserAnalyticsRepository;
 import org.selco.e4h.web.models.UserAnalyticsAggregation;
 import org.selco.e4h.web.models.UserAnalyticsBucket;
@@ -45,6 +46,7 @@ import static org.selco.e4h.util.UserAnalyticsConstants.OVERALL;
 public class UserAnalyticsReportService {
 
     private final UserAnalyticsRepository repository;
+    private final KibanaDashboardRepository kibanaDashboardRepository;
     private final UserAnalyticsProperties properties;
 
     /**
@@ -61,12 +63,17 @@ public class UserAnalyticsReportService {
         LocalDate previousWeekStart = weekStart.minusWeeks(1);
         boolean partialWeek = weekStart.isEqual(currentWeekStart);
 
-        // Champions and Kibana logins are read off the reported week only; the previous week exists
-        // solely for growth.
-        UserAnalyticsAggregation current = repository.aggregate(
-                startOf(weekStart, zone), startOf(weekStart.plusWeeks(1), zone), true);
+        // Champions, Kibana logins and Kibana dashboard views are read off the reported week only;
+        // the previous week exists solely for growth.
+        Instant weekFrom = startOf(weekStart, zone);
+        Instant weekTo = startOf(weekStart.plusWeeks(1), zone);
+        UserAnalyticsAggregation current = repository.aggregate(weekFrom, weekTo, true);
         UserAnalyticsAggregation previous = repository.aggregate(
-                startOf(previousWeekStart, zone), startOf(weekStart, zone), false);
+                startOf(previousWeekStart, zone), weekFrom, false);
+
+        // A separate index, so a separate round-trip — dashboard views carry no username and are not
+        // part of the user-analytics event stream.
+        long kibanaDashboardViews = kibanaDashboardRepository.countViews(weekFrom, weekTo);
 
         Set<String> applications = resolveApplications(current, previous);
         log.info("User analytics: week {}{} had {} active users and {} logins across applications {}",
@@ -84,6 +91,7 @@ public class UserAnalyticsReportService {
                 .championsByRole(current.getChampionsByRole())
                 .championsByApplication(current.getChampionsByApplication())
                 .kibanaLoginsByUser(current.getKibanaLoginsByUser())
+                .kibanaDashboardViews(kibanaDashboardViews)
                 .applications(new ArrayList<>(applications))
                 .eventTypes(resolveEventTypes(current))
                 .overall(UserAnalyticsBucket.of(OVERALL, current.getOverall(), previous.getOverall(), applications))

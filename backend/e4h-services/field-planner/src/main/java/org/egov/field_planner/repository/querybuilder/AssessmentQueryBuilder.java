@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -140,6 +141,21 @@ public class AssessmentQueryBuilder {
                 """;
     }
 
+    public String getPendingOverallOnOtherPlansCountQuery(List<Object> params, String facilityId, String targetPlanId) {
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        params.add(facilityId);
+        params.add(targetPlanId);
+        return """
+                SELECT COUNT(*) FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                JOIN field_plans fp ON fp.id = fa.field_plan_id
+                WHERE fa.facility_id = ?
+                AND fa.field_plan_id <> ?
+                AND fa.overall_status = 'PENDING' AND fp.plan_type = 'ASSESSMENT'
+                """;
+    }
+
     public String getNonClosedSourcePlansQuery(List<Object> params, String facilityId, String targetPlanId) {
         params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         params.add(facilityId);
@@ -221,20 +237,114 @@ public class AssessmentQueryBuilder {
         return query.toString();
     }
 
-    public String getSubmissionQueueQuery(List<Object> params, List<String> planIds, String assessmentPhase) {
-        StringBuilder query = new StringBuilder(ASSESSMENT_FACILITY_SELECT);
+    private static final String SUBMISSION_QUEUE_SELECT =
+            "SELECT fa.id, fa.tenant_id, fa.facility_id, fa.field_plan_id, fa.activity_id, "
+                    + "fa.phone_status, fa.field_status, fa.overall_status, fa.assessment_completion_status, "
+                    + "fa.installation_field_plan_id, fa.field_plan_facility_id, fa.additional_details, "
+                    + "fa.last_modified_time, fp.project_id, fp.status AS plan_status, fp.name AS plan_name, "
+                    + "fp.geography_scope AS plan_geography_scope "
+                    + "FROM facility_activities fa "
+                    + ASSESSMENT_ACTIVITY_JOIN
+                    + "JOIN field_plans fp ON fp.id = fa.field_plan_id "
+                    + "WHERE fp.plan_type = 'ASSESSMENT' ";
+
+    public String getSubmissionQueueQuery(List<Object> params, List<String> planIds, String assessmentPhase,
+                                          org.egov.field_planner.web.models.SubmissionQueueFilters filters,
+                                          org.egov.field_planner.web.models.SubmissionQueueSort sort) {
+        StringBuilder query = new StringBuilder(SUBMISSION_QUEUE_SELECT);
         params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
         query.append(" AND fa.field_plan_id IN (")
                 .append(String.join(",", planIds.stream().map(id -> "?").toList()))
                 .append(") ");
         params.addAll(planIds);
+        appendQueuePhaseFilter(query, assessmentPhase);
+        appendQueueFilters(params, query, filters);
+        appendQueueOrderBy(query, sort);
+        return query.toString();
+    }
+
+    public String getSubmissionQueueCountQuery(List<Object> params, List<String> planIds, String assessmentPhase,
+                                               org.egov.field_planner.web.models.SubmissionQueueFilters filters) {
+        StringBuilder query = new StringBuilder(
+                """
+                SELECT COUNT(*) FROM facility_activities fa
+                INNER JOIN activities act ON act.id = fa.activity_id
+                    AND act.code = ? AND act.is_active = true
+                JOIN field_plans fp ON fp.id = fa.field_plan_id
+                WHERE fp.plan_type = 'ASSESSMENT'
+                """);
+        params.add(AssessmentConstants.ACTIVITY_CODE_ASSESSMENT);
+        query.append(" AND fa.field_plan_id IN (")
+                .append(String.join(",", planIds.stream().map(id -> "?").toList()))
+                .append(") ");
+        params.addAll(planIds);
+        appendQueuePhaseFilter(query, assessmentPhase);
+        appendQueueFilters(params, query, filters);
+        return query.toString();
+    }
+
+    private void appendQueuePhaseFilter(StringBuilder query, String assessmentPhase) {
         if ("PHONE".equals(assessmentPhase)) {
             query.append(" AND fa.phone_status IN ('PENDING', 'PENDING_NO_ANSWER', 'PENDING_WRONG_NUMBER') ");
         } else {
             query.append(" AND fa.field_status = 'PENDING' ");
         }
-        query.append(" ORDER BY fa.last_modified_time ASC ");
-        return query.toString();
+    }
+
+    private void appendQueueFilters(List<Object> params, StringBuilder query,
+                                    org.egov.field_planner.web.models.SubmissionQueueFilters filters) {
+        if (filters == null) {
+            return;
+        }
+        if (StringUtils.isNotBlank(filters.getResolvedFacilityName())) {
+            query.append(" AND fa.additional_details ->> 'facilityName' ILIKE ? ");
+            params.add("%" + filters.getResolvedFacilityName() + "%");
+        }
+        appendJsonScopeFieldInFilter(params, query, "fp.geography_scope", "state", filters.getResolvedStates());
+        appendJsonFieldInFilter(params, query, "district", filters.getResolvedDistricts());
+        appendJsonFieldInFilter(params, query, "block", filters.getResolvedBlocks());
+    }
+
+    private void appendJsonScopeFieldInFilter(List<Object> params, StringBuilder query, String jsonColumn,
+                                              String jsonKey, List<String> values) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
+        }
+        String expression = jsonColumn + " ->> '" + jsonKey + "'";
+        if (values.size() == 1) {
+            query.append(" AND ").append(expression).append(" = ? ");
+            params.add(values.get(0));
+            return;
+        }
+        query.append(" AND ").append(expression).append(" IN (")
+                .append(placeholders(values.size()))
+                .append(") ");
+        params.addAll(values);
+    }
+
+    private void appendQueueOrderBy(StringBuilder query,
+                                    org.egov.field_planner.web.models.SubmissionQueueSort sort) {
+        org.egov.field_planner.web.models.SubmissionQueueSort effectiveSort = sort != null
+                ? sort
+                : org.egov.field_planner.web.models.SubmissionQueueSort.builder().build();
+        String direction = effectiveSort.isDescending() ? "DESC" : "ASC";
+        String orderExpression = switch (effectiveSort.resolveSortBy()) {
+            case org.egov.field_planner.web.models.SubmissionQueueSort.SORT_FACILITY_NAME ->
+                    "fa.additional_details ->> 'facilityName'";
+            case org.egov.field_planner.web.models.SubmissionQueueSort.SORT_DISTRICT ->
+                    "fa.additional_details ->> 'district'";
+            case org.egov.field_planner.web.models.SubmissionQueueSort.SORT_BLOCK ->
+                    "fa.additional_details ->> 'block'";
+            case org.egov.field_planner.web.models.SubmissionQueueSort.SORT_STATE ->
+                    "fp.geography_scope ->> 'state'";
+            case org.egov.field_planner.web.models.SubmissionQueueSort.SORT_PLAN_NAME -> "fp.name";
+            default -> "fa.last_modified_time";
+        };
+        query.append(" ORDER BY ").append(orderExpression).append(' ').append(direction);
+        if (!org.egov.field_planner.web.models.SubmissionQueueSort.SORT_LAST_MODIFIED_TIME
+                .equals(effectiveSort.resolveSortBy())) {
+            query.append(", fa.last_modified_time ASC");
+        }
     }
 
     public String getEligibleFacilitiesQuery(List<Object> params, String projectId,
@@ -271,33 +381,70 @@ public class AssessmentQueryBuilder {
         if (filters == null) {
             return;
         }
-        if (StringUtils.isNotBlank(filters.getPhoneStatus())) {
-            query.append(" AND fa.phone_status = ? ");
-            params.add(filters.getPhoneStatus());
+        appendColumnInFilter(params, query, "fa.phone_status", filters.getResolvedPhoneStatuses());
+        appendFieldStatusFilter(params, query, filters);
+        appendColumnInFilter(params, query, "fa.overall_status", filters.getResolvedOverallStatuses());
+        appendJsonFieldInFilter(params, query, "district", filters.getResolvedDistricts());
+        appendJsonFieldInFilter(params, query, "block", filters.getResolvedBlocks());
+        appendJsonFieldInFilter(params, query, "facilityCategory", filters.getResolvedFacilityCategories());
+        appendJsonFieldInFilter(params, query, "facilityType", filters.getResolvedFacilityTypes());
+    }
+
+    private void appendFieldStatusFilter(List<Object> params, StringBuilder query,
+                                         org.egov.field_planner.web.models.PlanFacilityFilters filters) {
+        boolean includeNotInitiated = filters.includesNotInitiatedFieldStatus();
+        List<String> concreteStatuses = filters.getResolvedConcreteFieldStatuses();
+        if (!includeNotInitiated && concreteStatuses.isEmpty()) {
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getFieldStatus())) {
-            if ("NULL".equalsIgnoreCase(filters.getFieldStatus())) {
-                query.append(" AND fa.field_status IS NULL ");
-            } else {
-                query.append(" AND fa.field_status = ? ");
-                params.add(filters.getFieldStatus());
-            }
+        if (includeNotInitiated && concreteStatuses.isEmpty()) {
+            query.append(" AND fa.field_status IS NULL ");
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getOverallStatus())) {
-            query.append(" AND fa.overall_status = ? ");
-            params.add(filters.getOverallStatus());
+        if (includeNotInitiated) {
+            query.append(" AND (fa.field_status IS NULL OR fa.field_status IN (")
+                    .append(placeholders(concreteStatuses.size()))
+                    .append(")) ");
+            params.addAll(concreteStatuses);
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getDistrict())) {
-            query.append(" AND fa.additional_details ->> 'district' = ? ");
-            params.add(filters.getDistrict());
+        appendColumnInFilter(params, query, "fa.field_status", concreteStatuses);
+    }
+
+    private void appendColumnInFilter(List<Object> params, StringBuilder query, String column, List<String> values) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getFacilityCategory())) {
-            query.append(" AND fa.additional_details ->> 'facilityCategory' = ? ");
-            params.add(filters.getFacilityCategory());
+        if (values.size() == 1) {
+            query.append(" AND ").append(column).append(" = ? ");
+            params.add(values.get(0));
+            return;
         }
-        if (StringUtils.isNotBlank(filters.getFacilityType())) {
-            query.append(" AND fa.additional_details ->> 'facilityType' = ? ");
-            params.add(filters.getFacilityType());
+        query.append(" AND ").append(column).append(" IN (")
+                .append(placeholders(values.size()))
+                .append(") ");
+        params.addAll(values);
+    }
+
+    private void appendJsonFieldInFilter(List<Object> params, StringBuilder query, String jsonKey, List<String> values) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
         }
+        String expression = "fa.additional_details ->> '" + jsonKey + "'";
+        if (values.size() == 1) {
+            query.append(" AND ").append(expression).append(" = ? ");
+            params.add(values.get(0));
+            return;
+        }
+        query.append(" AND ").append(expression).append(" IN (")
+                .append(placeholders(values.size()))
+                .append(") ");
+        params.addAll(values);
+    }
+
+    private String placeholders(int count) {
+        return java.util.stream.IntStream.range(0, count)
+                .mapToObj(i -> "?")
+                .collect(Collectors.joining(","));
     }
 }

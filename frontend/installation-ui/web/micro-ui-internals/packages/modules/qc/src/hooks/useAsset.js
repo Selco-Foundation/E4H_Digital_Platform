@@ -67,6 +67,8 @@ const formatData = async (data) => {
             assetId: row?.assetId,
             serialNumber: row?.serialNumber,
             capacity: getAssetCapacity(assetType, row?.assetDetails),
+            isPotentialDuplicate: row?.assetDetails?.isPotentialDuplicate === true,
+            duplicateFacilityName: row?.assetDetails?.duplicateFacilityName,
             documents: await fetchFileStoreDocuments(row?.documents)
           }
         ]
@@ -97,6 +99,8 @@ const formatData = async (data) => {
             assetId: row?.assetId,
             serialNumber: row?.serialNumber,
             capacity: getAssetCapacity(assetType, row?.assetDetails),
+            isPotentialDuplicate: row?.assetDetails?.isPotentialDuplicate === true,
+            duplicateFacilityName: row?.assetDetails?.duplicateFacilityName,
             documents: await fetchFileStoreDocuments(row?.documents)
           }
         ]

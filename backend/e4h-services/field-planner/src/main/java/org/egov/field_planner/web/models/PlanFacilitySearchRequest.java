@@ -1,14 +1,13 @@
 package org.egov.field_planner.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
-
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 
 @Data
 @Builder
@@ -21,16 +20,8 @@ public class PlanFacilitySearchRequest {
     @Valid
     private RequestInfo requestInfo;
 
-    @JsonProperty("planId")
+    @JsonProperty("criteria")
     @NotNull
-    private String planId;
-
-    @JsonProperty("filters")
-    private PlanFacilityFilters filters;
-
-    @JsonProperty("exportAll")
-    private Boolean exportAll;
-
-    @JsonProperty("includeResponseSummary")
-    private Boolean includeResponseSummary;
+    @Valid
+    private PlanFacilitySearchCriteria criteria;
 }

@@ -3,7 +3,9 @@ import { DownloadIcon } from "@egovernments/digit-ui-react-components";
 
 const DownloadTemplate = ({ props }) => {
 
-  const { t, heading, description, handleDownload } = props;
+  // `disabled`: e.g. until a geography is picked - the button then explains nothing on its own,
+  // so the card's description says what is needed.
+  const { t, heading, description, handleDownload, disabled = false } = props;
 
   return (
     <div
@@ -35,9 +37,11 @@ const DownloadTemplate = ({ props }) => {
             justifyContent: "center",
             alignItems: "center",
             gap: "5px",
-            height: "40px"
+            height: "40px",
+            ...(disabled ? { opacity: 0.4, cursor: "not-allowed" } : {}),
           }}
           type="button"
+          disabled={disabled}
           onClick={handleDownload}
         >
           <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)" }}>

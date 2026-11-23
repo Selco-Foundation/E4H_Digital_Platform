@@ -32,4 +32,12 @@ public class PlanFacilityIncludeItem {
 
     @JsonProperty("facilityName")
     private String facilityName;
+
+    /** uniqueIdentifier of the assessment.AssessmentMobileFormSchema form chosen for the on-site (FIELD) assessment. */
+    @JsonProperty("onSiteQuestionnaire")
+    private String onSiteQuestionnaire;
+
+    /** uniqueIdentifier of the assessment.AssessmentMobileFormSchema form chosen for the remote (PHONE) assessment. */
+    @JsonProperty("onRemoteQuestionnaire")
+    private String onRemoteQuestionnaire;
 }

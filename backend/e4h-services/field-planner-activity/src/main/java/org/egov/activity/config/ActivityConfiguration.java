@@ -38,6 +38,9 @@ public class ActivityConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.v2.bulk.search.facility.url}")
+    private String facilityBulkSearchUrl;
+
     @Value("${egov.pdf.host}")
     private String pdfServiceHost;
 
@@ -211,6 +214,10 @@ public class ActivityConfiguration {
 
     @Value("${egov.asset.update.url}")
     private String assetUpdateUrl;
+
+    // Defaulted inline so environments that predate this property still start.
+    @Value("${egov.asset.search.limit:1000}")
+    private Integer assetSearchLimit;
 
     @Value("${email.activity.assignment.subject}")
     private String activityEmailSubject;

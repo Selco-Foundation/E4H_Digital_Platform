@@ -51,35 +51,31 @@ class EscalationServiceTest {
 
     @Test
     void testEscalateApplications() {
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(new ArrayList<>());
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(new ArrayList<>());
-        this.escalationService.escalateApplications(new RequestInfo(), "Business Service");
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        this.escalationService.escalateApplications(new RequestInfo(), "Business Service", "in");
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
     }
 
 
     @Test
     void testEscalateApplicationsWithString() {
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
 
         ArrayList<Escalation> escalationList = new ArrayList<>();
         escalationList.add(mock(Escalation.class));
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(escalationList);
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(new ArrayList<>());
-        this.escalationService.escalateApplications(new RequestInfo(), "Business Service");
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        this.escalationService.escalateApplications(new RequestInfo(), "Business Service", "in");
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
     }
 
 
     @Test
     void testEscalateApplicationsWithStatus() {
         when(this.workflowConfig.getEscalationBatchSize()).thenReturn(3);
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
         Escalation escalation = mock(Escalation.class);
         when(escalation.getBusinessSlaExceededBy()).thenReturn(1L);
         when(escalation.getStateSlaExceededBy()).thenReturn(1L);
@@ -88,21 +84,16 @@ class EscalationServiceTest {
 
         ArrayList<Escalation> escalationList = new ArrayList<>();
         escalationList.add(escalation);
-
-        ArrayList<String> stringList = new ArrayList<>();
-        stringList.add("foo");
         when(this.escalationUtil.getStatusUUID((String) any(), (String) any(), (String) any()))
                 .thenReturn("01234567-89AB-CDEF-FEDC-BA9876543210");
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(escalationList);
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(stringList);
         when(this.escalationRepository.getBusinessIds((org.egov.wf.web.models.EscalationSearchCriteria) any()))
                 .thenReturn(new ArrayList<>());
-        this.escalationService.escalateApplications(new RequestInfo(), "Business Service");
+        this.escalationService.escalateApplications(new RequestInfo(), "Business Service", "in");
         verify(this.workflowConfig).getEscalationBatchSize();
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getStatusUUID((String) any(), (String) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
         verify(escalation).getBusinessSlaExceededBy();
         verify(escalation).getStateSlaExceededBy();
         verify(escalation, atLeast(1)).getBusinessService();
@@ -117,7 +108,7 @@ class EscalationServiceTest {
                 .thenReturn(new ArrayList<>());
         when(this.workflowConfig.getEscalationBatchSize()).thenReturn(3);
         doNothing().when(this.producer).push((String) any(), (Object) any());
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
         Escalation escalation = mock(Escalation.class);
         when(escalation.getTopic()).thenReturn("Topic");
         when(escalation.getBusinessSlaExceededBy()).thenReturn(1L);
@@ -127,29 +118,24 @@ class EscalationServiceTest {
 
         ArrayList<Escalation> escalationList = new ArrayList<>();
         escalationList.add(escalation);
-
-        ArrayList<String> stringList = new ArrayList<>();
-        stringList.add("foo");
         when(this.escalationUtil.getProcessInstances((String) any(), (List<String>) any(), (Escalation) any()))
                 .thenReturn(new ArrayList<>());
         when(this.escalationUtil.getStatusUUID((String) any(), (String) any(), (String) any()))
                 .thenReturn("01234567-89AB-CDEF-FEDC-BA9876543210");
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(escalationList);
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(stringList);
 
         ArrayList<String> stringList1 = new ArrayList<>();
         stringList1.add("foo");
         when(this.escalationRepository.getBusinessIds((org.egov.wf.web.models.EscalationSearchCriteria) any()))
                 .thenReturn(stringList1);
-        this.escalationService.escalateApplications(new RequestInfo(), "Business Service");
+        this.escalationService.escalateApplications(new RequestInfo(), "Business Service", "in");
 //        verify(this.workflowService).transition((org.egov.wf.web.models.ProcessInstanceRequest) any());
         verify(this.workflowConfig).getEscalationBatchSize();
         verify(this.producer).push((String) any(), (Object) any());
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getStatusUUID((String) any(), (String) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
 //        verify(this.escalationUtil).getProcessInstances((String) any(), (List<String>) any(), (Escalation) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
         verify(escalation).getBusinessSlaExceededBy();
         verify(escalation).getStateSlaExceededBy();
         verify(escalation, atLeast(1)).getBusinessService();
@@ -161,35 +147,31 @@ class EscalationServiceTest {
 
     @Test
     void testEscalateApplicationsTest() {
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(new ArrayList<>());
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(new ArrayList<>());
-        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service").isEmpty());
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service", "in").isEmpty());
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
     }
 
 
     @Test
     void testEscalateApplicationsTestWithEmpty() {
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
 
         ArrayList<Escalation> escalationList = new ArrayList<>();
         escalationList.add(mock(Escalation.class));
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(escalationList);
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(new ArrayList<>());
-        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service").isEmpty());
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service", "in").isEmpty());
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
     }
 
 
     @Test
     void testEscalateApplicationsTestWithEmptyBusinessService() {
         when(this.workflowConfig.getEscalationBatchSize()).thenReturn(3);
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
         Escalation escalation = mock(Escalation.class);
         when(escalation.getBusinessSlaExceededBy()).thenReturn(1L);
         when(escalation.getStateSlaExceededBy()).thenReturn(1L);
@@ -198,21 +180,16 @@ class EscalationServiceTest {
 
         ArrayList<Escalation> escalationList = new ArrayList<>();
         escalationList.add(escalation);
-
-        ArrayList<String> stringList = new ArrayList<>();
-        stringList.add("foo");
         when(this.escalationUtil.getStatusUUID((String) any(), (String) any(), (String) any()))
                 .thenReturn("01234567-89AB-CDEF-FEDC-BA9876543210");
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(escalationList);
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(stringList);
         when(this.escalationRepository.getBusinessIds((org.egov.wf.web.models.EscalationSearchCriteria) any()))
                 .thenReturn(new ArrayList<>());
-        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service").isEmpty());
+        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service", "in").isEmpty());
         verify(this.workflowConfig).getEscalationBatchSize();
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getStatusUUID((String) any(), (String) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
         verify(escalation).getBusinessSlaExceededBy();
         verify(escalation).getStateSlaExceededBy();
         verify(escalation, atLeast(1)).getBusinessService();
@@ -224,7 +201,7 @@ class EscalationServiceTest {
     @Test
     void testEscalateApplicationsTestWithStringListAdd() {
         when(this.workflowConfig.getEscalationBatchSize()).thenReturn(3);
-        when(this.mDMSService.mDMSCall((RequestInfo) any())).thenReturn("M DMSCall");
+        when(this.mDMSService.mDMSCall((RequestInfo) any(), (String) any())).thenReturn("M DMSCall");
         Escalation escalation = mock(Escalation.class);
         when(escalation.getBusinessSlaExceededBy()).thenReturn(1L);
         when(escalation.getStateSlaExceededBy()).thenReturn(1L);
@@ -233,27 +210,22 @@ class EscalationServiceTest {
 
         ArrayList<Escalation> escalationList = new ArrayList<>();
         escalationList.add(escalation);
-
-        ArrayList<String> stringList = new ArrayList<>();
-        stringList.add("foo");
         when(this.escalationUtil.getProcessInstances((String) any(), (List<String>) any(), (Escalation) any()))
                 .thenReturn(new ArrayList<>());
         when(this.escalationUtil.getStatusUUID((String) any(), (String) any(), (String) any()))
                 .thenReturn("01234567-89AB-CDEF-FEDC-BA9876543210");
         when(this.escalationUtil.getEscalationsFromConfig((String) any(), (Object) any())).thenReturn(escalationList);
-        when(this.escalationUtil.getTenantIds((Object) any())).thenReturn(stringList);
 
         ArrayList<String> stringList1 = new ArrayList<>();
         stringList1.add("foo");
         when(this.escalationRepository.getBusinessIds((org.egov.wf.web.models.EscalationSearchCriteria) any()))
                 .thenReturn(stringList1);
-        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service").isEmpty());
+        assertTrue(this.escalationService.escalateApplicationsTest(new RequestInfo(), "Business Service", "in").isEmpty());
         verify(this.workflowConfig).getEscalationBatchSize();
-        verify(this.mDMSService).mDMSCall((RequestInfo) any());
+        verify(this.mDMSService).mDMSCall((RequestInfo) any(), (String) any());
         verify(this.escalationUtil).getStatusUUID((String) any(), (String) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
         verify(this.escalationUtil).getProcessInstances((String) any(), (List<String>) any(), (Escalation) any());
-        verify(this.escalationUtil).getTenantIds((Object) any());
         verify(escalation).getBusinessSlaExceededBy();
         verify(escalation).getStateSlaExceededBy();
         verify(escalation, atLeast(1)).getBusinessService();

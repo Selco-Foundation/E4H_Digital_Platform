@@ -1,6 +1,7 @@
 import {useQuery, useQueryClient} from "react-query";
 import { QCService } from "../services/QC";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 import { FilestoreService } from "../services/Filestore";
 
 const generateAuditTrail = (workflow, transactions) => {
@@ -94,6 +95,10 @@ const shouldLoadDocument = (documentType, section) => {
 
   return type.split("-")[0] === selectedSection && (type.includes("IMAGE") || type.includes("VIDEO"));
 };
+
+const getCustomAwareValue = (value, customValue) => (
+  value?.toUpperCase() === "CUSTOM" ? customValue || value : value
+);
 
 export const getAssetAggregation = async (workflow, section) => {
   const documentAggregation = {
@@ -220,22 +225,37 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   const activityFacilityData = activityFacilitiesResponse?.facility?.[0];
 
   const facility = activityFacilityData?.activityFacility?.facility || {};
+  const additionalDetails = activityFacilityData?.activityFacility?.additionalDetails || {};
   const assigneeDetails = activityFacilityData?.activityFacility?.assignedEmployeeUser || {};
   const assignedVendorName =
     facility?.additionalDetails?.mappedVendorName ||
     activityFacilityData?.facility?.additionalDetails?.mappedVendorName;
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
+  const solarSolutionDesignType = additionalDetails.solarSolutionDesignType;
+  const totalSystemCapacity = additionalDetails.totalSystemCapacity;
 
   return {
     facilityDetails: {
       id: activityFacilityData?.activityFacility?.id,
       facilityName: activityFacilityData?.activityFacility?.facility?.facility_name,
+      projectName: activityFacilityData?.activityFacility?.fieldPlan?.project?.name,
       facilityId: activityFacilityData?.activityFacility?.facilityId,
+      fieldPlanName: activityFacilityData?.activityFacility?.fieldPlan?.name,
       facilityType: facility.facility_type,
       status: activityFacilityData?.activityFacility?.status,
       block: activityFacilityData?.activityFacility?.facility?.boundary?.block,
       district: activityFacilityData?.activityFacility?.facility?.boundary?.district,
       assigned: assignedVendorName || assigneeDetails.name,
+      systemType: additionalDetails.systemType,
+      isRectificationSite: isRectificationSite(additionalDetails),
+      solarSolutionDesignType: getCustomAwareValue(
+        solarSolutionDesignType,
+        additionalDetails.customSolarSolutionDesignType
+      ),
+      totalSystemCapacity: getCustomAwareValue(
+        totalSystemCapacity,
+        additionalDetails.customTotalSystemCapacity
+      ),
     },
     auditTrail,
     workflow: activityFacilityData?.workflow,

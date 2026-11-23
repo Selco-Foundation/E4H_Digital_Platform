@@ -1,31 +1,26 @@
 import React, { useEffect, useReducer, useState } from "react";
 import UploadFile from "../atoms/UploadFile";
 
+// Returns one entry per problem with the file, so a file of the wrong type that is also too large
+// reports both; a valid file returns a single valid entry
 const fileValidationStatus = (file, regex, maxSize, t, specificFileConstraint) => {
   if (file?.type.includes(specificFileConstraint?.type)) {
     maxSize = specificFileConstraint.maxSize;
   }
 
   const fileExtention = file.name.split(".").pop().toLowerCase();
-  const status = { valid: true, name: file?.name?.substring(0, 15), error: "" };
-  if (!file) return;
-
-  if (!regex.test(file.type) && file.size / 1024 / 1024 > maxSize) {
-    status.valid = false;
-    status.error = t(`NOT_SUPPORTED_FILE_TYPE_AND_FILE_SIZE_EXCEEDED_5MB`);
-  }
+  const name = file?.name?.substring(0, 15);
+  const errors = [];
 
   if (!regex.test(fileExtention)) {
-    status.valid = false;
-    status.error = t(`NOT_SUPPORTED_FILE_TYPE`);
+    errors.push(t(`NOT_SUPPORTED_FILE_TYPE`));
   }
 
   if (file.size / 1024 / 1024 > maxSize) {
-    status.valid = false;
-    status.error = t(`FILE_SIZE_EXCEEDED`).replace("{}", `${maxSize}`);
+    errors.push(t(`FILE_SIZE_EXCEEDED`).replace("{}", `${maxSize}`));
   }
 
-  return status;
+  return errors.length ? errors.map((error) => ({ valid: false, name, error })) : [{ valid: true, name, error: "" }];
 };
 const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, maxSize, t, maxFilesAllowed, state, specificFileConstraint) => {
   if (!files.length || !regex || !maxSize) return [{}, false];
@@ -57,11 +52,11 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
   const messages = [];
   let isInValidGroup = false;
   for (let file of files) {
-    const fileStatus = fileValidationStatus(file, regex, maxSize, t, specificFileConstraint);
-    if (!fileStatus.valid) {
+    const fileStatuses = fileValidationStatus(file, regex, maxSize, t, specificFileConstraint);
+    if (fileStatuses.some((fileStatus) => !fileStatus.valid)) {
       isInValidGroup = true;
     }
-    messages.push(fileStatus);
+    messages.push(...fileStatuses);
   }
 
   return [messages, isInValidGroup];
@@ -301,6 +296,19 @@ const MultiUploadWrapper = ({
     }
     return acc;
   }, {});
+  // Errors that apply to the same files are listed together, so a file that is both of the wrong type
+  // and too large shows both messages followed by its name once. A custom message replaces every
+  // specific one, so it is shown once for all the files that failed.
+  const errorGroups = (customErrorMsg && Object.keys(groupedErrors).length
+    ? [[customErrorMsg, [...new Set(Object.values(groupedErrors).flat())]]]
+    : Object.entries(groupedErrors)
+  ).reduce((acc, [error, names]) => {
+    const key = names.join("|");
+    const group = acc.find((g) => g.key === key);
+    if (group) group.errors.push(error);
+    else acc.push({ key, errors: [error], names });
+    return acc;
+  }, []);
 
   useEffect(() => getFormState(state), [state]);
 
@@ -341,9 +349,11 @@ const MultiUploadWrapper = ({
         mediaIntent={mediaIntent}
       />
       <span style={{ display: "flex", flexDirection: "column" }}>
-        {Object.entries(groupedErrors).map(([error, names]) => (
-          <span key={error} style={{ display: "flex", flexDirection: "column" }}>
-            <div className="validation-error">{customErrorMsg ? t(customErrorMsg) : t(error)}</div>
+        {errorGroups.map(({ key, errors, names }) => (
+          <span key={key} style={{ display: "flex", flexDirection: "column" }}>
+            {errors.map((error) => (
+              <div key={error} className="validation-error">{t(error)}</div>
+            ))}
             {names.some((name) => name) && (
               <div className="validation-error">{`${t("ES_COMMON_DOC_FILENAME")} : ${names.filter((name) => name).join(", ")}`}</div>
             )}

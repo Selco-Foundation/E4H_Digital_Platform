@@ -16,5 +16,6 @@ import java.util.List;
 @NoArgsConstructor
 public class SystemTypeCapacityResponse {
     private ResponseInfo responseInfo;
+    // Each entry's rectificationSite tells regular and rectification combinations apart
     private List<SystemTypeCapacity> systemTypeCapacities;
 }

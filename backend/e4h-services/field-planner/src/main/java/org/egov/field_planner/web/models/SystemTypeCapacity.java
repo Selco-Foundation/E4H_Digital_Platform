@@ -14,4 +14,5 @@ import lombok.Setter;
 public class SystemTypeCapacity {
     private String systemType;
     private String totalSystemCapacity;
+    private Boolean rectificationSite;
 }

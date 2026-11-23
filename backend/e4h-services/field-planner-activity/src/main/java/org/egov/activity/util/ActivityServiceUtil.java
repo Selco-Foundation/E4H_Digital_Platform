@@ -112,7 +112,7 @@ public class ActivityServiceUtil {
 
     private String getDuration(FieldPlan fieldPlan) {
         if (fieldPlan.getStartDate() == null || fieldPlan.getEndDate() == null) {
-            throw new RuntimeException("Start date and end date are required for fieldPlan name generation");
+            throw new RuntimeException("Start date and end date are required for installation plan name generation");
         }
 
         LocalDateTime startDate = LocalDateTime.ofInstant(

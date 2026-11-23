@@ -8,6 +8,7 @@ import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
 import org.egov.rms.model.FacilityDetails;
 import org.egov.rms.model.IMServiceRequest;
+import org.egov.rms.util.IncidentTypeMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -46,8 +47,8 @@ public class PayloadGenerator {
             }
 
             // Map alert type/subtype to IM service incident type/subtype
-            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
-            String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
+            String incidentType = IncidentTypeMapper.toIncidentType(alert.getAlertType());
+            String incidentSubType = IncidentTypeMapper.toIncidentSubType(alert.getAlertSubType());
 
             // Extract boundaryCode from facility details
             String boundaryCode = facilityDetails.getBoundaryCode();
@@ -87,50 +88,6 @@ public class PayloadGenerator {
             e.printStackTrace();
             log.error("Error generating ticket payload for alert: {}", alert.getId(), e);
             return null;
-        }
-    }
-
-    /**
-     * Maps RMS alert type to IM service incident type
-     */
-    private String mapAlertTypeToIncidentType(Alert.AlertType alertType) {
-        switch (alertType) {
-            case PANEL:
-                return "PANEL";
-            case INVERTER:
-                return "INVERTER";
-            case BATTERY:
-                return "BATTERY";
-            case GRID:
-                return "GRID";
-            default:
-                return "GIPB";
-        }
-    }
-
-    /**
-     * Maps RMS alert sub-type to IM service incident sub-type
-     */
-    private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
-        switch (alertSubType) {
-            case LOW_GENERATION:
-                return "RunningOnGrid";
-            case SHUTDOWN:
-                return "ShutdownInverter";
-            case HIGH_VOLTAGE:
-                return "VoltageInverter";
-            case BURNT_DISCONNECTED:
-                return "BatteryDisconnected";
-            case DEEP_DISCHARGING:
-                return "DeepDischarge";
-            case OVERCHARGING:
-                return "Overcharge";
-            case VOLTAGE_VARIATION_REVERSE:
-                return "ReverseVoltage";
-            case VOLTAGE_VARIATION_HIGH:
-                return "HighVoltage";
-            default:
-                return "RMS Data Alert";
         }
     }
 

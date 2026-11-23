@@ -6,8 +6,12 @@ import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.BoundaryInfo;
 import facility.web.models.Facility;
+import facility.util.FacilityAmcFieldsHelper;
 import facility.util.FacilityMappedVendorHelper;
+import facility.util.HRMSUtils;
+import facility.web.models.Employee;
 import facility.web.models.FacilityKibanaIndex;
+import facility.web.models.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -43,6 +47,10 @@ public class FacilityKibanaMapper {
     private final Configuration configs;
     private final IncidentStatusDao incidentStatusDao;
     private final FacilityProjectClient facilityProjectClient;
+    private final HRMSUtils hrmsUtils;
+
+    /** Key wrapping the RequestInfo in every egov service-call body. */
+    private static final String REQUEST_INFO_KEY = "RequestInfo";
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
     private static final String LOCALIZATION_LOCALE = "en_IN";
@@ -110,19 +118,12 @@ public class FacilityKibanaMapper {
             builder.geoPoint(geoPoint);
         }
 
-        // Derive solar panel status the same way the im-services-analytics Kafka listener does:
-        // NON_FUNCTIONAL when any open incident for this boundary code is non-functional, else FUNCTIONAL.
-        // An explicit value in additionalDetails still takes precedence.
-        String solarPanelStatus = incidentStatusDao.resolveSolarPanelStatus(facility.getBoundaryCode());
-        if (facility.getAdditionalDetails() != null) {
-            Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
-            if (solarStatus != null && !solarStatus.toString().isBlank()) {
-                solarPanelStatus = solarStatus.toString();
-            }
-        }
-        builder.solarPanelStatus(solarPanelStatus);
+        applySolarPanelStatus(facility, builder);
 
-        applyMappedVendorFields(facility, builder);
+        applyMappedVendorFields(facility, builder, requestInfo);
+        if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
+            builder.solutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
+        }
 
         // Fetch boundary hierarchy and extract codes
         BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
@@ -160,6 +161,21 @@ public class FacilityKibanaMapper {
         FacilityKibanaIndex result = builder.build();
         // Populate the project name mapped to this facility so it lands in the index.
         result.setProjectName(resolveProjectName(facility, requestInfo, null));
+        FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), facility.getTenantId());
+        // AMC fields live only on the index (amc-scheduler-service owns them and they are never
+        // persisted here), so this freshly-built document has no source to rebuild them from - carry
+        // whatever is already indexed forward, otherwise an operator re-index would wipe them.
+        FacilityAmcFieldsHelper.copyAmcFields(existingDoc, result);
+        // Last resort for the mapped vendor, after HRMS and the facility row have both come up empty:
+        // keep what is already indexed. A document published without it replaces one that had it, so
+        // the alternative to carrying a possibly-stale vendor forward is erasing a real one.
+        if (existingDoc != null && StringUtils.isBlank(result.getMappedVendorUserName())
+                && StringUtils.isNotBlank(existingDoc.getMappedVendorUserName())) {
+            log.info("Carrying indexed mapped vendor forward for facilityId={}: neither HRMS nor the "
+                    + "facility row holds one", facility.getFacilityId());
+            result.setMappedVendorUserName(existingDoc.getMappedVendorUserName());
+            result.setMappedVendorName(existingDoc.getMappedVendorName());
+        }
         // Log the full boundary object in the result
         if (result.getBoundary() != null) {
             log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
@@ -170,10 +186,54 @@ public class FacilityKibanaMapper {
     }
 
     /**
+     * Derives solar panel status and the time the facility went non-functional, and sets both on
+     * {@code builder}.
+     *
+     * <p>Status is computed the same way the im-services-analytics Kafka listener does: NON_FUNCTIONAL
+     * when any open incident for this boundary code is non-functional, else FUNCTIONAL. An explicit
+     * value in {@code additionalDetails} still takes precedence over the incident-derived status.
+     */
+    private void applySolarPanelStatus(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        IncidentStatusDao.SolarPanelState solarPanelState =
+                incidentStatusDao.resolveSolarPanelState(facility.getBoundaryCode());
+        String solarPanelStatus = solarPanelState.status();
+        Long nonFunctionalTimestamp = solarPanelState.nonFunctionalSince();
+
+        Object override = facility.getAdditionalDetails() != null
+                ? facility.getAdditionalDetails().get("solarPanelStatus")
+                : null;
+        if (override != null && !override.toString().isBlank()) {
+            solarPanelStatus = override.toString();
+            // The override replaces the incident-derived status, so the incident-derived timestamp no
+            // longer describes it. Keep it only while the override still says non-functional.
+            if (!IncidentStatusDao.NON_FUNCTIONAL.equals(solarPanelStatus)) {
+                nonFunctionalTimestamp = null;
+            }
+        }
+
+        builder.solarPanelStatus(solarPanelStatus);
+        builder.nonFunctionalTimestamp(nonFunctionalTimestamp);
+    }
+
+    /**
      * Updates only mutable "display" fields for an existing Kibana index document.
      * Falls back to full mapping when no existing document can be found.
      */
     public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo) {
+        return toKibanaIndexForFacilityUpdate(facility, requestInfo, false);
+    }
+
+    /**
+     * @param mappedVendorInPayload whether the update that triggered this actually named a mapped
+     *                              vendor. Only then may a null blank the indexed one - that is a
+     *                              deliberate unmapping. An update that never mentioned the vendor
+     *                              carries null simply because the facility row holds none, and
+     *                              writing that through erased vendors the row never had: the
+     *                              document is replaced wholesale, not merged, so a single
+     *                              unrelated facility edit wiped the mapping off the dashboard.
+     */
+    public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo,
+                                                              boolean mappedVendorInPayload) {
         if (facility == null) {
             log.info("Skipping Kibana index update mapping: facility is null");
             return null;
@@ -205,10 +265,22 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        existingDoc.setMappedVendorName(facility.getMappedVendorName());
-        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
-                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        if (mappedVendorInPayload || FacilityMappedVendorHelper.hasMappedVendor(facility)) {
+            existingDoc.setMappedVendorName(facility.getMappedVendorName());
+            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+            log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                    facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
+        } else {
+            log.info("Keeping indexed mapped vendor for facilityId={} (name={}, userName={}): this update "
+                            + "named none and the facility row holds none",
+                    facility.getFacilityId(), existingDoc.getMappedVendorName(),
+                    existingDoc.getMappedVendorUserName());
+        }
+        if (facility.getFacilityDetails() != null && facility.getFacilityDetails().getSolarSolutionDesignType() != null) {
+            existingDoc.setSolutionDesignType(facility.getFacilityDetails().getSolarSolutionDesignType().name());
+        }
+        // AMC fields need no handling here: existingDoc was deserialized from the indexed document, so
+        // it already carries them and they round-trip untouched.
         // Refresh projectName from the project service; keep the already-indexed value when the
         // lookup yields nothing so it is never lost on a re-index.
         existingDoc.setProjectName(resolveProjectName(facility, requestInfo, existingDoc.getProjectName()));
@@ -348,7 +420,7 @@ public class FacilityKibanaMapper {
 
         Map<String, Object> body = new HashMap<>();
         if (requestInfo != null) {
-            body.put("RequestInfo", requestInfo);
+            body.put(REQUEST_INFO_KEY, requestInfo);
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -435,46 +507,109 @@ public class FacilityKibanaMapper {
         return boundaryCode.substring(i + 1);
     }
 
-    @SuppressWarnings("unchecked")
-    private void applyMappedVendorFields(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+    /**
+     * Resolves the facility's mapped vendor and sets it on {@code builder}.
+     *
+     * <p>HRMS is asked first and the facility row is consulted only when HRMS names no vendor. This
+     * path builds the index document from scratch and then replaces whatever is indexed, so a vendor
+     * missing from the row is a vendor erased from the index - and the row is the weaker source:
+     * vendor-registry maps a vendor by writing the facility's boundary onto the
+     * vendor's HRMS jurisdictions and only afterwards pushes the names down onto the facility, so a
+     * mapping made before that push existed, or one whose push failed, lives in HRMS alone.
+     *
+     * <p>Both values come from the same employee when HRMS answers, never one from each source: a
+     * display name paired with another vendor's username would read as a real mapping while sending
+     * every ticket to the wrong place.
+     */
+    private void applyMappedVendorFields(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder,
+                                         RequestInfo requestInfo) {
+        if (facility == null) {
+            return;
+        }
         FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+
+        MappedVendor vendor = resolveMappedVendorFromHrms(facility, requestInfo);
+        if (vendor == null) {
+            vendor = resolveMappedVendorFromFacility(facility);
+        }
+        if (vendor.userName() != null) {
+            builder.mappedVendorUserName(vendor.userName());
+        }
+        if (vendor.name() != null) {
+            builder.mappedVendorName(vendor.name());
+        }
+    }
+
+    /** A mapped vendor as the index carries it; either half may be null. */
+    private record MappedVendor(String name, String userName) {
+    }
+
+    /**
+     * The mapped vendor HRMS holds for this facility, or {@code null} when it names none - in which
+     * case the caller falls back to the facility row as a whole rather than to its name alone, so
+     * the two halves always describe one vendor.
+     */
+    private MappedVendor resolveMappedVendorFromHrms(Facility facility, RequestInfo requestInfo) {
+        // The bare RequestInfo, not a {RequestInfo: ...} wrapper: getMappedVendorByBoundaryCode
+        // wraps it itself. Passing a wrapper built one double-wrapped body, which HRMS answered
+        // with nothing, so this lookup never once resolved a vendor.
+        Employee mappedVendor = hrmsUtils.getMappedVendorByBoundaryCode(
+                requestInfo != null ? requestInfo : new RequestInfo(),
+                facility.getBoundaryCode());
+        if (mappedVendor == null) {
+            return null;
+        }
+        User vendorUser = mappedVendor.getUser();
+        String userName = firstNonBlankString(
+                vendorUser != null ? vendorUser.getUserName() : null,
+                mappedVendor.getCode());
+        if (userName == null) {
+            return null;
+        }
+        log.info("Resolved mapped vendor from HRMS for facilityId={} (userName={})",
+                facility.getFacilityId(), userName);
+        return new MappedVendor(vendorUser != null ? firstNonBlankString(vendorUser.getName()) : null, userName);
+    }
+
+    /**
+     * The mapped vendor as the facility row carries it: the columns first, then the spellings that
+     * have accumulated in {@code additionalDetails}. Either half may come back null.
+     */
+    private MappedVendor resolveMappedVendorFromFacility(Facility facility) {
         String user = firstNonBlankString(facility.getMappedVendorUserName());
         String name = firstNonBlankString(facility.getMappedVendorName());
         Map<String, Object> ad = facility.getAdditionalDetails();
-        if (ad != null && !ad.isEmpty()) {
-            if (user == null) {
-                user = firstNonBlankString(
-                        ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_USER_NAME_KEY),
-                        ad.get("mapped_vendor_user_name"),
-                        ad.get("mappedVendorUsername"));
-            }
-            if (name == null) {
-                name = firstNonBlankString(
-                        ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_NAME_KEY),
-                        ad.get("mapped_vendor_name"));
-            }
-            if (user == null || name == null) {
-                Object nested = ad.get("vendor");
-                if (nested instanceof Map) {
-                    Map<String, Object> v = (Map<String, Object>) nested;
-                    if (user == null) {
-                        user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
-                    }
-                    if (name == null) {
-                        name = firstNonBlankString(v.get("name"), v.get("vendorName"));
-                    }
-                }
-            }
+        if (ad == null || ad.isEmpty()) {
+            return new MappedVendor(name, user);
         }
-        if (user == null && name == null) {
-            return;
+        if (user == null) {
+            user = firstNonBlankString(
+                    ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_USER_NAME_KEY),
+                    ad.get("mapped_vendor_user_name"),
+                    ad.get("mappedVendorUsername"));
         }
-        if (user != null) {
-            builder.mappedVendorUserName(user);
+        if (name == null) {
+            name = firstNonBlankString(
+                    ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_NAME_KEY),
+                    ad.get("mapped_vendor_name"));
         }
-        if (name != null) {
-            builder.mappedVendorName(name);
+        Map<String, Object> nested = asStringKeyedMap(ad.get("vendor"));
+        if (nested == null) {
+            return new MappedVendor(name, user);
         }
+        if (user == null) {
+            user = firstNonBlankString(
+                    nested.get("userName"), nested.get("mappedVendorUserName"), nested.get("username"));
+        }
+        if (name == null) {
+            name = firstNonBlankString(nested.get("name"), nested.get("vendorName"));
+        }
+        return new MappedVendor(name, user);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asStringKeyedMap(Object value) {
+        return value instanceof Map ? (Map<String, Object>) value : null;
     }
 
     private static String firstNonBlankString(Object... values) {
@@ -547,7 +682,7 @@ public class FacilityKibanaMapper {
             RequestInfo requestInfo
     ) {
         Map<String, Object> requestBody =
-                requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+                requestInfo != null ? Map.of(REQUEST_INFO_KEY, requestInfo) : Map.of();
 
         String uri = UriComponentsBuilder.fromUriString(boundaryHost)
                 .path(boundaryRelationshipSearchPath)
@@ -1123,6 +1258,74 @@ public class FacilityKibanaMapper {
             return updated;
         } catch (Exception e) {
             log.error("Unable to update projectName for facilityId={} tenantId={}: {}",
+                    facilityId, tenantId, e.getMessage(), e);
+            return -1;
+        }
+    }
+
+    /**
+     * Writes AMC fields onto the indexed document(s) for a facility via {@code _update_by_query},
+     * touching nothing else. This is deliberately index-only: AMC data belongs to
+     * amc-scheduler-service and is <em>not</em> persisted in the facility table, so it never goes
+     * through the facility {@code _update} API (whose payload the persister would write to
+     * {@code additional_details}) nor through the indexer Kafka topic.
+     *
+     * <p>Keys mapped to {@code null} are written as null, which is how a cleared AMC or a shortened
+     * cadence clears the previously indexed value instead of leaving an orphan behind.
+     *
+     * <p>{@code _update_by_query} only touches documents that already exist: a facility that is not
+     * indexed yet (e.g. not ONM-ready) is a no-op, reported as 0 updated.
+     *
+     * @return number of documents updated, or {@code -1} when the update call failed
+     */
+    public int updateAmcFieldsByFacilityId(String facilityId, String tenantId, Map<String, Object> amcFields) {
+        if (facilityId == null || facilityId.isBlank()) {
+            log.warn("Skipping AMC index update: facilityId is null or blank");
+            return -1;
+        }
+        if (amcFields == null || amcFields.isEmpty()) {
+            log.debug("Skipping AMC index update for facilityId={}: no fields supplied", facilityId);
+            return 0;
+        }
+        try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+            mustClauses.add(Map.of("term", Map.of("Data.facilityId.keyword", facilityId)));
+            if (tenantId != null && !tenantId.isBlank()) {
+                mustClauses.add(Map.of("term", Map.of("Data.tenantId.keyword", tenantId)));
+            }
+
+            // HashMap, not Map.of: the values are intentionally nullable.
+            Map<String, Object> params = new HashMap<>();
+            params.put("amcFields", amcFields);
+
+            Map<String, Object> body = Map.of(
+                    "query", Map.of("bool", Map.of("must", mustClauses)),
+                    "script", Map.of(
+                            "source", "if (ctx._source.Data == null) { ctx._source.Data = [:]; } "
+                                    + "for (entry in params.amcFields.entrySet()) { "
+                                    + "ctx._source.Data[entry.getKey()] = entry.getValue(); }",
+                            "lang", "painless",
+                            "params", params)
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/_update_by_query?refresh=true";
+            HttpEntity<Object> entity = new HttpEntity<>(body, buildHeaders());
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.POST, entity, Map.class);
+
+            Map<String, Object> respBody = response != null ? response.getBody() : null;
+            int updated = 0;
+            if (respBody != null && respBody.get("updated") instanceof Number) {
+                updated = ((Number) respBody.get("updated")).intValue();
+            }
+            if (updated == 0) {
+                log.info("AMC index update matched no document for facilityId={} tenantId={} "
+                        + "(facility not indexed yet?)", facilityId, tenantId);
+            } else {
+                log.info("Updated AMC fields on {} indexed document(s) for facilityId={}", updated, facilityId);
+            }
+            return updated;
+        } catch (Exception e) {
+            log.error("Unable to update AMC fields for facilityId={} tenantId={}: {}",
                     facilityId, tenantId, e.getMessage(), e);
             return -1;
         }

@@ -44,8 +44,36 @@ public class IncidentQueryBuilder {
         return queryBuilder.toString();
     }
 
+    /**
+     * Oldest still-open ticket that reports the system as non-functional. This is the point in time
+     * the facility stopped being functional: every later non-functional ticket is a symptom of an
+     * outage that had already started, so the minimum {@code createdtime} is the one that matters.
+     *
+     * <p>Deliberately scoped to the same open/non-functional set as {@link #SYSTEM_FUNCTIONAL_STATUS}
+     * so the timestamp can never contradict the {@code solarPanelStatus} derived alongside it -
+     * {@code MIN} over an empty set yields {@code NULL}, which is exactly the value a functional
+     * facility must publish.
+     */
+    private static final String OLDEST_OPEN_NON_FUNCTIONAL_CREATED_TIME =
+            "SELECT MIN(createdtime) " +
+                    "FROM public.eg_incident_v2 " +
+                    "WHERE systemfunctional = 'NON_FUNCTIONAL' " +
+                    "  AND applicationstatus NOT IN (" +
+                    "  " + CLOSED_STATUSES +
+                    ")";
+
     public String getStatusSystemFunctionalIncident(String boundaryCode, List<Object> preparedStmtList) {
         StringBuilder queryBuilder = new StringBuilder(SYSTEM_FUNCTIONAL_STATUS);
+        if (boundaryCode != null && !boundaryCode.isEmpty()) {
+            queryBuilder.append(" AND boundarycode =? ");
+            preparedStmtList.add(boundaryCode);
+        }
+
+        return queryBuilder.toString();
+    }
+
+    public String getOldestOpenNonFunctionalCreatedTime(String boundaryCode, List<Object> preparedStmtList) {
+        StringBuilder queryBuilder = new StringBuilder(OLDEST_OPEN_NON_FUNCTIONAL_CREATED_TIME);
         if (boundaryCode != null && !boundaryCode.isEmpty()) {
             queryBuilder.append(" AND boundarycode =? ");
             preparedStmtList.add(boundaryCode);

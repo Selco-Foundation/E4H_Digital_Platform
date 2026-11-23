@@ -23,6 +23,7 @@ public class FieldPlanTemplateQueryBuilder {
     private static final String FETCH_TEMPLATE_QUERY =
             "SELECT fpt.id AS fpt_id, fpt.tenant_id AS fpt_tenantId, fpt.field_plan_id AS fpt_fieldPlanId, "
                     + "fpt.system_type AS fpt_systemType, fpt.total_capacity AS fpt_totalCapacity, fpt.file_store_id AS fpt_fileStoreId,"
+                    + "fpt.rectification_site AS fpt_rectificationSite, "
                     + "fpt.template_data AS fpt_templateData, fpt.created_by AS fpt_createdBy, "
                     + "fpt.last_modified_by AS fpt_lastModifiedBy, fpt.created_time AS fpt_createdTime, "
                     + "fpt.last_modified_time AS fpt_lastModifiedTime "
@@ -125,6 +126,12 @@ public class FieldPlanTemplateQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fpt.file_store_id IN (").append(createQuery(criteria.getFileStoreId())).append(")");
             preparedStmtList.addAll(criteria.getFileStoreId());
+        }
+
+        if (criteria.getRectificationSite() != null) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" fpt.rectification_site = ? ");
+            preparedStmtList.add(criteria.getRectificationSite());
         }
 
         if (lastChangedSince != null) {

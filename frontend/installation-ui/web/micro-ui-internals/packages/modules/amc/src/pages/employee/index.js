@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Route, Switch, useRouteMatch } from "react-router-dom";
+import { Route, Switch, useLocation, useRouteMatch } from "react-router-dom";
 import VisitTable from "./VisitTable";
 import VisitDetails from "./VisitDetails";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
@@ -12,6 +12,7 @@ const AMCApp = () => {
   const { t } = useTranslation();
   const { path } = useRouteMatch();
   const match = useRouteMatch();
+  const location = useLocation();
   const navigator = useSelector((state) => state.amc.common);
 
   const breadcrumbConfig = {
@@ -27,7 +28,8 @@ const AMCApp = () => {
     },
     reportLevelView: {
       content: t("AMC_REPORT_LEVEL_VIEW"),
-      internalLink: match.url + `/reports`,
+      // Preserve report filters and pagination when returning from a report detail route.
+      internalLink: match.url + `/reports${location.search || ""}`,
       show: true,
     },
     amcVisits: {

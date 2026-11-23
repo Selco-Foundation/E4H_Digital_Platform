@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { ActivityService } from "../services/Activity";
+import { isRectificationSite } from "../components/Custom/RectificationBadge";
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "";
@@ -10,6 +11,15 @@ const formatDate = (timestamp) => {
   return `${month}/${day}/${year}`;
 };
 
+// Assessment activities are tracked by the assessment module's own mark-complete flow, which
+// has no reason to update the generic Activity-tracking service's completedAt field - it's
+// effectively always 0 for assessments, so fall back to the plan's own defined end date instead.
+const getActivityEndDate = (activityFacility) => (
+  activityFacility?.activityType?.toUpperCase() === "ASSESSMENT"
+    ? activityFacility?.fieldPlan?.endDate
+    : activityFacility?.completedAt
+);
+
 const formatFacilities = (facilities) => {
   return facilities?.map((row) => ({
     id: row?.activityFacility?.id,
@@ -19,7 +29,8 @@ const formatFacilities = (facilities) => {
     fieldPlanId: row?.activityFacility?.fieldPlan?.id,
     fieldPlanCode: row?.activityFacility?.fieldPlan?.name,
     activityStartDate: formatDate(row?.activityFacility?.activatedAt),
-    activityEndDate: formatDate(row?.activityFacility?.completedAt),
+    activityEndDate: formatDate(getActivityEndDate(row?.activityFacility)),
+    isRectificationSite: isRectificationSite(row?.activityFacility?.additionalDetails),
   }));
 };
 

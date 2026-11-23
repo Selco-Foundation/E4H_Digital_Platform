@@ -198,6 +198,7 @@ SFP_FIELD_MAP_HYBRID = {
 
 SFP_FIELD_MAP_AC_OFF = {
     (138, 1): "sfp_date",
+    (138, 13): "sfp_time",
     (139, 6): "sfp_weather",
     (141, 4): "array_size_kwp",
     (141, 10): "array_no_modules",
@@ -420,6 +421,161 @@ SFP_FIELD_MAPS = {
     "ac_on_grid": SFP_FIELD_MAP_AC_ON_GRID,
 }
 
+# ON GRID SYSTEM FUNCTIONALITY PARAMETERS: Data_Ingestion_Map (section, label) -> the
+# common-masters.BOMFormSchema fieldNames (AssetForm.AC_ON_GRID_*), one per occurrence of the pair
+# in sheet order - the 3-Phase table repeats its labels for R-N, Y-N, B-N, then R-Y, R-B, Y-B.
+# Keyed by label rather than (row, col) so a row inserted in the ICC sheet does not shift every
+# value onto its neighbour's key, which is what happened to SFP_FIELD_MAP_AC_ON_GRID.
+_ONGRID_3PH = ("r_phase_neutral", "y_phase_neutral", "b_phase_neutral")
+_ONGRID_3PH_LL = ("r_y_phase", "r_b_phase", "y_b_phase")
+_ONGRID_STRINGS = [f"String {i}" for i in range(1, 6)] + ["Array"]
+_ONGRID_STRING_KEYS = [f"string{i}" for i in range(1, 6)] + ["array"]
+_ONGRID_POLARITY = (
+    [(f"Array Junction Box: String {i} {'–' if i == 1 else '-'} Input Lines",
+      f"ongrid_ajb_string{i}_input_lines_status") for i in range(1, 6)]
+    + [(f"Array Junction Box: String {i} - Output Lines", f"ongrid_ajb_string{i}_output_lines_status")
+       for i in range(1, 6)]
+    + [(f"PCU/Inverter: PV Input Line {i}", f"ongrid_pcu_pv_input_line{i}_status") for i in range(1, 6)]
+    + [
+        ("PCU/Inverter: PCU Output (R-Y-B-N)", "ongrid_pcu_output_rybn_status"),
+        ("ACDB-1 PCU (R-Y-B-N)", "ongrid_acdb1_pcu_rybn_status"),
+        ("ACDB-1 ACDB-1 (R-Y-B-N)", "ongrid_acdb1_rybn_status"),
+        ("Solar Check Meter: ACDB-1 (R-Y-B-N)", "ongrid_solar_check_meter_acdb1_rybn_status"),
+        ("Solar Check Meter: Solar Check Meter (R-Y-B-N)", "ongrid_solar_check_meter_rybn_status"),
+        ("LT Panel Solar Check Meter (R-Y-B-N)", "ongrid_lt_panel_solar_check_meter_rybn_status"),
+        ("LT Panel Bi-Directional Meter (R-Y-B-N)", "ongrid_lt_panel_bidirectional_meter_rybn_status"),
+        ("Bi-Directional Meter: ACDB-2 (R-Y-B-N)", "ongrid_bidirectional_meter_acdb2_rybn_status"),
+        ("Bi-Directional Meter: Grid (R-Y-B-N)", "ongrid_bidirectional_meter_grid_rybn_status"),
+    ]
+)
+_ONGRID_CONTINUITY = [
+    ("DC side: Panel - Panel", "panel_panel"), ("DC side: Panel - MMS", "panel_mms"),
+    ("DC side: MMS - AJB", "mms_ajb"), ("DC side: AJB - Busbar", "ajb_busbar"),
+    ("DC side: Busbar - Earth pit", "busbar_earth_pit_dc"), ("AC side: Inverter - Busbar", "inverter_busbar"),
+    ("AC side: ACDB - Busbar", "acdb_busbar"), ("AC side: LT Panel - Busbar", "lt_panel_busbar"),
+    ("AC side: Loads - Busbar", "loads_busbar"), ("AC side: CO Switch - Busbar", "co_switch_busbar"),
+    ("AC side: Busbar - Earth pit", "busbar_earth_pit_ac"),
+    ("Lightning Arrester 1 LA - Aluminium cable", "la1_aluminium_cable"),
+    ("Lightning Arrester 1 Aluminium cable – GI strip", "la1_cable_gi_strip"),
+    ("Lightning Arrester 1 GI strip – Earth pit", "la1_gi_strip_earth_pit"),
+    ("Lightning Arrester 2 LA - Aluminium cable", "la2_aluminium_cable"),
+    ("Lightning Arrester 2 Aluminium cable – GI strip", "la2_cable_gi_strip"),
+    ("Lightning Arrester 2 GI strip – Earth pit", "la2_gi_strip_earth_pit"),
+    ("AC – DC Earth pit interconnection", "ac_dc_earth_pit_interconnection"),
+    ("LA 1 – LA 2 Earth pit interconnection", "la1_la2_earth_pit_interconnection"),
+]
+_ONGRID_BREAKERS = (
+    [(f"PV Line-{i} & PCU MCB Isolator", f"pv_line_{i}_pcu_mcb") for i in range(1, 6)]
+    + [(f"ACDB Contactor {p}", f"acdb_contactor_{p.replace('-', '').lower()}") for p in ("R-Y", "Y-B", "R-B")]
+    + [(f"ACDB MCB {p}", f"acdb_mcb_{p.replace('-', '').lower()}") for p in ("R-Y", "Y-B", "R-B")]
+    + [(f"LT Panel Main MCB {p}", f"lt_panel_main_mcb_{p.replace('-', '').lower()}") for p in ("R-Y", "Y-B", "R-B")]
+    + [(f"LT Panel Phase MCB-{m} {p}", f"lt_panel_phase_mcb_{m}_{p.replace('-', '').lower()}")
+       for m in (1, 2, 3) for p in ("R-Y", "Y-B", "R-B")]
+)
+_ONGRID_ORIENTATION = [
+    ("Is the orientation on the solar system’s basic operational instructions given to the health center POC?",
+     "ongrid_operational_instructions_status"),
+    ("Is the orientation on the solar system’s basic routine maintenance given to the health center POC?",
+     "ongrid_routine_maintenance_status"),
+    ("Are the stickers containing POCs pasted in the control room?", "ongrid_stickers_pasted_status"),
+    ("Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
+     "ongrid_posters_pasted_status"),
+    ("Are the warranty cards for the solar panel handed over to the health facility",
+     "ongrid_warranty_cards_solar_panel_status"),
+    ("Are the warranty cards for the PCU/Inverter-CCU handed over to the health facility",
+     "ongrid_warranty_cards_pcu_inverter_ccu_status"),
+    ("Are the warranty cards for the solar Bi-directional meter handed over to the health facility",
+     "ongrid_warranty_cards_bidirectional_meter_status"),
+    ("Are the warranty cards for the solar check meter handed over to the health facility",
+     "ongrid_warranty_cards_solar_check_meter_status"),
+]
+
+# (section, label, [fieldName per occurrence], text printed in the value cell, is a tick option)
+_SFP_LABEL_ROWS_AC_ON_GRID = (
+    [
+        ("System Functionality Parameters", "Date of recording", ["ongrid_date_of_recording"], "Date of recording:", False),
+        ("System Functionality Parameters", "Time of recording", ["ongrid_time_of_recording"], "Time of recording:", False),
+        ("System Functionality Parameters", "Weather Condition (tick)", ["ongrid_weather_condition"], "Clear Sky", True),
+        ("Array Details", "Array Size (kWp)", ["ongrid_array_size_kwp"], None, False),
+        ("Array Details", "No. of modules", ["ongrid_array_no_modules"], None, False),
+        ("Array Details", "No. of strings", ["ongrid_array_no_strings"], None, False),
+        ("Array Details", "Each module capacity (Wp)", ["ongrid_array_each_module_capacity_wp"], None, False),
+    ]
+    + [("Array Details", f"No. of modules String {i}", [f"ongrid_array_modules_string{i}"], None, False)
+       for i in range(1, 6)]
+    + [("Array Details", f"{measure} {label}", [f"ongrid_ajb_{phase}_{key}_mv"], f"{label}:", False)
+       for measure, phase in (("Voc (Volts)", "off_voc"), ("Vmp (Volts)", "on_vmp"),
+                              ("Imp (Amperes)", "on_imp"), ("Pmp (Watts)", "on_pmp"))
+       for label, key in zip(_ONGRID_STRINGS, _ONGRID_STRING_KEYS)]
+    + [
+        ("PCU/Inverter & Charge Controller Details", "Number of PCUs/Inverters", ["ongrid_no_of_pcus_inverters"], None, False),
+        ("PCU/Inverter & Charge Controller Details", "Number of Charge Controllers", ["ongrid_no_of_charge_controllers"], None, False),
+        ("PCU/Inverter & Charge Controller Details", "Ratings of each PCU/Inverter (kVA)", ["ongrid_each_pcu_rating_kva"], "kVA:", False),
+        ("PCU/Inverter & Charge Controller Details", "Ratings of each PCU/Inverter (Phase)", ["ongrid_each_pcu_rating_phase"], "Phase:", False),
+        ("PCU/Inverter & Charge Controller Details", "Charge Controller ratings", ["ongrid_charge_controller_ratings"], None, False),
+        ("PCU/Inverter & Charge Controller Details", "Total capacity of the PCU/Inverter (kVA)", ["ongrid_total_pcu_capacity_kva"], "kVA:", False),
+        ("PCU/Inverter & Charge Controller Details", "Number of MPPTs", ["ongrid_no_of_mppts"], None, False),
+        ("1-Phase PCU/Inverter Parameters", "Load voltage/Inverter output voltage", ["ongrid_1ph_load_voltage_mv"], None, False),
+        ("1-Phase PCU/Inverter Parameters", "Inverter output frequency", ["ongrid_1ph_output_frequency_mv"], None, False),
+        ("1-Phase PCU/Inverter Parameters", "Inverter output power", ["ongrid_1ph_output_power_mv"], None, False),
+        ("3-Phase PCU/Inverter Parameters", "Load voltage/Inverter output voltage",
+         [f"ongrid_3ph_{p}_mv" for p in _ONGRID_3PH], None, False),
+        ("3-Phase PCU/Inverter Parameters", "Inverter output frequency",
+         [f"ongrid_3ph_{p}_freq_mv" for p in _ONGRID_3PH + _ONGRID_3PH_LL], None, False),
+        ("3-Phase PCU/Inverter Parameters", "Inverter output current at full load",
+         [f"ongrid_3ph_{p}_current_mv" for p in _ONGRID_3PH], None, False),
+        ("3-Phase PCU/Inverter Parameters", "Inverter output voltage",
+         [f"ongrid_3ph_{p}_voltage_mv" for p in _ONGRID_3PH_LL], None, False),
+        ("PCU/Inverter Display", "Display", ["ongrid_pcu_display_status"], "ON - Clear display", True),
+        ("PCU/Inverter Display", "Parameters", ["ongrid_pcu_display_parameters"], "Normal", True),
+        ("Earth Pit Tests", "DC Earthing", ["ongrid_earth_pit_dc_earthing_mv"], None, False),
+        ("Earth Pit Tests", "AC Earthing", ["ongrid_earth_pit_ac_earthing_mv"], None, False),
+        ("Earth Pit Tests", "Lightning arrester-1", ["ongrid_earth_pit_lightning_arrester_1_mv"], None, False),
+        ("Earth Pit Tests", "Lightning arrester-2", ["ongrid_earth_pit_lightning_arrester_2_mv"], None, False),
+    ]
+    + [("Power Lines Polarity Check", label, [key], "Verified", True) for label, key in _ONGRID_POLARITY]
+    + [("Earth-Down Conductor Continuity Test", label, [f"ongrid_continuity_{key}_mv"], None, False)
+       for label, key in _ONGRID_CONTINUITY]
+    + [("Isolator & Breaker Functionality Check", f"{label} - {state}", [f"ongrid_{key}_{state.lower()}_voltage"], None, False)
+       for label, key in _ONGRID_BREAKERS for state in ("ON", "OFF")]
+    + [("Orientation Checklist", label, [key], "YES", True) for label, key in _ONGRID_ORIENTATION]
+)
+
+SFP_LABEL_FIELDS = {
+    "ac_on_grid": {
+        (normalize_label(section), normalize_label(label)): (keys, printed, is_option)
+        for section, label, keys, printed, is_option in _SFP_LABEL_ROWS_AC_ON_GRID
+    },
+}
+
+# What a technician adds to a printed tick-box option to select it.
+_TICK_MARKS = {"✓", "✔", "√", "☑", "x", "yes", "y", "tick", "ticked"}
+
+
+def sfp_cell_value(value, printed, is_option):
+    """The value recorded in an SFP cell, without the text the ICC sheet prints in it.
+
+    A cell holding a prefix ("String 1:", "kVA:") gives what follows it, None when nothing does.
+    A tick-box option ("Clear Sky", "YES") left as printed gives None - an untouched option cannot
+    be told apart from a selected one; with a tick mark added it gives the option, and anything
+    else typed over it is returned as typed.
+    """
+    if not isinstance(value, str):
+        return value
+    text = re.sub(r"\s+", " ", value).strip()
+    if not printed:
+        return text or None
+    rest = text
+    if text.lower().startswith(printed.lower()):
+        rest = text[len(printed):].strip(" :-")
+    elif is_option and text.lower() in _TICK_MARKS:
+        return printed
+    if is_option:
+        if not rest:
+            return None
+        return printed if rest.lower() in _TICK_MARKS else text
+    return rest or None
+
 
 def slugify(label):
     label = re.sub(r"\(([^)]*)\)", r" \1 ", label)
@@ -520,7 +676,42 @@ def load_data_ingestion_map(wb):
             instances[-1]["cells"].append((row_no, col_no))
         else:
             instances.append({"section": section, "label": base_label, "cells": [(row_no, col_no)]})
+    _append_load_wiring_description_cells(wb, instances)
     return instances
+
+
+LOAD_WIRING_SECTION = "Bill Of Material (For Load Wiring)"
+_HEADER_SEARCH_ROWS = 5
+
+
+def _append_load_wiring_description_cells(wb, instances):
+    """Load Wiring's Description has its own column in the ICC Report sheet (after Quantity),
+    matching the template's last column, but Data_Ingestion_Map only lists the Make, Capacity
+    and Quantity cells of each row. Find the "Description" column in the section's header row
+    (just above its first row) and append that cell to every row that doesn't list it already,
+    so the row lines up with the template's Make / Capacity / Quantity / Description columns.
+
+    An older file without a Description column is left as is: its *_description keys stay unset.
+    """
+    rows = [inst for inst in instances if inst["section"] == LOAD_WIRING_SECTION]
+    if not rows:
+        return
+    ws = wb[DATA_SHEET]
+    first_row = min(r for inst in rows for r, _c in inst["cells"])
+    description_col = None
+    for header_row in range(first_row - 1, max(first_row - 1 - _HEADER_SEARCH_ROWS, 0), -1):
+        for cell in ws[header_row]:
+            if cell.value is not None and normalize_label(cell.value) == "description":
+                description_col = cell.column
+                break
+        if description_col is not None:
+            break
+    if description_col is None:
+        return
+    for inst in rows:
+        row_no = inst["cells"][-1][0]
+        if all(r == row_no for r, _c in inst["cells"]) and all(c != description_col for _r, c in inst["cells"]):
+            inst["cells"].append((row_no, description_col))
 
 
 def detect_system_type(instances):
@@ -604,14 +795,25 @@ def align_bom_rows(template_entries, excel_instances, section, unmatched):
 
 
 def zip_section(template_entries, excel_instances, section, unmatched):
+    """
+    Map each template placeholder key to the Excel cell(s) it reads from.
+
+    A template cell can hold several placeholders while the Excel row only has one value cell
+    for it - e.g. RMS "{{rms_type_installed}} : {{rms_type_description}}" over the single merged
+    "Installation Description" N:W cell. In those RMS rows the first key (rms_type_installed,
+    rms_installation_status, rms_meter_status, rms_airtel_network_available, rms_type) is
+    filled from the mobile app, so only the last key (the *_description / *_notes one) reads the
+    Excel value; the others are listed with no cell (null by default).
+    """
     output = {}
     for _label, value_keys, excel_cells in align_bom_rows(template_entries, excel_instances, section, unmatched):
         for col_idx, keys in enumerate(value_keys):
             if col_idx >= len(excel_cells) or not keys:
                 continue
             row_no, col_no = excel_cells[col_idx]
-            for key in keys:
-                output.setdefault(key, []).append((row_no, col_no))
+            output.setdefault(keys[-1], []).append((row_no, col_no))
+            for mobile_key in keys[:-1]:
+                output.setdefault(mobile_key, [])
     return output
 
 
@@ -627,9 +829,8 @@ BOM_ROLE_SUFFIXES = OrderedDict([
 def _bom_role_for_keys(keys):
     """Returns the display role name ('Make'/'Capacity'/'Quantity') for a template column's
     placeholder key(s), or None if none of them are a required BOM role (e.g. "_remarks",
-    "_description" alone). A column can carry more than one key (e.g. Load Wiring's combined
-    "Description & Make" column has both a "_description" and a "_make" key) - the column
-    counts as a "Make" column if any of its keys end with "_make"."""
+    "_description" alone, e.g. Load Wiring's Description column). A column can carry more than
+    one key - it counts as a "Make" column if any of its keys end with "_make"."""
     for key in keys:
         for suffix, role in BOM_ROLE_SUFFIXES.items():
             if key.endswith(suffix):
@@ -675,7 +876,7 @@ def _is_mandatory_bom_column(keys, mandatory_prefixes):
     )
 
 
-def validate_bom_editable_fields_filled(wb, detected_type):
+def validate_bom_editable_fields_filled(wb, detected_type, enforce_mandatory_components=True):
     """
     Validation 3 (BOM completeness): Make/Capacity/Quantity cells across the editable BOM tables
     (the "Bill Of Material..." sections listed in SECTION_TEMPLATE_HEADERS - Solar System /
@@ -693,6 +894,10 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     (non-blank but non-numeric) Quantity values are rare and specific, so those stay listed in
     full per-row detail.
 
+    enforce_mandatory_components=False (rectification ICC templates) skips the mandatory
+    Solar Module / Solar Battery / Inverter Make/Capacity/Quantity check only - the numeric
+    Quantity check still runs.
+
     Raises ICCValidationError on any failure (blank-mandatory and/or invalid-number); returns
     nothing on success.
     """
@@ -703,7 +908,7 @@ def validate_bom_editable_fields_filled(wb, detected_type):
     with open(template_path) as f:
         template = json.load(f)
 
-    mandatory_prefixes = _mandatory_bom_key_prefixes(detected_type)
+    mandatory_prefixes = _mandatory_bom_key_prefixes(detected_type) if enforce_mandatory_components else ()
 
     by_section = OrderedDict()
     for inst in instances:
@@ -749,10 +954,13 @@ def validate_bom_editable_fields_filled(wb, detected_type):
         error_lines.append(f"{section}: {', '.join(parts)} missing")
     error_lines.extend(invalid_numeric_errors)
 
+    if enforce_mandatory_components:
+        rules = ("Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in; "
+                 "every row's Quantity must also be a number wherever filled in")
+    else:
+        rules = "every row's Quantity must be a number wherever filled in"
     raise ICCValidationError(
-        "The uploaded ICC report has invalid fields in the editable BOM tables "
-        "(Make/Capacity/Quantity of Solar Module, Solar Battery and Inverter must be filled in; "
-        "every row's Quantity must also be a number wherever filled in):\n- "
+        f"The uploaded ICC report has invalid fields in the editable BOM tables ({rules}):\n- "
         + "\n- ".join(error_lines)
     )
 
@@ -772,6 +980,8 @@ def convert_icc_report(wb, detected_type):
         template = json.load(f)
 
     sfp_map = SFP_FIELD_MAPS.get(detected_type, {})
+    sfp_label_fields = SFP_LABEL_FIELDS.get(detected_type)
+    sfp_label_seen = {}
 
     by_section = OrderedDict()
     for inst in instances:
@@ -792,6 +1002,23 @@ def convert_icc_report(wb, detected_type):
                     fallback_fields.append((section, inst["label"], key))
             continue
 
+        if not header_text and sfp_label_fields is not None:
+            # Types with a label map: each recorded value goes to its MDMS fieldName.
+            for inst in section_instances:
+                pair = (normalize_label(section), normalize_label(inst["label"]))
+                keys, printed, is_option = sfp_label_fields.get(pair, ((), None, False))
+                for idx, (row_no, col_no) in enumerate(inst["cells"]):
+                    occurrence = sfp_label_seen.get(pair, 0)
+                    sfp_label_seen[pair] = occurrence + 1
+                    value = ws.cell(row=row_no, column=col_no).value
+                    if occurrence < len(keys):
+                        output[keys[occurrence]] = sfp_cell_value(value, printed, is_option)
+                        continue
+                    key = make_fallback_key(section, inst["label"], idx, len(inst["cells"]))
+                    fallback_fields.append((section, inst["label"], key))
+                    output[key] = sfp_cell_value(value, None, False)
+            continue
+
         if not header_text:
             # SYSTEM FUNCTIONALITY PARAMETERS (and its subsections) are out of scope for
             # conversion - always emit null rather than whatever the Data_Ingestion_Map cell
@@ -810,6 +1037,10 @@ def convert_icc_report(wb, detected_type):
         template_entries = extract_bom_entries(rows)
         key_cells = zip_section(template_entries, section_instances, section, unmatched_excel_fields)
         for key, cell_list in key_cells.items():
+            if not cell_list:
+                # Mobile-filled placeholder of a multi-key template cell: no Excel cell, null by default.
+                output.setdefault(key, None)
+                continue
             row_no, col_no = cell_list[-1]
             output[key] = ws.cell(row=row_no, column=col_no).value
 
@@ -918,7 +1149,8 @@ def validate_bom_brand_names(data, detected_type, mdms_client, request_info):
         )
 
 
-def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, request_info=None):
+def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, request_info=None,
+                         rectification_site=False):
     """Single entry point for the /icc-reports endpoint: raises ICCValidationError on any
     Validation 1/2/3/4 failure (nothing is saved in that case); otherwise returns
     (detected_type, data, fallback_fields, unmatched_fields).
@@ -935,6 +1167,9 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
     omit either to skip it (e.g. for callers/tests without MDMS access). There is no longer an
     MDMS-backed capacity-options check - Capacity is a free-form field for every BOM row,
     including Solar Module/Solar Battery/Inverter.
+
+    rectification_site=True (rectification ICC template) skips only the mandatory Solar Module /
+    Solar Battery / Inverter values of Validation 3; every other validation still runs.
     """
     try:
         wb = load_workbook(xlsx_path, data_only=True)
@@ -945,7 +1180,9 @@ def validate_and_convert(xlsx_path, requested_system_type, mdms_client=None, req
 
     errors = []
     try:
-        validate_bom_editable_fields_filled(wb, detected_type)
+        validate_bom_editable_fields_filled(
+            wb, detected_type, enforce_mandatory_components=not rectification_site
+        )
     except ICCValidationError as exc:
         errors.append(str(exc))
 

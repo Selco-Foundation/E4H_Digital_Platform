@@ -17,6 +17,7 @@ import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
+import { isICCRowComplete, withRectificationKey } from "../../utilities/ICCPrepopulationUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const getICCTemplates = (fieldPlan, fieldPlanData) => (
@@ -32,7 +33,7 @@ const getICCPrepopulationRows = (data) => Array.isArray(data) ? data : data?.icc
 const isICCPrepopulationComplete = (data) => {
   const rows = getUniqueICCPrepopulationRows(getICCPrepopulationRows(data));
 
-  return rows.length > 0 && rows.every((row) => row?.systemType && row?.totalSystemCapacity && row?.file);
+  return rows.length > 0 && rows.every(isICCRowComplete);
 };
 
 const getSystemCapacityValue = (capacity) => {
@@ -53,7 +54,7 @@ const getICCPrepopulationRowKey = (row = {}) => {
   const systemTypeKey = normalizeICCValue(row.systemType?.name || row.systemType?.code).replace(/[\s_-]+/g, "");
   const capacityKey = getSystemCapacityValue(row.totalSystemCapacity);
 
-  return systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "";
+  return withRectificationKey(systemTypeKey && capacityKey ? `${systemTypeKey}-${capacityKey}` : "", row.isRectification);
 };
 
 const getUniqueICCPrepopulationRows = (rows = []) => Object.values(rows.reduce((acc, row) => {
@@ -88,6 +89,7 @@ const getICCReportsFormData = (rows, fieldPlanId, tenantId) => {
     id: isSavedICCPrepopulationTemplate(row, fieldPlanId) ? row.template.id : "",
     systemType: row.systemType?.code,
     totalSystemCapacity: getSystemCapacityValue(row.totalSystemCapacity),
+    rectificationSite: Boolean(row.isRectification),
     fieldPlanId: fieldPlanId,
     tenantId: tenantId,
   }));
@@ -275,6 +277,16 @@ const CreateFieldPlan = () => {
     setToastQueue([]);
   }, []);
 
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const toastTimeout = setTimeout(closeToast, 4000);
+
+    return () => clearTimeout(toastTimeout);
+  }, [toast, closeToast]);
+
   const showToastMessages = (messages, key = "error") => {
     const formattedToasts = messages.filter(Boolean).map((message) => ({
       key,
@@ -450,7 +462,8 @@ const CreateFieldPlan = () => {
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
-          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+          label: response.apiErrorMessage || t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+          translate: false,
         })
         setInvalidDataError(null);
 
@@ -788,7 +801,7 @@ const CreateFieldPlan = () => {
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
               description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
-              activityData: activityData?.filter((activity) => activity?.code !== "AMC"),
+              activityData: activityData?.filter((activity) => activity?.code === "INS"),
             },
             route: "activities",
             nextRoute: "",
@@ -1209,6 +1222,7 @@ const CreateFieldPlan = () => {
         break;
       case 4:
         await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
+        break;
     }
   };
 
@@ -1507,7 +1521,7 @@ const CreateFieldPlan = () => {
                 </button>
               )}
             </div>
-          ) : t(toast.label)}
+          ) : (toast.translate === false ? toast.label : t(toast.label))}
           isDleteBtn={!hasCustomPrepopulationErrorToast}
           onClose={hasCustomPrepopulationErrorToast ? undefined : closeToast}
         />

@@ -66,29 +66,40 @@ public class FieldPlannerFacilityService {
     }
 
     public FieldPlanFacility create(FieldPlanFacilityRequest request) {
-        log.info("received request to create fieldplan facility");
+        log.trace("Entering create method for installation plan facility");
+        log.info("Received request to create installation plan facility");
         FieldPlanFacilityBulkRequest bulkRequest = FieldPlanFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .fieldPlanFacilities(Collections.singletonList(request.getFieldPlanFacility())).build();
-        log.info("creating bulk request");
-        return create(bulkRequest, false).get(0);
+        log.debug("Created bulk request for installation plan facility");
+        FieldPlanFacility result = create(bulkRequest, false).get(0);
+        log.info("Installation plan facility created successfully with ID: {}", result.getId());
+        log.trace("Exiting create method");
+        return result;
     }
 
     public List<FieldPlanFacility> create(FieldPlanFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to create bulk fieldplan facility");
-//
+        log.trace("Entering create method for bulk installation plan facility, isBulk: {}", isBulk);
+        log.info("Received request to create bulk installation plan facility, count: {}", request.getFieldPlanFacilities().size());
+
         validateCreateFieldPlanRequest(request);
+        log.debug("Installation plan facility creation request validated");
+
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
-                log.info("processing {} valid entities", fieldPlanFacilities.size());
+                log.debug("Processing {} installation plan facilities", fieldPlanFacilities.size());
                 fieldPlannerEnrichment.enrichFieldPlanFacilityOnCreate(fieldPlanFacilities, request);
+                log.debug("Installation plan facilities enriched, pushing to Kafka");
                 producer.push(fieldPlannerConfiguration.getCreateFieldPlanFacilityTopic(), fieldPlanFacilities);
-                log.info("successfully created project facility");
+                log.info("Successfully created {} installation plan facilities", fieldPlanFacilities.size());
+            } else {
+                log.warn("Empty installation plan facility list in create request");
             }
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating installation plan facilities", exception);
         }
 
+        log.trace("Exiting create method");
         return fieldPlanFacilities;
     }
 
@@ -98,17 +109,20 @@ public class FieldPlannerFacilityService {
                                                   String tenantId,
                                                   Long lastChangedSince,
                                                   Boolean includeDeleted) throws Exception {
-        log.info("received request to search project facility");
+        log.trace("Entering search method for installation plan facility");
+        log.info("Received request to search installation plan facility for tenant: {}", tenantId);
 
         if (isSearchByIdOnly(request.getCriteria())) {
-            log.info("searching project facility by id");
+            log.debug("Searching installation plan facility by ID");
             List<String> ids = request.getCriteria().getId();
-            log.info("fetching fieldplan facility with ids: {}", ids);
+            log.debug("Fetching installation plan facilities with IDs: {}", ids);
             List<FieldPlanFacility> fieldPlanFacilities = fieldPlanFacilityRepository.findById(ids, includeDeleted).stream()
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
                     .toList();
+            log.info("Installation plan facility search by ID completed, found {} results", fieldPlanFacilities.size());
+            log.trace("Exiting search method");
             return SearchResponse.<FieldPlanFacility>builder().response(fieldPlanFacilities).build();
         }
         log.info("searching project facility using criteria");
@@ -117,27 +131,37 @@ public class FieldPlannerFacilityService {
     }
 
     public List<SystemTypeCapacity> searchSystemTypeCapacity(FieldPlanFacilitySearchRequest request,
-                                                               Integer limit,
-                                                               Integer offset,
-                                                               String tenantId,
-                                                               Long lastChangedSince,
-                                                               Boolean includeDeleted) throws Exception {
-        log.trace("Entering searchSystemTypeCapacity method for field plan facility");
-        log.info("Received request to search systemType/totalSystemCapacity for field plan facility, tenant: {}", tenantId);
+                                                             Integer limit,
+                                                             Integer offset,
+                                                             String tenantId,
+                                                             Long lastChangedSince,
+                                                             Boolean includeDeleted) throws Exception {
+        log.trace("Entering searchSystemTypeCapacity method for installation plan facility");
+        log.info("Received request to search systemType/totalSystemCapacity for installation plan facility, tenant: {}", tenantId);
 
         SearchResponse<FieldPlanFacility> searchResponse = search(request, limit, offset, tenantId, lastChangedSince, includeDeleted);
-        Map<String, SystemTypeCapacity> uniqueCombinations = new LinkedHashMap<>();
+        // Rectification sites get their own ICC pre-population template, so the same
+        // systemType/totalSystemCapacity combination is listed once per rectificationSite value
+        // (regular combinations first, then rectification ones).
+        Map<String, SystemTypeCapacity> regularCombinations = new LinkedHashMap<>();
+        Map<String, SystemTypeCapacity> rectificationCombinations = new LinkedHashMap<>();
         for (FieldPlanFacility fieldPlanFacility : searchResponse.getResponse()) {
             SystemTypeCapacity systemTypeCapacity = toSystemTypeCapacity(fieldPlanFacility);
             if (systemTypeCapacity == null) {
                 continue;
             }
             String key = systemTypeCapacity.getSystemType() + "|" + systemTypeCapacity.getTotalSystemCapacity();
-            uniqueCombinations.putIfAbsent(key, systemTypeCapacity);
+            if (Boolean.TRUE.equals(systemTypeCapacity.getRectificationSite())) {
+                rectificationCombinations.putIfAbsent(key, systemTypeCapacity);
+            } else {
+                regularCombinations.putIfAbsent(key, systemTypeCapacity);
+            }
         }
-        List<SystemTypeCapacity> result = new ArrayList<>(uniqueCombinations.values());
+        List<SystemTypeCapacity> result = new ArrayList<>(regularCombinations.values());
+        result.addAll(rectificationCombinations.values());
 
-        log.info("SystemType/totalSystemCapacity search completed, found {} unique combinations", result.size());
+        log.info("SystemType/totalSystemCapacity search completed, found {} regular and {} rectification unique combinations",
+                regularCombinations.size(), rectificationCombinations.size());
         log.trace("Exiting searchSystemTypeCapacity method");
         return result;
     }
@@ -150,6 +174,7 @@ public class FieldPlannerFacilityService {
         String systemType = null;
         String totalSystemCapacity = null;
         String customTotalSystemCapacity = null;
+        String rectificationSite = null;
         for (Field field : additionalFields.getFields()) {
             if ("systemType".equals(field.getKey())) {
                 systemType = field.getValue();
@@ -157,6 +182,8 @@ public class FieldPlannerFacilityService {
                 totalSystemCapacity = field.getValue();
             } else if ("customTotalSystemCapacity".equals(field.getKey())) {
                 customTotalSystemCapacity = field.getValue();
+            } else if ("rectificationSite".equals(field.getKey())) {
+                rectificationSite = field.getValue();
             }
         }
         if ("CUSTOM".equalsIgnoreCase(totalSystemCapacity)) {
@@ -168,33 +195,174 @@ public class FieldPlannerFacilityService {
         return SystemTypeCapacity.builder()
                 .systemType(systemType)
                 .totalSystemCapacity(totalSystemCapacity)
+                // "No" or absent -> regular site
+                .rectificationSite(rectificationSite != null && "yes".equalsIgnoreCase(rectificationSite.trim()))
                 .build();
     }
 
+    /**
+     * Resolves the system type of each requested facility, for callers that need the value keyed by
+     * facility rather than the plan-wide combinations {@link #searchSystemTypeCapacity} returns.
+     *
+     * <p>Walks every matching row rather than honouring a caller-supplied page: this answers "what is
+     * this facility's system type", and a truncated page would report no system type for facilities
+     * that have one - which, for the AMC index sync that consumes this, means overwriting a good
+     * indexed value with "Not Applicable". Facility ids are therefore mandatory, so the walk can never
+     * degrade into a scan of every installation plan facility in the tenant.
+     *
+     * @return one entry per requested facility that is linked to an installation plan. Facilities with
+     *         no linked plan are absent rather than present-with-null, so a caller can tell "nothing
+     *         recorded" apart from "nothing to record against".
+     */
+    public List<FacilitySystemType> searchSystemTypeByFacilityIds(FieldPlanFacilitySearchRequest request,
+                                                                  String tenantId,
+                                                                  Long lastChangedSince,
+                                                                  Boolean includeDeleted) throws Exception {
+        log.trace("Entering searchSystemTypeByFacilityIds method for installation plan facility");
+        List<String> facilityIds = request.getCriteria() == null ? null : request.getCriteria().getFacility_id();
+        if (facilityIds == null || facilityIds.isEmpty()) {
+            throw new CustomException("FACILITY_ID_REQUIRED",
+                    "At least one facilityId is required to resolve a facility's system type");
+        }
+        log.info("Received request to resolve systemType for {} facility/facilities, tenant: {}",
+                facilityIds.size(), tenantId);
+
+        Map<String, FieldPlanFacility> winnerByFacilityId = new LinkedHashMap<>();
+        int pageSize = systemTypePageSize();
+        int offset = 0;
+        while (true) {
+            SearchResponse<FieldPlanFacility> page =
+                    search(request, pageSize, offset, tenantId, lastChangedSince, includeDeleted);
+            List<FieldPlanFacility> rows = page == null ? null : page.getResponse();
+            if (rows == null || rows.isEmpty()) {
+                break;
+            }
+            for (FieldPlanFacility row : rows) {
+                String facilityId = row.getFacilityId();
+                if (facilityId == null || facilityId.isBlank()) {
+                    continue;
+                }
+                winnerByFacilityId.merge(facilityId, row,
+                        FieldPlannerFacilityService::preferredSystemTypeRow);
+            }
+            if (rows.size() < pageSize) {
+                break;
+            }
+            offset += pageSize;
+        }
+
+        List<FacilitySystemType> result = winnerByFacilityId.entrySet().stream()
+                .map(entry -> FacilitySystemType.builder()
+                        .facilityId(entry.getKey())
+                        .systemType(additionalFieldValue(entry.getValue(), "systemType"))
+                        .build())
+                .toList();
+        log.info("SystemType resolution completed, resolved {} of {} requested facility/facilities",
+                result.size(), facilityIds.size());
+        log.trace("Exiting searchSystemTypeByFacilityIds method");
+        return result;
+    }
+
+    /**
+     * Rows per page for the systemType walk, read from the service's own search cap rather than
+     * hardcoded. Asking for more than {@code project.search.max.limit} would come back clamped to
+     * exactly the cap, and the "a short page means the last page" check would read that as the end of
+     * the data and silently drop every row after it.
+     */
+    private int systemTypePageSize() {
+        Integer maxLimit = fieldPlannerConfiguration.getMaxLimit();
+        return maxLimit == null || maxLimit < 1 ? SYSTEM_TYPE_PAGE_SIZE_FALLBACK : maxLimit;
+    }
+
+    /** Fallback page size for the systemType walk when no search cap is configured. */
+    private static final int SYSTEM_TYPE_PAGE_SIZE_FALLBACK = 100;
+
+    /**
+     * Which of two installation-plan links a facility's system type should come from.
+     *
+     * <p>A row carrying no system type never wins, even when it is the more recent: a facility newly
+     * linked to a plan that has not captured a system type yet must keep reporting the value that was
+     * actually recorded, instead of suddenly reporting nothing. Among rows that do carry one, the most
+     * recently modified wins, with created time then id breaking ties so repeated calls resolve to the
+     * same plan rather than flipping between two equally recent ones - which would otherwise make the
+     * indexed system type change for no real reason.
+     */
+    private static FieldPlanFacility preferredSystemTypeRow(FieldPlanFacility current, FieldPlanFacility candidate) {
+        boolean currentHasValue = additionalFieldValue(current, "systemType") != null;
+        boolean candidateHasValue = additionalFieldValue(candidate, "systemType") != null;
+        if (currentHasValue != candidateHasValue) {
+            return currentHasValue ? current : candidate;
+        }
+        return SYSTEM_TYPE_ROW_RECENCY.compare(candidate, current) > 0 ? candidate : current;
+    }
+
+    private static final Comparator<FieldPlanFacility> SYSTEM_TYPE_ROW_RECENCY = Comparator
+            .comparing(FieldPlannerFacilityService::lastModifiedTimeOf, Comparator.nullsFirst(Long::compareTo))
+            .thenComparing(FieldPlannerFacilityService::createdTimeOf, Comparator.nullsFirst(Long::compareTo))
+            .thenComparing(FieldPlanFacility::getId, Comparator.nullsFirst(String::compareTo));
+
+    private static Long lastModifiedTimeOf(FieldPlanFacility fieldPlanFacility) {
+        return fieldPlanFacility.getAuditDetails() == null
+                ? null : fieldPlanFacility.getAuditDetails().getLastModifiedTime();
+    }
+
+    private static Long createdTimeOf(FieldPlanFacility fieldPlanFacility) {
+        return fieldPlanFacility.getAuditDetails() == null
+                ? null : fieldPlanFacility.getAuditDetails().getCreatedTime();
+    }
+
+    /**
+     * The value of one {@code additionalFields} key, or null when the row does not carry it. Blank
+     * counts as absent: a plan saved with an empty system type must read as "nothing recorded" rather
+     * than reaching the caller as an empty string.
+     */
+    private static String additionalFieldValue(FieldPlanFacility fieldPlanFacility, String key) {
+        AdditionalFields additionalFields = fieldPlanFacility.getAdditionalFields();
+        if (additionalFields == null || additionalFields.getFields() == null) {
+            return null;
+        }
+        for (Field field : additionalFields.getFields()) {
+            if (key.equals(field.getKey())) {
+                String value = field.getValue();
+                return value == null || value.isBlank() ? null : value;
+            }
+        }
+        return null;
+    }
+
     public FieldPlanFacility unassign(FieldPlanFacilityRequest request) {
-        log.info("received request to create fieldplan facility");
+        log.trace("Entering unassign method for installation plan facility");
+        log.info("Received request to unassign installation plan facility");
         FieldPlanFacilityBulkRequest bulkRequest = FieldPlanFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .fieldPlanFacilities(Collections.singletonList(request.getFieldPlanFacility())).build();
-        log.info("creating bulk request");
-        return unassignBulk(bulkRequest, false).get(0);
+        log.debug("Created bulk request for installation plan facility unassign");
+        FieldPlanFacility result = unassignBulk(bulkRequest, false).get(0);
+        log.info("Installation plan facility unassigned successfully with ID: {}", result.getId());
+        log.trace("Exiting unassign method");
+        return result;
     }
 
     public List<FieldPlanFacility> unassignBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to unassign bulk fieldplan facility");
-//
+        log.trace("Entering unassignBulk method for installation plan facility, isBulk: {}", isBulk);
+        log.info("Received request to unassign bulk installation plan facility, count: {}", request.getFieldPlanFacilities().size());
+
         validateCreateFieldPlanRequest(request);
+        log.debug("Installation plan facility unassign request validated");
+
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
+                log.debug("Processing {} installation plan facilities for unassign", fieldPlanFacilities.size());
                 for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
                     log.info("processing {} valid entities", fieldPlanFacilities.size());
                     fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnDelete(fieldPlanFacility, request.getRequestInfo());
                 }
+                log.debug("Installation plan facilities enriched, pushing to Kafka");
                 producer.push(fieldPlannerConfiguration.getDeleteFieldPlanFacilityTopic(), fieldPlanFacilities);
                 log.info("successfully created project facility");
             }
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("error occurred while updating installation plan facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return fieldPlanFacilities;
@@ -208,7 +376,7 @@ public class FieldPlannerFacilityService {
     );
 
     public List<FieldPlanFacility> updateBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to update bulk fieldplan facility");
+        log.info("received request to update bulk installation plan facility");
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
 
         List<String> ids = fieldPlanFacilities.stream().map(FieldPlanFacility::getId).toList();
@@ -240,10 +408,10 @@ public class FieldPlannerFacilityService {
                     fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnUpdate(fieldPlanFacility, fieldPlanFacilityFromDb, request.getRequestInfo());
                 }
                 producer.push(fieldPlannerConfiguration.getUpdateFieldPlanFacilityTopic(), fieldPlanFacilities);
-                log.info("successfully pushed fieldplan facility update");
+                log.info("successfully pushed installation plan facility update");
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating fieldplan facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("error occurred while updating installation plan facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return fieldPlanFacilities;
@@ -288,42 +456,101 @@ public class FieldPlannerFacilityService {
     }
 
     public void validateCreateFieldPlanRequest(FieldPlanFacilityBulkRequest request) {
+        log.trace("Entering validateCreateFieldPlanRequest method");
+        log.debug("Validating installation plan facility request with {} facilities", request.getFieldPlanFacilities().size());
         Map<String, String> errorMap = new HashMap<>();
 
         //Verify if facilityId is valid
         validateFacilityIds(request, errorMap);
+        log.debug("Facility IDs validation completed, error count: {}", errorMap.size());
         //Verify if FieldPlanId is valid
         validateFieldPlanIds(request, errorMap);
+        log.debug("Installation plan IDs validation completed, total error count: {}", errorMap.size());
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Installation plan facility request validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
+        }
+        log.debug("Installation plan facility request validation successful");
+        log.trace("Exiting validateCreateFieldPlanRequest method");
     }
 
-    private void validateFacilityIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
+    private static final int FACILITY_BULK_VALIDATE_CHUNK_SIZE = 500;
 
+    private void validateFacilityIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
+        log.trace("Entering validateFacilityIds method");
+        log.debug("Validating {} facility IDs", request.getFieldPlanFacilities().size());
         List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities();
         if (!validEntities.isEmpty()) {
+            // Prefetch all facilities in one/few chunked bulk-search calls instead of one GET per
+            // facility - avoids O(n) external HTTP round trips for large installation plans.
+            Map<String, Facility> facilitiesById = prefetchFacilitiesForValidate(request.getRequestInfo(), validEntities);
             AtomicInteger counter = new AtomicInteger(1);
             for (FieldPlanFacility facility : validEntities){
-                try {
-                    Facility response = getFacilityById(facility.getFacilityId());
-                    if(response==null)
-                        throw new CustomException("FACILITY_ERROR", "Facility ID do not exist");
-
-                    if (!response.getFacilityId().equals(facility.getFacilityId())) {
-                        int i = counter.getAndIncrement();
-                        errorMap.put("INVALID_FACILITY"+i, "FacilityId does not exist: " + facility.getFacilityId());
-                    }
-
-                } catch (Exception e) {
-                    log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
-                    throw new CustomException("FACILITY_ERROR", "error while calling facility service");
+                Facility response = facilitiesById.get(facility.getFacilityId());
+                if (response == null) {
+                    throw new CustomException("FACILITY_ERROR", "Facility ID do not exist");
                 }
+                if (!response.getFacilityId().equals(facility.getFacilityId())) {
+                    int i = counter.getAndIncrement();
+                    errorMap.put("INVALID_FACILITY"+i, "FacilityId does not exist: " + facility.getFacilityId());
+                }
+            }
+        }
+        log.debug("Facility IDs validation completed");
+        log.trace("Exiting validateFacilityIds method");
+    }
+
+    // Facility validation: chunked POST _bulk-search (not per-row GET).
+    private Map<String, Facility> prefetchFacilitiesForValidate(RequestInfo requestInfo, List<FieldPlanFacility> fieldPlanFacilities) {
+        LinkedHashSet<String> facilityIds = new LinkedHashSet<>();
+        for (FieldPlanFacility facility : fieldPlanFacilities) {
+            if (facility != null && facility.getFacilityId() != null) {
+                facilityIds.add(facility.getFacilityId());
+            }
+        }
+        Map<String, Facility> byFacilityId = new HashMap<>();
+        if (facilityIds.isEmpty()) {
+            return byFacilityId;
+        }
+        List<String> idList = new ArrayList<>(facilityIds);
+        try {
+            for (int i = 0; i < idList.size(); i += FACILITY_BULK_VALIDATE_CHUNK_SIZE) {
+                int end = Math.min(i + FACILITY_BULK_VALIDATE_CHUNK_SIZE, idList.size());
+                List<String> chunk = new ArrayList<>(idList.subList(i, end));
+                mergeFacilitiesFromBulkSearch(byFacilityId, requestInfo, chunk);
+            }
+        } catch (Exception e) {
+            log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
+            throw new CustomException("FACILITY_ERROR", "error while calling facility service");
+        }
+        log.debug("Prefetched {} facility record(s) for {} distinct facility id(s)", byFacilityId.size(), facilityIds.size());
+        return byFacilityId;
+    }
+
+    private void mergeFacilitiesFromBulkSearch(Map<String, Facility> sink, RequestInfo requestInfo, List<String> facilityIdsChunk) {
+        String url = fieldPlannerConfiguration.getFacilityServiceHost() + fieldPlannerConfiguration.getFacilityBulkSearchUrl();
+        FacilityBulkSearchCriteria facilityCriteria = FacilityBulkSearchCriteria.forTenantAndFacilityIds(List.of("in"), facilityIdsChunk);
+        FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
+                .requestInfo(requestInfo)
+                .facility(facilityCriteria)
+                .build();
+        log.debug("Calling facility bulk search at URL: {}, facility id count: {}", url, facilityIdsChunk.size());
+        Object response = serviceRequestClient.fetchResult(new StringBuilder(url), body);
+        FacilitySearchResponse parsed = mapper.convertValue(response, FacilitySearchResponse.class);
+        if (parsed == null || parsed.getFacilities() == null) {
+            return;
+        }
+        for (Facility facility : parsed.getFacilities()) {
+            if (facility.getFacilityId() != null) {
+                sink.put(facility.getFacilityId(), facility);
             }
         }
     }
 
     private void validateFieldPlanIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
+        log.trace("Entering validateFieldPlanIds method");
+        log.debug("Validating {} installation plan IDs", request.getFieldPlanFacilities().size());
         List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities();
         if (!validEntities.isEmpty()) {
             Class<?> objClass = getObjClass(validEntities);
@@ -343,21 +570,28 @@ public class FieldPlannerFacilityService {
                         .toList();
 
             } catch (Exception e) {
-                log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
-                throw new CustomException("FIELDPLAN_ERROR", "error while calling fieldplan");
+                log.error("Error while validating installation plan IDs", e);
+                throw new CustomException("FIELDPLAN_ERROR", "error while calling installation plan");
             }
         }
+        log.debug("Installation plan IDs validation completed");
+        log.trace("Exiting validateFieldPlanIds method");
     }
 
     public Facility getFacilityById(String facilityId) {
-
+        log.trace("Entering getFacilityById method for facility ID: {}", facilityId);
+        log.debug("Fetching facility details from facility service");
         String url = fieldPlannerConfiguration.getFacilityServiceHost() + fieldPlannerConfiguration.getFacilityServiceSearchUrlV2()+ "?facilityId="+facilityId;
         Object response = serviceRequestClient.fetchResult(new StringBuilder(url));
 
         FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
         if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+            log.debug("Successfully retrieved facility with ID: {}", facilityId);
+            log.trace("Exiting getFacilityById method");
             return facilityList.getFacilities().get(0);
         }
+        log.warn("Facility not found with ID: {}", facilityId);
+        log.trace("Exiting getFacilityById method");
         return null;
     }
 
@@ -365,6 +599,7 @@ public class FieldPlannerFacilityService {
      * Searches facilities by a specific boundary code
      */
     public Set<String> searchFacilitiesByBoundaryCode(String boundaryCode, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering searchFacilitiesByBoundaryCode method for boundary code: {}", boundaryCode);
         Set<String> facilityIds = new HashSet<>();
 
         try {
@@ -399,6 +634,7 @@ public class FieldPlannerFacilityService {
             log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
         }
 
+        log.trace("Exiting searchFacilitiesByBoundaryCode method");
         return facilityIds;
     }
 

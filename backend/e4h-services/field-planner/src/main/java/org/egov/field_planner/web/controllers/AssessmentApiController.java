@@ -188,6 +188,15 @@ public class AssessmentApiController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/internal/plan/facility/_include-availability")
+    public ResponseEntity<PlanFacilityIncludeAvailabilityResponse> checkIncludeAvailability(
+            @ApiParam(required = true) @Valid @RequestBody PlanFacilityIncludeAvailabilityRequest request) {
+        PlanFacilityIncludeAvailabilityResponse response =
+                planFacilityIncludeService.checkIncludeAvailability(request);
+        response.setResponseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true));
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/internal/project/eligible-facilities/_search")
     public ResponseEntity<EligibleFacilitiesSearchResponse> searchEligibleFacilities(
             @ApiParam(required = true) @Valid @RequestBody EligibleFacilitiesSearchRequest request) {

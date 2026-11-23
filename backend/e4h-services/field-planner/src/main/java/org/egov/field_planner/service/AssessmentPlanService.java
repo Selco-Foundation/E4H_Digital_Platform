@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -52,7 +53,7 @@ public class AssessmentPlanService {
         }
 
         plan.setId(UUID.randomUUID().toString());
-        plan.setStatus(AssessmentConstants.PLAN_STATUS_ACTIVE);
+        plan.setStatus(resolveCreateStatus(plan.getStatus()));
         plan.setPlanType(AssessmentConstants.PLAN_TYPE_ASSESSMENT);
         plan.setHealthFacilityCount(0);
         plan.setCanProceedToFieldPlan(false);
@@ -68,6 +69,9 @@ public class AssessmentPlanService {
 
         List<AssessmentPlan> plans = planRepository.search(criteria, limit, offset);
         plans.forEach(this::enrichPlanSummary);
+        if (request.getRequestInfo() != null && !plans.isEmpty()) {
+            enrichAssessors(request.getRequestInfo(), plans);
+        }
         int total = planRepository.count(criteria);
 
         return AssessmentPlanResponse.builder()
@@ -117,9 +121,22 @@ public class AssessmentPlanService {
         planRepository.updatePlan(existing, request.getRequestInfo().getUserInfo().getUuid());
 
         if (request.getAssessors() != null && !request.getAssessors().isEmpty()) {
+            int facilityCount = planRepository.countFacilitiesOnPlan(existing.getId());
+            if (facilityCount == 0) {
+                throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_FACILITIES_REQUIRED,
+                        "At least one facility must be included in the assessment plan before assigning assessors");
+            }
             assignAssessors(request.getRequestInfo(), existing, request.getAssessors());
-            existing.setAssessors(request.getAssessors());
         }
+
+        applyPlanStatusTransition(
+                incoming,
+                existing,
+                request.getRequestInfo().getUserInfo().getUuid(),
+                request.getRequestInfo(),
+                request.getAssessors());
+
+        existing.setAssessors(getAssessors(request.getRequestInfo(), existing));
 
         return existing;
     }
@@ -130,17 +147,95 @@ public class AssessmentPlanService {
                 .orElseThrow(() -> new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NOT_FOUND,
                         "Assessment plan not found: " + request.getPlanId()));
 
+        closeActivePlan(plan, request.getRequestInfo().getUserInfo().getUuid());
+        plan.setCanProceedToFieldPlan(true);
+        return plan;
+    }
+
+    private void applyPlanStatusTransition(AssessmentPlan incoming, AssessmentPlan existing, String userId,
+                                           RequestInfo requestInfo, List<AssessorAssignment> incomingAssessors) {
+        if (StringUtils.isBlank(incoming.getStatus())) {
+            return;
+        }
+
+        String requestedStatus = incoming.getStatus().trim().toUpperCase();
+        if (AssessmentConstants.PLAN_STATUS_DRAFT.equals(requestedStatus)) {
+            if (!AssessmentConstants.PLAN_STATUS_DRAFT.equals(existing.getStatus())) {
+                throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                        "Assessment plan status cannot be changed back to DRAFT");
+            }
+            existing.setStatus(AssessmentConstants.PLAN_STATUS_DRAFT);
+            return;
+        }
+        if (AssessmentConstants.PLAN_STATUS_ACTIVE.equals(requestedStatus)) {
+            activateDraftPlan(existing, userId, requestInfo, incomingAssessors);
+            return;
+        }
+        throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                "Unsupported assessment plan status for update: " + incoming.getStatus()
+                        + ". Use plan/_mark-complete to close the plan.");
+    }
+
+    private String resolveCreateStatus(String status) {
+        if (StringUtils.isBlank(status)) {
+            return AssessmentConstants.PLAN_STATUS_DRAFT;
+        }
+        String normalized = status.trim().toUpperCase();
+        if (!AssessmentConstants.PLAN_STATUS_DRAFT.equals(normalized)) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                    "New assessment plans must be created with status DRAFT");
+        }
+        return AssessmentConstants.PLAN_STATUS_DRAFT;
+    }
+
+    private void activateDraftPlan(AssessmentPlan plan, String userId, RequestInfo requestInfo,
+                                   List<AssessorAssignment> incomingAssessors) {
+        if (AssessmentConstants.PLAN_STATUS_ACTIVE.equals(plan.getStatus())) {
+            return;
+        }
+        if (!AssessmentConstants.PLAN_STATUS_DRAFT.equals(plan.getStatus())) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_INVALID_STATUS_TRANSITION,
+                    "Only draft assessment plans can be activated");
+        }
+        int facilityCount = planRepository.countFacilitiesOnPlan(plan.getId());
+        if (facilityCount == 0) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NO_FACILITIES,
+                    "No facility added for assessment plan");
+        }
+        validateAssessorsForActivation(requestInfo, plan, incomingAssessors);
+        planRepository.updatePlanStatus(plan.getId(), AssessmentConstants.PLAN_STATUS_ACTIVE, userId);
+        plan.setStatus(AssessmentConstants.PLAN_STATUS_ACTIVE);
+    }
+
+    private void validateAssessorsForActivation(RequestInfo requestInfo, AssessmentPlan plan,
+                                                 List<AssessorAssignment> incomingAssessors) {
+        if (incomingAssessors != null && !incomingAssessors.isEmpty()) {
+            validateAssessorRoles(incomingAssessors);
+            return;
+        }
+        List<AssessorAssignment> assignedAssessors = getAssessors(requestInfo, plan);
+        if (assignedAssessors.isEmpty()) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_ASSESSORS_REQUIRED,
+                    "No assessors assigned for assessment plan");
+        }
+        validateAssessorRoles(assignedAssessors);
+    }
+
+    private void closeActivePlan(AssessmentPlan plan, String userId) {
+        if (AssessmentConstants.PLAN_STATUS_CLOSED.equals(plan.getStatus())) {
+            return;
+        }
+        if (!AssessmentConstants.PLAN_STATUS_ACTIVE.equals(plan.getStatus())) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_NOT_ACTIVE,
+                    "Only active assessment plans can be marked complete");
+        }
         AssessmentPlanMetrics metrics = planRepository.getMetrics(plan.getId());
         if (metrics.getResultPending() > 0) {
             throw new CustomException(AssessmentConstants.ASSESSMENT_PLAN_HAS_PENDING_FACILITIES,
                     "All facilities must have ELIGIBLE or NOT_ELIGIBLE overall status before marking complete");
         }
-
-        planRepository.updatePlanStatus(plan.getId(), AssessmentConstants.PLAN_STATUS_CLOSED,
-                request.getRequestInfo().getUserInfo().getUuid());
+        planRepository.updatePlanStatus(plan.getId(), AssessmentConstants.PLAN_STATUS_CLOSED, userId);
         plan.setStatus(AssessmentConstants.PLAN_STATUS_CLOSED);
-        plan.setCanProceedToFieldPlan(true);
-        return plan;
     }
 
     private void validateDateRange(AssessmentPlan plan) {
@@ -166,11 +261,39 @@ public class AssessmentPlanService {
                 metrics.getRemoteAssessmentTotal() > 0 && metrics.getResultPending() == 0);
     }
 
+    private void enrichAssessors(RequestInfo requestInfo, List<AssessmentPlan> plans) {
+        Map<String, List<AssessorAssignment>> assessorsByPlanId = fetchAssessorsByPlanIds(requestInfo, plans);
+        for (AssessmentPlan plan : plans) {
+            plan.setAssessors(assessorsByPlanId.getOrDefault(plan.getId(), Collections.emptyList()));
+        }
+    }
+
     private List<AssessorAssignment> getAssessors(RequestInfo requestInfo, AssessmentPlan plan) {
+        return fetchAssessorsByPlanIds(requestInfo, List.of(plan))
+                .getOrDefault(plan.getId(), Collections.emptyList());
+    }
+
+    private Map<String, List<AssessorAssignment>> fetchAssessorsByPlanIds(RequestInfo requestInfo,
+                                                                          List<AssessmentPlan> plans) {
+        List<String> planIds = plans.stream()
+                .map(AssessmentPlan::getId)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+        if (planIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        String tenantId = plans.stream()
+                .map(AssessmentPlan::getTenantId)
+                .filter(StringUtils::isNotBlank)
+                .findFirst()
+                .orElse(null);
+
         try {
             ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder()
-                    .fieldPlanId(List.of(plan.getId()))
-                    .tenantId(plan.getTenantId())
+                    .fieldPlanId(planIds)
+                    .tenantId(tenantId)
                     .build();
             ActivityAssignmentSearchRequest searchRequest = ActivityAssignmentSearchRequest.builder()
                     .criteria(criteria)
@@ -178,18 +301,23 @@ public class AssessmentPlanService {
                     .build();
             String url = configuration.getFieldPlanActivityServiceHost()
                     + configuration.getFieldPlanActivitySearchUrl()
-                    + "?tenantId=" + plan.getTenantId() + "&offset=0&limit=100";
+                    + "?tenantId=" + tenantId + "&offset=0&limit=" + Math.max(100, planIds.size() * 4);
             Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
             ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
             if (assignmentResponse == null || assignmentResponse.getActivityAssignment() == null) {
-                return Collections.emptyList();
+                return Collections.emptyMap();
             }
             return assignmentResponse.getActivityAssignment().stream()
-                    .map(assignment -> toAssessorAssignment(requestInfo, assignment))
-                    .toList();
+                    .filter(this::isAssessmentAssignment)
+                    .filter(assignment -> StringUtils.isNotBlank(assignment.getFieldPlanId()))
+                    .collect(Collectors.groupingBy(
+                            ActivityAssignment::getFieldPlanId,
+                            Collectors.collectingAndThen(
+                                    Collectors.toList(),
+                                    assignments -> dedupeAssessorsByRole(requestInfo, assignments))));
         } catch (Exception e) {
-            log.warn("Failed to fetch assessors for plan {}", plan.getId(), e);
-            return Collections.emptyList();
+            log.warn("Failed to fetch assessors for plans {}", planIds, e);
+            return Collections.emptyMap();
         }
     }
 
@@ -211,6 +339,11 @@ public class AssessmentPlanService {
 
     private void assignAssessors(RequestInfo requestInfo, AssessmentPlan plan, List<AssessorAssignment> assessors) {
         validateAssessorRoles(assessors);
+        List<ActivityAssignment> existingAssignments = fetchAssessmentAssignments(requestInfo, plan);
+        if (!existingAssignments.isEmpty()) {
+            unassignActivityAssignments(requestInfo, plan.getTenantId(), existingAssignments);
+        }
+
         List<ActivityAssignment> assignments = new ArrayList<>();
         for (AssessorAssignment assessor : assessors) {
             Map<String, Object> role = Map.of(
@@ -250,6 +383,62 @@ public class AssessmentPlanService {
         serviceRequestRepository.fetchResult(new StringBuilder(url), bulkRequest);
     }
 
+    private List<ActivityAssignment> fetchAssessmentAssignments(RequestInfo requestInfo, AssessmentPlan plan) {
+        try {
+            ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder()
+                    .fieldPlanId(List.of(plan.getId()))
+                    .tenantId(plan.getTenantId())
+                    .build();
+            ActivityAssignmentSearchRequest searchRequest = ActivityAssignmentSearchRequest.builder()
+                    .criteria(criteria)
+                    .requestInfo(requestInfo)
+                    .build();
+            String url = configuration.getFieldPlanActivityServiceHost()
+                    + configuration.getFieldPlanActivitySearchUrl()
+                    + "?tenantId=" + plan.getTenantId() + "&offset=0&limit=100";
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+            ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
+            if (assignmentResponse == null || assignmentResponse.getActivityAssignment() == null) {
+                return List.of();
+            }
+            return assignmentResponse.getActivityAssignment().stream()
+                    .filter(this::isAssessmentAssignment)
+                    .toList();
+        } catch (Exception e) {
+            log.warn("Failed to fetch existing assessors for plan {}", plan.getId(), e);
+            return List.of();
+        }
+    }
+
+    private void unassignActivityAssignments(RequestInfo requestInfo, String tenantId,
+                                             List<ActivityAssignment> assignments) {
+        ActivityAssignmentBulkRequest bulkRequest = ActivityAssignmentBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .activityAssignments(assignments)
+                .build();
+        String url = configuration.getFieldPlanActivityServiceHost()
+                + configuration.getFieldPlanActivityUnassignUrl()
+                + "?tenantId=" + tenantId;
+        serviceRequestRepository.fetchResult(new StringBuilder(url), bulkRequest);
+    }
+
+    private List<AssessorAssignment> dedupeAssessorsByRole(RequestInfo requestInfo,
+                                                           List<ActivityAssignment> assignments) {
+        Map<String, AssessorAssignment> byRole = new LinkedHashMap<>();
+        for (ActivityAssignment assignment : assignments) {
+            String roleCode = assignment.getRole() != null ? (String) assignment.getRole().get("code") : null;
+            if (StringUtils.isNotBlank(roleCode)) {
+                byRole.putIfAbsent(roleCode, toAssessorAssignment(requestInfo, assignment));
+            }
+        }
+        return new ArrayList<>(byRole.values());
+    }
+
+    private boolean isAssessmentAssignment(ActivityAssignment assignment) {
+        return AssessmentConstants.ACTIVITY_CODE_ASSESSMENT.equalsIgnoreCase(assignment.getActivityCode())
+                || AssessmentConstants.ACTIVITY_CODE_ASSESSMENT.equalsIgnoreCase(assignment.getActivityId());
+    }
+
     private void validateAssessorRoles(List<AssessorAssignment> assessors) {
         Set<String> roles = new HashSet<>();
         for (AssessorAssignment assessor : assessors) {
@@ -258,6 +447,10 @@ public class AssessmentPlanService {
                         "Both ENUMERATOR and FIELD_POC assessors with userId are required");
             }
             roles.add(assessor.getRole());
+        }
+        if (roles.size() != assessors.size()) {
+            throw new CustomException(AssessmentConstants.ASSESSMENT_ASSESSOR_ROLE_REQUIRED,
+                    "Duplicate assessor roles are not allowed");
         }
         if (!roles.contains(AssessmentConstants.ROLE_ENUMERATOR)
                 || !roles.contains(AssessmentConstants.ROLE_FIELD_POC)) {

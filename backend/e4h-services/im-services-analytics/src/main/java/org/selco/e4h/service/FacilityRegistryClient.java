@@ -62,6 +62,63 @@ public class FacilityRegistryClient {
         return search(requestInfo, tenantId, criteria);
     }
 
+    /**
+     * Number of facilities registered under a state boundary code (e.g. "India_Karnataka"), read from
+     * the bulk-search {@code totalCount}. Returns null when the lookup fails or the response carries no
+     * totalCount, so callers can tell "unknown" apart from a genuine zero.
+     */
+    public Integer countFacilitiesByState(RequestInfo requestInfo, String stateCode) {
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("tenantIds", List.of("in"));
+        criteria.put("state", List.of(stateCode));
+        // Only facilities under O&M can raise maintenance tickets. Set explicitly: without it,
+        // facility-service decides by caller - no user gets O&M-ready only, a system user also gets
+        // not-yet-onboarded facilities (e.g. Gujarat 203 vs 308).
+        criteria.put("isOnmReady", true);
+        criteria.put("limit", 1);
+        criteria.put("offset", 0);
+        criteria.put("sendNonPaginatedResponse", false);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("RequestInfo", requestInfo);
+        body.put("Facility", criteria);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        try {
+            String response = restTemplate.postForObject(
+                    properties.getFacilityHost() + properties.getFacilityBulkSearchPath(),
+                    new HttpEntity<>(body, headers), String.class);
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode totalCount = root.path("totalCount");
+            if (!totalCount.isNumber()) {
+                log.warn("Facility bulk search returned no totalCount for state={}", stateCode);
+                return null;
+            }
+            // If the state code isn't one facility-service recognises, the filter can be silently
+            // dropped and the count becomes the whole registry - make sure the sample row is really
+            // from the requested state before trusting the count.
+            JsonNode facilities = root.path("facilities");
+            if (totalCount.asInt() > 0 && (!facilities.isArray() || facilities.isEmpty())) {
+                // An unrecognised state code returns no rows but the whole registry's totalCount.
+                log.error("Facility count for state={} returned totalCount={} but no facilities - state code not recognised, treating as unknown",
+                        stateCode, totalCount.asInt());
+                return null;
+            }
+            if (facilities.isArray() && !facilities.isEmpty()) {
+                String sampleState = facilities.get(0).path("boundary").path("state").asText(null);
+                if (!stateCode.equals(sampleState)) {
+                    log.error("Facility count for state={} ignored the state filter (sample facility is in {}) - treating as unknown",
+                            stateCode, sampleState);
+                    return null;
+                }
+            }
+            return totalCount.asInt();
+        } catch (Exception e) {
+            log.error("Facility count lookup failed for state={}", stateCode, e);
+            return null;
+        }
+    }
+
     private FacilityPage search(RequestInfo requestInfo, String tenantId, Map<String, Object> criteria) {
         String url = properties.getFacilityHost() + properties.getFacilityBulkSearchPath();
         Map<String, Object> body = new HashMap<>();

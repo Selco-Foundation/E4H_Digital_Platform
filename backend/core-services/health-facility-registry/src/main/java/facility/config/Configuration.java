@@ -167,6 +167,12 @@ public class Configuration {
     @Value("${facility.project-name.backfill.enabled:false}")
     private boolean facilityProjectNameBackfillEnabled;
 
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-mapped-vendor}. Disabled by default.
+     */
+    @Value("${facility.mapped-vendor.backfill.enabled:false}")
+    private boolean facilityMappedVendorBackfillEnabled;
+
     @Value("${egov.vendor.host:}")
     private String vendorHost;
 

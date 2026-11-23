@@ -155,7 +155,7 @@ export const AssessmentPlanService = {
       headers,
     });
 
-    const updatedAssessmentPlan = extractAssessmentPlan(response) || { ...assessmentPlan, status: "COMPLETED" };
+    const updatedAssessmentPlan = extractAssessmentPlan(response) || { ...assessmentPlan, status: "CLOSED" };
     return withAssessmentPlanDefaults(updatedAssessmentPlan);
   },
 

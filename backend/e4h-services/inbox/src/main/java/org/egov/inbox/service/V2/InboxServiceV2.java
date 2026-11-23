@@ -15,6 +15,7 @@ import org.egov.inbox.repository.builder.V2.InboxQueryBuilder;
 import org.egov.inbox.service.V2.validator.ValidatorDefaultImplementation;
 import org.egov.inbox.service.WorkflowService;
 import org.egov.inbox.util.BoundaryUtil;
+import org.egov.inbox.util.BusinessHoursCalculator;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.*;
 import org.egov.inbox.web.model.V2.*;
@@ -80,24 +81,9 @@ public class InboxServiceV2 {
         validator.validateSearchCriteria(inboxRequest);
         log.debug("✅ Search criteria validated");
 
-        // Vérification des rôles
-        List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
-        List<String> tenantIds = roles.stream()
-                .filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
-                .map(Role::getTenantId)
-                .collect(Collectors.toList());
-        boolean isVendor = !tenantIds.isEmpty();
-        log.debug("👤 User roles found: {} | isVendor={}", roles, isVendor);
+        applyVendorTenantScope(inboxRequest);
 
-        // Gestion du tenantId pour les vendors
-        Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
-        if (isVendor && tenantIdFromRequest instanceof String) {
-            Set<String> tenantsFromRequest = new HashSet<>(Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
-            if (tenantsFromRequest.size() == 1) {
-                inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
-                log.debug("🔄 Overridden tenantId from request with vendor tenantIds={}", tenantIds);
-            }
-        }
+        List<String> heldBackOnHoldStatuses = applyActionableStatusScope(inboxRequest);
 
         // Récupération de la configuration
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
@@ -122,8 +108,17 @@ public class InboxServiceV2 {
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
         log.info("📊 Total applications count={}", totalCount);
 
+        // On Hold tickets are left out of the default bucket but still counted, so the On Hold status
+        // filter shows how many are waiting before it is selected
+        List<String> scopedStatuses = inboxRequest.getInbox().getProcessSearchCriteria().getStatus();
+        if (!heldBackOnHoldStatuses.isEmpty()) {
+            List<String> countedStatuses = new ArrayList<>(scopedStatuses);
+            countedStatuses.addAll(heldBackOnHoldStatuses);
+            inboxRequest.getInbox().getProcessSearchCriteria().setStatus(countedStatuses);
+        }
         List<HashMap<String, Object>> statusCountMap =
                 getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
+        inboxRequest.getInbox().getProcessSearchCriteria().setStatus(scopedStatuses);
         log.debug("📌 Status count map={}", statusCountMap);
 
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
@@ -142,6 +137,31 @@ public class InboxServiceV2 {
         return response;
     }
 
+
+    /**
+     * A vendor user only ever sees the tickets of the facilities its COMPLAINT_RESOLVER roles are
+     * scoped to, so a state or district level tenantId in the request is replaced with the tenants
+     * carried on those roles. A tenantId that is already facility level (more than one dot separated
+     * segment) is left alone - it is narrower than the role scope already.
+     */
+    private void applyVendorTenantScope(InboxRequest inboxRequest) {
+        List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
+        List<String> tenantIds = roles.stream()
+                .filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
+                .map(Role::getTenantId)
+                .collect(Collectors.toList());
+        boolean isVendor = !tenantIds.isEmpty();
+        log.debug("👤 User roles found: {} | isVendor={}", roles, isVendor);
+
+        Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
+        if (isVendor && tenantIdFromRequest instanceof String) {
+            Set<String> tenantsFromRequest = new HashSet<>(Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
+            if (tenantsFromRequest.size() == 1) {
+                inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
+                log.debug("🔄 Overridden tenantId from request with vendor tenantIds={}", tenantIds);
+            }
+        }
+    }
 
     private void hashParamsWhereverRequiredBasedOnConfiguration(Map<String, Object> moduleSearchCriteria, InboxQueryConfiguration inboxQueryConfiguration) {
 
@@ -303,7 +323,8 @@ public class InboxServiceV2 {
             log.debug("📥 Raw ES result for Inbox: {}", result);
         }
 
-        List<Inbox> inboxItemsList = parseInboxItemsFromSearchResponse(result, businessServices);
+        List<Inbox> inboxItemsList = parseInboxItemsFromSearchResponse(result, businessServices,
+                getBusinessHoursCalculator(inboxRequest.getInbox().getTenantId()));
         log.info("✅ Parsed {} Inbox items from ES response", inboxItemsList.size());
 
         return inboxItemsList;
@@ -340,7 +361,54 @@ public class InboxServiceV2 {
     }
 
 
-    private void enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
+    /**
+     * Narrows the inbox to the statuses the caller's roles can actually act on, when the client asked
+     * for the tickets waiting on them.
+     * <p>
+     * A State SPOC or Tech POC ticket carries no assignee - im-services pools those states so that any
+     * holder of the role can pick the ticket up - so "assigned to me" cannot mean "assigned to my
+     * uuid". It means the ticket sits in a state one of my roles can act on. The roles on each state's
+     * actions are, by definition, the roles that state is waiting on, which is what
+     * {@link #enrichActionableStatusesFromRole} reads off the business service. The client therefore
+     * sends {@code assignedToMe} and the backend works out what that means for whoever is asking,
+     * rather than the client guessing a uuid that is not on the ticket.
+     * <p>
+     * Without the flag the inbox is the "all tickets" view: jurisdiction alone decides what comes back,
+     * in whatever states the client asked for.
+     * <p>
+     * Jurisdiction applies either way - it is the {@code jurisdictionSearchCriteria} the client already
+     * sends, which this never touches.
+     * <p>
+     * Every count on the response (total, status map, nearing SLA) rebuilds its query from the same
+     * request, so narrowing it here covers them as well as the items.
+     * <p>
+     * Best-effort: a failure to reach the workflow engine leaves the request untouched, which is the
+     * behaviour that predates this scoping. An inbox must not fail to load because a lookup failed.
+     */
+    private List<String> applyActionableStatusScope(InboxRequest inboxRequest) {
+        if (!Boolean.TRUE.equals(inboxRequest.getInbox().getAssignedToMe())) {
+            log.debug("🗂️ assignedToMe not set, leaving the inbox scoped by jurisdiction alone");
+            return Collections.emptyList();
+        }
+        try {
+            List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
+            if (CollectionUtils.isEmpty(businessServices)) {
+                log.warn("⚠️ No business services returned, leaving the requested statuses untouched");
+                return Collections.emptyList();
+            }
+            return enrichActionableStatusesFromRole(inboxRequest, businessServices);
+        } catch (Exception e) {
+            log.error("❌ Failed to scope the inbox to the caller's actionable statuses, "
+                    + "leaving the requested statuses untouched", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * @return the actionable On Hold statuses left out of the default bucket, so the status counts can
+     *         still report them
+     */
+    private List<String> enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
         ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();
         String tenantId = inboxRequest.getInbox().getTenantId();
         processCriteria.setTenantId(tenantId);
@@ -358,11 +426,22 @@ public class InboxServiceV2 {
                 });
                 inboxRequest.getInbox().getProcessSearchCriteria().setStatus(actionableStatusUuid);
             } else {
-            	inboxRequest.getInbox().getProcessSearchCriteria().setStatus(new ArrayList<>(StatusIdNameMap.values()));
+                // On Hold tickets are parked, not waiting on the State SPOC: keep them out of the default
+                // bucket. They still come back when the On Hold status is asked for explicitly (branch above).
+                List<String> activeStatuses = StatusIdNameMap.values().stream()
+                        .filter(status -> !ON_HOLD_STATUSES.contains(status))
+                        .distinct()
+                        .collect(Collectors.toList());
+            	inboxRequest.getInbox().getProcessSearchCriteria().setStatus(activeStatuses);
+                return StatusIdNameMap.values().stream()
+                        .filter(ON_HOLD_STATUSES::contains)
+                        .distinct()
+                        .collect(Collectors.toList());
             }
         }else{
             inboxRequest.getInbox().getProcessSearchCriteria().setStatus(new ArrayList<>());
         }
+        return Collections.emptyList();
     }
 
     public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName) {
@@ -520,7 +599,48 @@ public class InboxServiceV2 {
         return statusCountMap;
     }
 
-    private List<Inbox> parseInboxItemsFromSearchResponse(Object result, List<BusinessService> businessServices) {
+    /**
+     * Null when the BusinessHours master cannot be read, in which case the SLA values stored on the
+     * index are returned as they are rather than failing the search.
+     */
+    private BusinessHoursCalculator getBusinessHoursCalculator(String tenantId) {
+        try {
+            return new BusinessHoursCalculator(mdmsUtil.getBusinessHours(tenantId));
+        } catch (Exception e) {
+            log.error("⚠️ Could not load BusinessHours, returning stored SLA values", e);
+            return null;
+        }
+    }
+
+    /**
+     * Replaces the stored SLA remaining values with ones computed for this instant from the anchors
+     * im-services writes on every state change: remaining = SLA at state entry - business time since.
+     * The anchors are only present while the respective clock runs, so closed tickets, states without
+     * an SLA and documents indexed before the anchors existed keep their stored values.
+     */
+    private void applyLiveSlaRemaining(Map<String, Object> data, BusinessHoursCalculator calculator, long now) {
+        Long stateEnteredTime = asLong(data.get(STATE_ENTERED_TIME));
+        if (calculator == null || stateEnteredTime == null) {
+            return;
+        }
+        long elapsed = calculator.businessMillisBetween(stateEnteredTime, now);
+
+        Long stateSla = asLong(data.get(INDEXED_STATE_SLA));
+        if (stateSla != null && data.get(STATE_SLA_DUE_AT) != null) {
+            data.put(SLA_REMAINING, stateSla - elapsed);
+        }
+        Long totalSlaBase = asLong(data.get(TOTAL_SLA_BASE));
+        if (totalSlaBase != null) {
+            data.put(TOTAL_SLA_REMAINING, totalSlaBase - elapsed);
+        }
+    }
+
+    private Long asLong(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : null;
+    }
+
+    private List<Inbox> parseInboxItemsFromSearchResponse(Object result, List<BusinessService> businessServices,
+                                                          BusinessHoursCalculator businessHoursCalculator) {
         log.info("➡️ Parsing inbox items from ES search response");
 
         Map<String, Object> hits = (Map<String, Object>) ((Map<String, Object>) result).get(HITS);
@@ -550,6 +670,7 @@ public class InboxServiceV2 {
         });
 
         // Construire les inbox items
+        long now = System.currentTimeMillis();
         List<Inbox> inboxItemList = new ArrayList<>();
         nestedHits.forEach(hit -> {
             Inbox inbox = new Inbox();
@@ -560,13 +681,24 @@ public class InboxServiceV2 {
 
             Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());
             inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
+            applyLiveSlaRemaining(dataBusinessObject, businessHoursCalculator, now);
             inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
-            inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
+            inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(INDEXED_STATE_SLA));
             inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
+
+            /*
+              Read straight off the index; keys are always present, null when the indexed document does not carry
+              them. currentOwner is taken from Data and not from the root of _source - the computed-sla index also
+              carries a root level currentOwner, but that one is the reporting view's placeholder ("-") rather than
+              the program role im-services derives.
+            */
+            inbox.getBusinessObject().put(MAPPED_VENDOR_NAME, dataBusinessObject.get(MAPPED_VENDOR_NAME));
+            inbox.getBusinessObject().put(MAPPED_VENDOR_USER_NAME, dataBusinessObject.get(MAPPED_VENDOR_USER_NAME));
+            inbox.getBusinessObject().put(CURRENT_OWNER, dataBusinessObject.get(CURRENT_OWNER));
 
             log.debug("📌 Parsed inbox item with serviceSla={} | stateSla={} | slaRemaining={}",
                     serviceSla,
-                    dataBusinessObject.get(STATE_SLA),
+                    dataBusinessObject.get(INDEXED_STATE_SLA),
                     dataBusinessObject.get(SLA_REMAINING));
 
             inboxItemList.add(inbox);
@@ -691,6 +823,66 @@ public class InboxServiceV2 {
     }
 
 
+
+    /**
+     * Distinct mapped vendors across the tickets this caller's inbox query matches, for the vendor filter
+     * dropdown. Scoping comes from running the caller's own inbox query, so the dropdown can never offer a
+     * vendor whose tickets the caller would not be shown.
+     */
+    public MappedVendorResponse getMappedVendors(InboxRequest inboxRequest) {
+        log.info("➡️ Fetching mapped vendors | tenantId='{}' | module='{}'",
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+
+        validator.validateSearchCriteria(inboxRequest);
+        applyVendorTenantScope(inboxRequest);
+
+        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        hashParamsWhereverRequiredBasedOnConfiguration(
+                inboxRequest.getInbox().getModuleSearchCriteria(), inboxQueryConfiguration);
+
+        /*
+          The vendor already selected in the UI must not narrow the list of vendors on offer, otherwise
+          reopening the dropdown would show the single selected entry.
+        */
+        Object droppedVendorFilter = inboxRequest.getInbox().getModuleSearchCriteria().remove(MAPPED_VENDOR_NAME);
+        if (!ObjectUtils.isEmpty(droppedVendorFilter))
+            log.debug("🔄 Ignoring mappedVendorName={} while listing vendors", droppedVendorFilter);
+
+        Map<String, Object> finalQueryBody = queryBuilder.getMappedVendorAggregationQuery(inboxRequest);
+        StringBuilder uri = getURI(inboxQueryConfiguration.getIndex(), SEARCH_PATH);
+
+        Map<String, Object> result = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        List<String> mappedVendors = parseMappedVendorsFromAggregationResponse(result);
+
+        log.info("✅ Returning {} distinct mapped vendor(s)", mappedVendors.size());
+        return MappedVendorResponse.builder()
+                .mappedVendors(mappedVendors)
+                .totalCount(mappedVendors.size())
+                .build();
+    }
+
+    private List<String> parseMappedVendorsFromAggregationResponse(Map<String, Object> response) {
+        if (CollectionUtils.isEmpty((Map<String, Object>) response.get(AGGREGATIONS_KEY))) {
+            log.warn("⚠️ No aggregations found in ES response while listing mapped vendors");
+            return new ArrayList<>();
+        }
+
+        List<Map<String, Object>> buckets = JsonPath.read(response, MAPPED_VENDOR_AGGREGATION_BUCKETS_PATH);
+        if (buckets.size() >= MAPPED_VENDOR_AGGREGATION_SIZE) {
+            log.warn("⚠️ Mapped vendor aggregation hit its cap of {} buckets, the list may be truncated",
+                    MAPPED_VENDOR_AGGREGATION_SIZE);
+        }
+
+        return buckets.stream()
+                .map(bucket -> (String) bucket.get(KEY))
+                .filter(vendor -> !ObjectUtils.isEmpty(vendor))
+                // "Not Applicable" is the placeholder for an unmapped facility, not a vendor to filter by.
+                .filter(vendor -> !MAPPED_VENDOR_NOT_APPLICABLE.equalsIgnoreCase(vendor.trim()))
+                .collect(Collectors.toList());
+    }
 
     private StringBuilder getURI(String indexName, String endpoint){
         StringBuilder uri = new StringBuilder(config.getIndexServiceHost());

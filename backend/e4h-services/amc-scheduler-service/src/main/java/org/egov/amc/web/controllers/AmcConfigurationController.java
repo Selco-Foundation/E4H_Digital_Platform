@@ -7,10 +7,13 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.service.AmcConfigurationService;
+import org.egov.amc.service.FacilityAmcIndexSyncService;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.AmcConfigurationRequest;
 import org.egov.amc.web.models.AmcConfigurationResponse;
 import org.egov.amc.web.models.AmcConfigurationSearchRequest;
+import org.egov.amc.web.models.FacilityAmcBackfillResponse;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.utils.ResponseInfoFactory;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -33,10 +37,33 @@ import java.util.List;
 @Slf4j
 public class AmcConfigurationController {
     private final AmcConfigurationService amcConfigurationService;
+    private final FacilityAmcIndexSyncService facilityAmcIndexSyncService;
 
     @Autowired
-    public AmcConfigurationController(AmcConfigurationService amcConfigurationService) {
+    public AmcConfigurationController(AmcConfigurationService amcConfigurationService,
+                                      FacilityAmcIndexSyncService facilityAmcIndexSyncService) {
         this.amcConfigurationService = amcConfigurationService;
+        this.facilityAmcIndexSyncService = facilityAmcIndexSyncService;
+    }
+
+    /**
+     * Script endpoint: rewrites the AMC snapshot on the health facility index for every facility in
+     * the tenant. Runs synchronously and can take a while on a large registry - it is a one-off
+     * maintenance call, not something the UI issues.
+     *
+     * <p>Idempotent: each facility's snapshot is recomputed from the database and overwrites whatever
+     * the index held, so re-running after a partial or failed run is how it gets repaired.
+     */
+    @RequestMapping(value = "/facility-index/_backfill", method = RequestMethod.POST)
+    public ResponseEntity<FacilityAmcBackfillResponse> backfillFacilityAmcIndex(
+            @ApiParam(value = "RequestInfo for the backfill trigger.", required = true)
+            @Valid @RequestBody RequestInfoWrapper request,
+            @RequestParam(name = "tenantId") String tenantId) {
+        log.info("Received request to backfill the AMC facility index for tenantId={}", tenantId);
+        FacilityAmcBackfillResponse response =
+                facilityAmcIndexSyncService.backfillFacilityAmcIndex(request.getRequestInfo(), tenantId);
+        response.setResponseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true));
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)

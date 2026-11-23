@@ -128,6 +128,22 @@ public class FieldPlanTemplateValidator {
             }
         }
 
+        // rectificationSite decides which ICC validations ran at upload, so it can't be flipped on update
+        index = 1;
+        for (FieldPlanTemplate template : templates) {
+            int currentIndex = index++;
+            if (template.getRectificationSite() == null || StringUtils.isBlank(template.getId())) {
+                continue;
+            }
+            templatesFromDb.stream()
+                    .filter(existing -> existing.getId().equals(template.getId()))
+                    .findFirst()
+                    .filter(existing -> !template.getRectificationSite().equals(Boolean.TRUE.equals(existing.getRectificationSite())))
+                    .ifPresent(existing -> errorMap.put(
+                            "RECTIFICATION_SITE_IMMUTABLE_" + currentIndex,
+                            "rectificationSite cannot be changed for template: " + template.getId()));
+        }
+
         if (!errorMap.isEmpty()) {
             throw new CustomException(errorMap);
         }

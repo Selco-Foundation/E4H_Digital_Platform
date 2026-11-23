@@ -65,4 +65,11 @@ public class UserAnalyticsReport {
 
     /** Kibana login id -> sign-ins in the reported week, busiest first; the order is the ranking. */
     private Map<String, Long> kibanaLoginsByUser;
+
+    /**
+     * Kibana dashboard views in the reported week, counted out of the dedicated
+     * {@code kibana-dashboard-report} index. Not broken down by user — the raw Kibana record carries
+     * no username.
+     */
+    private long kibanaDashboardViews;
 }

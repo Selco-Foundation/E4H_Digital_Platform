@@ -16,7 +16,7 @@ import java.util.Map;
 @Component
 public class AssessmentFacilityRowMapper implements RowMapper<PlanFacility> {
 
-    private final ObjectMapper objectMapper;
+    protected final ObjectMapper objectMapper;
 
     public AssessmentFacilityRowMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -54,8 +54,7 @@ public class AssessmentFacilityRowMapper implements RowMapper<PlanFacility> {
                 .phoneOutcome(phoneOutcome)
                 .fieldOutcome(fieldOutcome)
                 .overallManuallySet(AssessmentAdditionalDetailsHelper.isOverallManuallySet(additionalDetails))
-                .eligibleReason(AssessmentAdditionalDetailsHelper.getEligibleReason(additionalDetails))
-                .ineligibleReason(AssessmentAdditionalDetailsHelper.getIneligibleReason(additionalDetails))
+                .remarks(AssessmentAdditionalDetailsHelper.getRemarks(additionalDetails))
                 .assessmentCompletionStatus(rs.getString("assessment_completion_status"))
                 .installationFieldPlanId(rs.getString("installation_field_plan_id"))
                 .lastActionTime(rs.getLong("last_modified_time"))

@@ -20,6 +20,7 @@ import org.springframework.util.CollectionUtils;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,58 @@ public class SLAService {
     }
 
 
+    /**
+     * Returns the part of the workflow history that the SLA is measured over. Taking a ticket off
+     * hold resets its SLA, so everything up to and including the most recent
+     * {@code OUT_OF_WARRANTY_ON_HOLD} instance is dropped. While the ticket is still on hold the
+     * result is empty, which leaves no SLA defined and none elapsed.
+     *
+     * @param processInstances workflow history, oldest first
+     */
+    public List<ProcessInstance> getCurrentSlaCycle(List<ProcessInstance> processInstances) {
+        for (int i = processInstances.size() - 1; i >= 0; i--) {
+            if (OUT_OF_WARRANTY_ON_HOLD.equals(processInstances.get(i).getState().getApplicationStatus())) {
+                return new ArrayList<>(processInstances.subList(i + 1, processInstances.size()));
+            }
+        }
+        return processInstances;
+    }
+
     public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
+        return computeTotalSlaRemaining(states, processInstances, businessHourList, currentProcessInstance, false);
+    }
+
+    /**
+     * Total SLA remaining at the moment the ticket entered its current state, i.e. before any time was
+     * spent in it. Readers derive the live value as this minus the business time elapsed since then,
+     * which is what {@link #computeTotalSlaRemaining} returns for the current instant.
+     */
+    public long computeTotalSlaBase(List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
+        return computeTotalSlaRemaining(states, processInstances, businessHourList, currentProcessInstance, true);
+    }
+
+    /** States whose time counts against the ticket's total SLA. */
+    public boolean isSlaBearingState(String state) {
+        return state != null && (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
+                || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
+                || state.startsWith(PENDING_RESOLUTION_PREFIX)
+                || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
+                || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
+                || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state));
+    }
+
+    /**
+     * Closed tickets keep the SLA values written when they closed. Mirrors the set the SLA cron used to
+     * skip: terminal states plus the resolved / rejected statuses awaiting closure.
+     */
+    public boolean isSlaClockStopped(ProcessInstance processInstance) {
+        State state = processInstance.getState();
+        return Boolean.TRUE.equals(state.getIsTerminateState())
+                || SLA_CLOCK_STOPPED_STATUSES.contains(state.getApplicationStatus());
+    }
+
+    private long computeTotalSlaRemaining(List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList,
+                                          ProcessInstance currentProcessInstance, boolean excludeCurrentStateElapsed) {
         BusinessHoursUtil businessHoursUtil = new BusinessHoursUtil(businessHourList);
 
         Map<String, Long> stateToSlaMap = new HashMap<>();
@@ -58,18 +110,15 @@ public class SLAService {
             ProcessInstance current = processInstances.get(i);
             String state = current.getState().getApplicationStatus();
 
-            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
-                    || state.startsWith(PENDING_RESOLUTION_PREFIX)
-                    || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
-                    || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
-                    || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)) {
+            if (isSlaBearingState(state)) {
                 long prevStateTime = current.getAuditDetails().getCreatedTime();
                 ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of(ASIA_KOLKATA));
                 ZonedDateTime zonedNextStateTime;
                 if (i + 1 < processInstances.size()) {
                     long nextStateTime = processInstances.get(i + 1).getAuditDetails().getCreatedTime();
                     zonedNextStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nextStateTime), ZoneId.of(ASIA_KOLKATA));
+                } else if (excludeCurrentStateElapsed) {
+                    zonedNextStateTime = zonedPrevStateTime;
                 } else {
                     zonedNextStateTime = ZonedDateTime.now(ZoneId.of(ASIA_KOLKATA));
                 }
@@ -130,12 +179,7 @@ public class SLAService {
             previousStates.add(currentState);
         }
         for (String state : previousStates) {
-            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
-                    || state.startsWith(PENDING_RESOLUTION_PREFIX)
-                    || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
-                    || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
-                    || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)) {
+            if (isSlaBearingState(state)) {
                 totalSla += stateToSlaMap.getOrDefault(state, 0L);
             }
         }

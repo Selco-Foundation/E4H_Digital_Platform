@@ -60,8 +60,9 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
         log.info("Creating boundary entities directly in database");
         
         String insertQuery = "INSERT INTO boundary (id, tenantId, code, geometry, additionalDetails, " +
+                "lgd_state_code, lgd_district_code, lgd_block_code, lgd_block_tier, " +
                 "createdBy, lastModifiedBy, createdTime, lastModifiedTime) " +
-                "VALUES (?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?, ?)";
+                "VALUES (?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try {
             jdbcTemplate.batchUpdate(
@@ -75,6 +76,10 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
                             ps.setString(index++, boundary.getCode());
                             ps.setString(index++, jsonNodeToString(boundary.getGeometry()));
                             ps.setString(index++, jsonNodeToString(boundary.getAdditionalDetails()));
+                            ps.setString(index++, boundary.getLgdStateCode());
+                            ps.setString(index++, boundary.getLgdDistrictCode());
+                            ps.setString(index++, boundary.getLgdBlockCode());
+                            ps.setString(index++, boundary.getLgdBlockTier());
                             ps.setString(index++, boundary.getAuditDetails().getCreatedBy());
                             ps.setString(index++, boundary.getAuditDetails().getLastModifiedBy());
                             ps.setLong(index++, boundary.getAuditDetails().getCreatedTime());

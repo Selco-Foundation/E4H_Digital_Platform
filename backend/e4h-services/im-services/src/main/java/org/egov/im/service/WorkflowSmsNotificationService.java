@@ -3,6 +3,7 @@ package org.egov.im.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.config.IMConfiguration;
+import org.egov.im.util.IMConstants;
 import org.egov.im.util.NotificationUtil;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Notification.SMSRequest;
@@ -17,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -136,24 +138,34 @@ public class WorkflowSmsNotificationService {
     }
 
     private void sendForRole(IncidentRequest request, String tenantId, SmsRule rule, PlaceholderValues placeholders) {
-        String mobile = resolveMobileNumber(request, rule.recipientRole());
-        if (!StringUtils.hasText(mobile)) {
+        List<String> mobiles = resolveMobileNumbers(request, rule.recipientRole());
+        if (CollectionUtils.isEmpty(mobiles)) {
             log.warn("Skipping workflow SMS: no mobile for role {} on incident {}", rule.recipientRole(),
                     request.getIncident().getIncidentId());
             return;
         }
         String message = applyPlaceholders(rule.template(), placeholders);
-        List<SMSRequest> smsRequests = Collections.singletonList(
-                SMSRequest.builder().mobileNumber(mobile).message(message).build());
+        List<SMSRequest> smsRequests = mobiles.stream()
+                .map(mobile -> SMSRequest.builder().mobileNumber(mobile).message(message).build())
+                .collect(Collectors.toList());
         notificationUtil.sendSMS(tenantId, smsRequests);
-        log.info("Workflow SMS sent for incident {} to role {}", request.getIncident().getIncidentId(), rule.recipientRole());
+        log.info("Workflow SMS sent for incident {} to {} recipient(s) in role {}",
+                request.getIncident().getIncidentId(), smsRequests.size(), rule.recipientRole());
     }
 
-    private String resolveMobileNumber(IncidentRequest request, String role) {
+    /**
+     * The recipients of the SMS for a role.
+     *
+     * <p>A ticket waiting on a pooled role ({@link IMConstants#POOLED_ROLES}) has no assignee, so there
+     * is nobody in particular to tell: everyone holding the role within the ticket's jurisdiction is
+     * notified, since any of them can pick it up. Every other role resolves to the one person the
+     * ticket is actually with.
+     */
+    private List<String> resolveMobileNumbers(IncidentRequest request, String role) {
         if (ROLE_COMPLAINANT.equals(role)
                 && request.getIncident().getReporter() != null
                 && StringUtils.hasText(request.getIncident().getReporter().getMobileNumber())) {
-            return request.getIncident().getReporter().getMobileNumber();
+            return List.of(request.getIncident().getReporter().getMobileNumber());
         }
         if (ROLE_COMPLAINT_RESOLVER.equals(role)
                 && request.getWorkflow().getAssignes() != null
@@ -163,11 +175,15 @@ public class WorkflowSmsNotificationService {
                     request.getRequestInfo(),
                     request.getIncident().getTenantId());
             if (user != null && StringUtils.hasText(user.getMobileNumber())) {
-                return user.getMobileNumber();
+                return List.of(user.getMobileNumber());
             }
         }
+        if (POOLED_ROLES.contains(role)) {
+            return notificationService.getHRMSEmployeeMobiles(request, role);
+        }
         Map<String, String> employee = notificationService.getHRMSEmployee(request, role);
-        return employee != null ? employee.get("employeeMobile") : null;
+        String mobile = employee != null ? employee.get("employeeMobile") : null;
+        return StringUtils.hasText(mobile) ? List.of(mobile) : Collections.emptyList();
     }
 
     private PlaceholderValues buildPlaceholders(IncidentRequest request, String localizationMessage) {

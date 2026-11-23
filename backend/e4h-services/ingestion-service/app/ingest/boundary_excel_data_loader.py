@@ -4,6 +4,7 @@ import pandas as pd
 
 from app.core.logging import AppLogger
 from app.ingest.service.data_loader import DataLoader
+from app.utils.boundary_code_utils import boundary_code_segment
 
 logger = AppLogger().get_logger()
 class BoundaryExcelDataLoader(DataLoader):
@@ -16,9 +17,12 @@ class BoundaryExcelDataLoader(DataLoader):
     def load_data(self) -> bool:
         try:
             # Load boundary data
+            # Every cell as text: a code typed as a number would otherwise come back as 29.0
+            # in a column with blanks, and fail a digits-only schema pattern.
             self.boundary_df = pd.read_excel(
                 self.file_path,
-                sheet_name=self.boundary_sheet
+                sheet_name=self.boundary_sheet,
+                dtype=str,
             )
 
             # Initialize tracking columns
@@ -80,9 +84,5 @@ class BoundaryExcelDataLoader(DataLoader):
         if not text or not text.strip():
             return ""
 
-        cleaned = re.sub(r"[_\-]+", " ", text.strip())
-
-        parts = cleaned.split()
-
-        # First letter of each token uppercased; concatenated for boundary codes (no spaces)
-        return "".join(word[:1].upper() + word[1:] for word in parts)
+        # Same builder as BoundaryDataProcessor, so the duplicate check sees the codes it creates
+        return boundary_code_segment(text)

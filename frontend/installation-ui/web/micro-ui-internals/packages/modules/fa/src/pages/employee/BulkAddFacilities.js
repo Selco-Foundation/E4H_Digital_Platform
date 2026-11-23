@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { IngestionService } from "../../services/Ingestion";
 import { FAService } from "../../services/FA";
+import useBoundary from "../../hooks/useBoundary";
+import { buildBoundaryCodeSelection, EMPTY_GEOGRAPHY } from "../../utilities/GeographySelection";
 
 const BulkAddFacilities = () => {
 
@@ -13,6 +15,10 @@ const BulkAddFacilities = () => {
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [isOnmReady, setIsOnmReady] = useState(false);
+  // The template is generated for this geography only: its boundary sheet and its
+  // State/District/Block dropdowns hold just these blocks, never the whole country.
+  const [geography, setGeography] = useState(EMPTY_GEOGRAPHY);
+  const { data: boundary, isLoading: isBoundaryLoading } = useBoundary();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -31,8 +37,14 @@ const BulkAddFacilities = () => {
 
   const handleFacilityTemplateDownload = async () => {
     try {
+      // Only the state is required: an empty district or block level means "all of it"
+      // (`buildBoundaryDataTree`), so the template covers the whole state.
+      if (!geography.states.length) {
+        setToast({ key: "error", label: "FA_BULK_ADD_SELECT_GEOGRAPHY" });
+        return;
+      }
       setBlockUI(true);
-      await IngestionService.downloadFacilityDataTemplate();
+      await IngestionService.downloadFacilityDataTemplate(buildBoundaryCodeSelection(geography, boundary));
       setBlockUI(false);
       setToast({ key: "success", label: "FACILITY_TEMPLATE_DOWNLOAD_SUCCESS" });
 
@@ -94,6 +106,47 @@ const BulkAddFacilities = () => {
   const config = useMemo(
     () => [
       {
+        key: "0",
+        // Laid out like the pm Geography step: heading, then inline State / Districts / Blocks
+        // rows whose labels and required marks FormComposer draws.
+        body: [
+          {
+            key: "geographyHeader",
+            type: "component",
+            component: "FAGeographyHeader",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            customProps: { name: "geographyHeader", t },
+            populators: { name: "geographyHeader" },
+          },
+          // Only the state is mandatory: an empty district or block level stands for all of
+          // them (`buildBoundaryDataTree`), so those two narrow the template rather than
+          // complete it.
+          ...[
+            ["states", "PM_CREATE_PROJECT_LABEL_STATE", true],
+            ["districts", "PM_CREATE_PROJECT_LABEL_DISTRICTS", false],
+            ["blocks", "PM_CREATE_PROJECT_LABEL_BLOCKS", false],
+          ].map(([level, label, isMandatory]) => ({
+            inline: true,
+            label,
+            isMandatory,
+            key: `geography_${level}`,
+            type: "component",
+            component: "FAGeographyLevelSelector",
+            customProps: {
+              name: `geography_${level}`,
+              level,
+              geography,
+              setGeography,
+              boundary,
+              isLoading: isBoundaryLoading,
+              t,
+            },
+            populators: { name: `geography_${level}` },
+          })),
+        ],
+      },
+      {
         key: "1",
         body: [
           {
@@ -108,6 +161,7 @@ const BulkAddFacilities = () => {
               heading: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
               description: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
               handleDownload: handleFacilityTemplateDownload,
+              disabled: geography.states.length === 0,
               t,
             },
             route: "project-duration-2",
@@ -178,7 +232,7 @@ const BulkAddFacilities = () => {
         ],
       },
     ],
-    [t, isOnmReady, file, invalidDataError]
+    [t, isOnmReady, file, invalidDataError, geography, boundary, isBoundaryLoading]
   );
 
   return (

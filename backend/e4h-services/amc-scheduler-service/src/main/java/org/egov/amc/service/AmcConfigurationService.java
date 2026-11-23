@@ -43,6 +43,7 @@ public class AmcConfigurationService {
     private final AssetAmcRepository assetAmcRepository;
     private final AmcAnalyticsService amcAnalyticsService;
     private final AmcVisitRegenerationService amcVisitRegenerationService;
+    private final FacilityAmcIndexSyncService facilityAmcIndexSyncService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -52,7 +53,8 @@ public class AmcConfigurationService {
     public AmcConfigurationService(
             AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, ScheduledVisitRepository scheduledVisitRepository, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
             Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository,
-            AmcAnalyticsService amcAnalyticsService, AmcVisitRegenerationService amcVisitRegenerationService) {
+            AmcAnalyticsService amcAnalyticsService, AmcVisitRegenerationService amcVisitRegenerationService,
+            FacilityAmcIndexSyncService facilityAmcIndexSyncService) {
             this.amcConfigurationValidator = amcConfigurationValidator;
         this.scheduledVisitRepository = scheduledVisitRepository;
         this.producer = producer;
@@ -64,6 +66,7 @@ public class AmcConfigurationService {
         this.assetAmcRepository = assetAmcRepository;
         this.amcAnalyticsService = amcAnalyticsService;
         this.amcVisitRegenerationService = amcVisitRegenerationService;
+        this.facilityAmcIndexSyncService = facilityAmcIndexSyncService;
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
@@ -107,6 +110,13 @@ public class AmcConfigurationService {
 
         // Creating a configuration is the AMC scheduling action - best-effort, never breaks create.
         amcAnalyticsService.publishConfigurationCreateEvents(request);
+
+        // Push the AMC snapshot (installation date, applicability, due dates, ...) to
+        // health-facility-index so the AMC Data Dump report reflects it - best-effort.
+        for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            facilityAmcIndexSyncService.syncFacilityAmcSnapshot(
+                    amcConfiguration.getFacilityId(), amcConfiguration.getTenantId(), request.getRequestInfo());
+        }
         return request;
     }
 
@@ -225,10 +235,15 @@ public class AmcConfigurationService {
 
     /**
      * Recomputes configurationEndDate as startDate + durationMonths (calendar months) for every
-     * configuration whose duration changed, and returns their ids.
+     * configuration whose duration OR start date changed, and returns their ids so the validator
+     * can skip its normal "end date cannot decrease"/"24h advance" checks for them - the end date
+     * shift here is mechanical (start + duration), not a user-chosen change, so those checks don't
+     * apply. A start-date change is exactly the "AMC Start Date" edit re-uploaded from the AMC
+     * configuration Excel (see /amcConfigurationBulkIngest), most often set from the Installation
+     * Report Submission Date, which is virtually always in the past by the time this runs.
      *
-     * <p>Shortening a contract below what has already been serviced would strand APPROVED visits
-     * outside the window, so the derived end date must stay after the last visit that actually took
+     * <p>Shortening the resulting window below what has already been serviced would strand APPROVED
+     * visits outside it, so the derived end date must stay after the last visit that actually took
      * place.
      */
     private Set<String> applyDurationDrivenEndDates(AmcConfigurationRequest request, List<AmcConfiguration> amcConfigurationsFromDB) {
@@ -236,29 +251,39 @@ public class AmcConfigurationService {
         Set<String> touchedIds = new HashSet<>();
         for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
             AmcConfiguration amcConfigurationFromDB = findAmcConfigurationById(String.valueOf(amcConfiguration.getId()), amcConfigurationsFromDB);
-            if (amcConfigurationFromDB == null
-                    || amcConfiguration.getDurationMonths() == null
-                    || Objects.equals(amcConfiguration.getDurationMonths(), amcConfigurationFromDB.getDurationMonths())) {
+            if (amcConfigurationFromDB == null) {
                 continue;
             }
 
+            boolean durationChanged = amcConfiguration.getDurationMonths() != null
+                    && !Objects.equals(amcConfiguration.getDurationMonths(), amcConfigurationFromDB.getDurationMonths());
+            boolean startDateChanged = amcConfiguration.getConfigurationStartDate() != null
+                    && !Objects.equals(amcConfiguration.getConfigurationStartDate(), amcConfigurationFromDB.getConfigurationStartDate());
+            if (!durationChanged && !startDateChanged) {
+                continue;
+            }
+
+            Integer durationMonths = amcConfiguration.getDurationMonths() != null
+                    ? amcConfiguration.getDurationMonths()
+                    : amcConfigurationFromDB.getDurationMonths();
             Long startDate = amcConfiguration.getConfigurationStartDate() != null
                     ? amcConfiguration.getConfigurationStartDate()
                     : amcConfigurationFromDB.getConfigurationStartDate();
-            if (startDate == null || startDate <= 0) {
+            if (startDate == null || startDate <= 0 || durationMonths == null) {
                 continue;
             }
 
-            long derivedEndDate = amcConfigurationServiceUtil.addMonths(startDate, amcConfiguration.getDurationMonths());
+            long derivedEndDate = amcConfigurationServiceUtil.addMonths(startDate, durationMonths);
             Long lastServicedVisitDate = getLastServicedVisitDate(request.getRequestInfo(), amcConfigurationFromDB);
             if (lastServicedVisitDate != null && derivedEndDate < lastServicedVisitDate) {
                 throw new CustomException("INVALID_AMC_CONFIGURATION_MODIFY",
-                        "The AMC duration cannot be reduced to " + amcConfiguration.getDurationMonths()
-                                + " months: visits have already been carried out beyond the resulting end date.");
+                        "The AMC start date/duration cannot be changed - the resulting end date (" + derivedEndDate
+                                + ") would fall before visits that have already been carried out.");
             }
 
-            log.info("Recomputed configurationEndDate for configurationId: {} from durationMonths {} -> {} (endDate {} -> {})",
-                    amcConfiguration.getId(), amcConfigurationFromDB.getDurationMonths(), amcConfiguration.getDurationMonths(),
+            log.info("Recomputed configurationEndDate for configurationId: {} (startDate {} -> {}, durationMonths {} -> {}): endDate {} -> {}",
+                    amcConfiguration.getId(), amcConfigurationFromDB.getConfigurationStartDate(), startDate,
+                    amcConfigurationFromDB.getDurationMonths(), durationMonths,
                     amcConfigurationFromDB.getConfigurationEndDate(), derivedEndDate);
             amcConfiguration.setConfigurationEndDate(derivedEndDate);
             touchedIds.add(amcConfiguration.getId());
@@ -448,11 +473,19 @@ public class AmcConfigurationService {
          * Best-effort - the configuration update itself is already committed and must not be lost if
          * regeneration fails.
          */
+        List<ScheduledVisit> regeneratedVisits = List.of();
         try {
-            amcVisitRegenerationService.regenerateIfCadenceChanged(amcConfigurationFromDB, amcConfiguration, request.getRequestInfo());
+            regeneratedVisits = amcVisitRegenerationService.regenerateIfCadenceChanged(amcConfigurationFromDB, amcConfiguration, request.getRequestInfo());
         } catch (Exception e) {
             log.error("Failed to regenerate scheduled visits for configurationId: {}", amcConfiguration.getId(), e);
         }
+
+        // Cadence changes reshuffle due dates - push the refreshed AMC snapshot to
+        // health-facility-index. Best-effort. The regenerated visits are handed over because they are
+        // only persisted asynchronously, so the snapshot must not re-read them from the DB.
+        facilityAmcIndexSyncService.syncFacilityAmcSnapshot(
+                amcConfigurationFromDB.getFacilityId(), amcConfigurationFromDB.getTenantId(), request.getRequestInfo(),
+                regeneratedVisits);
     }
 
     private boolean isValidCascadingUpdate(AmcConfiguration amcConfigurationFromDB, AmcConfiguration amcConfiguration) {
