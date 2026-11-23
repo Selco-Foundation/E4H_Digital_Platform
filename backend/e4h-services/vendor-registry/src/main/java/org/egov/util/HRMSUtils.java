@@ -88,6 +88,26 @@ public class HRMSUtils {
         return employeeResponse.getEmployees().get(0);
     }
 
+    /** The employees for these uuids, in one call. */
+    public List<Employee> getUsersByIds(Object request, Collection<String> uuids) {
+        if (uuids == null || uuids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&uuids=" + String.join(",", uuids);
+        return searchEmployees(request, url);
+    }
+
+    private List<Employee> searchEmployees(Object request, String url) {
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+            return Collections.emptyList();
+        }
+        return employeeResponse.getEmployees();
+    }
+
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&phone="+phoneNumber;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
@@ -179,8 +199,22 @@ public class HRMSUtils {
 //                .collect(Collectors.toList());
 //    }
 
+    /**
+     * Backstop for the "a user always holds at least one jurisdiction" invariant.
+     *
+     * The validator now refuses a create, and an explicit clear on update, before an empty list
+     * can reach here, so this fallback is unreachable from the API. It is kept because it is the
+     * last line of that invariant for any other caller, and because the recreate merge depends
+     * on the boundary it produces - see mergeJurisdictionsForRecreateUser, which keeps exactly
+     * this boundary active while deactivating the rest.
+     *
+     * Reaching it now means something bypassed validation; a country-wide grant is the wrong
+     * answer in that case too, just a less broken one than no access at all.
+     */
     public List<Jurisdiction> buildJurisdictions(List<Jurisdiction> jurisdiction) {
         if (jurisdiction == null || jurisdiction.isEmpty()) {
+            log.warn("No jurisdiction supplied; falling back to the country-wide default. "
+                    + "Validation should have rejected this before now.");
             Jurisdiction jurisdiction1 = Jurisdiction.builder()
                     .hierarchy("ADMIN")
                     .boundary("India")

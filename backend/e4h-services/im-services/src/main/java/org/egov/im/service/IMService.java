@@ -9,6 +9,7 @@ import org.egov.im.producer.Producer;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
+import org.egov.im.util.OnHoldSystemFunctional;
 import org.egov.im.validator.ServiceRequestValidator;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
@@ -313,6 +314,11 @@ public class IMService {
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+
+        // systemFunctional is ON_HOLD while the ticket is in OUT_OF_WARRANTY_ON_HOLD, restored once it leaves
+        if (updatedProcessInstance != null && updatedProcessInstance.getState() != null) {
+            OnHoldSystemFunctional.apply(request.getIncident(), updatedProcessInstance.getState().getApplicationStatus());
+        }
 
         // System uninstallation process
         // HCR cannot only create ticket for other issue type if uninstall ticket status is PENDINGRESOLUTION

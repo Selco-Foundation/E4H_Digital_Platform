@@ -22,20 +22,14 @@ const useInboxData = (searchParams) => {
   sessionStorage.setItem("appFilters", JSON.stringify(appFilters));
   sessionStorage.setItem("searchParams", JSON.stringify(searchParams));
 
-  const wfFilters = {
-    ...commonFilters,
-    ...searchParams?.filters?.wfQuery,
-    ...(searchParams?.filters?.wfFilters?.assignee?.[0]?.code !== ""
-      ? { assignee: searchParams?.filters?.wfFilters?.assignee?.[0]?.code }
-      : {}),
-  };
-
-  const { assignee, wfStatus } = wfFilters;
+  // One flag, not a reconstructed assignee. What "assigned to me" means per role is the backend's
+  // decision; the UI only says which view was asked for.
+  const assignedToMe = searchParams?.filters?.wfFilters?.assignedToMe !== false;
 
   const { data, isSuccess, refetch } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
-    filters: { ...appFilters, assignee, wfStatus, sortOrder: "DESC", services: ["Incident"] },
+    filters: { ...appFilters, assignedToMe, sortOrder: "DESC", services: ["Incident"] },
     config: {
       select: (data) => ({ data } || "-"),
       enabled: Digit.Utils.pgrAccess(),

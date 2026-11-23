@@ -57,6 +57,7 @@ public class ActivityService {
     private final AmcSchedulerService amcSchedulerService;
 
     private final ActivityAnalyticsService activityAnalyticsService;
+    private final ActivityFacilityUserFanoutService facilityUserFanoutService;
     private final BomPdfService bomPdfService;
 
     @Qualifier("objectMapper")
@@ -65,7 +66,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService, ActivityFacilityUserFanoutService facilityUserFanoutService) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -81,6 +82,7 @@ public class ActivityService {
             this.boundaryUtil = boundaryUtil;
             this.amcSchedulerService = amcSchedulerService;
             this.activityAnalyticsService = activityAnalyticsService;
+            this.facilityUserFanoutService = facilityUserFanoutService;
             this.bomPdfService = bomPdfService;
     }
 
@@ -182,7 +184,10 @@ public class ActivityService {
                         .requestInfo(request.getRequestInfo())
                         .activityFacilityUsers(activityFacilityUsers)
                         .build();
-                facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
+                // Non-throwing: with the staffing fan-out in place, pairs can already exist by
+                // the time a plan is (re)scheduled, and the throwing variant would abort this
+                // whole batch - including the facility push below - inside a swallowed catch.
+                facilityUsersService.createMissingActivityFacilityUsers(activityFacilityUserBulkRequest);
             }
 
             log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
@@ -258,6 +263,10 @@ public class ActivityService {
             // One analytics event per staffing row, after the persister push so a failed create
             // publishes nothing (best-effort, never throws).
             activityAnalyticsService.publishAssignmentEvents(request.getRequestInfo(), activityAssignments);
+
+            // Expand the new staffing across the plan activity's facilities. After the enrichment
+            // loop above, which rewrites activityId from the UI's activity code to its uuid.
+            facilityUserFanoutService.onAssignmentsCreated(request.getRequestInfo(), activityAssignments);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity assignments, count: {}", assignmentCount, exception);
         }
@@ -280,6 +289,15 @@ public class ActivityService {
             log.debug("Pushing unassignment request to topic: {}", activityConfiguration.getUnassignActivityAssignmentTopic());
             producer.push(activityConfiguration.getUnassignActivityAssignmentTopic(), request);
             log.info("Successfully unassigned {} activity assignments", assignmentCount);
+
+            // Revoke from the STORED rows, never from the payload. This is the one assignment
+            // endpoint that does not read the database, so trusting the client's assignedTo and
+            // fieldPlanId here would let a crafted request revoke somebody else's visibility.
+            List<ActivityAssignment> stored = searchAssignedActivity(
+                    getSearchActivityAssignmentRequest(activityAssignments, request.getRequestInfo()),
+                    activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
+                    activityAssignments.get(0).getTenantId(), true, null);
+            facilityUserFanoutService.onAssignmentsUnassigned(request.getRequestInfo(), stored);
         } catch (Exception exception) {
             log.error("Error occurred while unassigning activity assignments, count: {}", assignmentCount, exception);
         }
@@ -288,10 +306,23 @@ public class ActivityService {
     }
 
     public List<ActivityFacility> searchActivityFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        return searchActivityFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince, true);
+    }
+
+    /**
+     * @param scopeToAssignedUser false for an internal re-read - fetching a row this service is
+     *                            about to act on, or checking one exists. Those are not permission
+     *                            checks: workflow-v2 authorises the transition. Scoping them would
+     *                            turn a missing assignment row into "facility not found" on an
+     *                            action the caller is perfectly entitled to perform.
+     */
+    public List<ActivityFacility> searchActivityFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, boolean scopeToAssignedUser) {
         log.trace("searchActivityFacility method invoked with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
         log.debug("Fetching activity facilities from repository");
-        List<ActivityFacility> activityFacilities = activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        List<ActivityFacility> activityFacilities = scopeToAssignedUser
+                ? activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince)
+                : activityFacilityRepository.getActivitiesFacilityUnscoped(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         List<String> fieldPlanIds = activityFacilities.stream()
                 .map(ActivityFacility::getFieldPlanId)
                 .filter(Objects::nonNull)
@@ -572,8 +603,10 @@ public class ActivityService {
                             .requestInfo(request.getRequestInfo())
                             .build();
 
+                    // Existence check before a delete, not a listing - unscoped, so a missing
+                    // assignment row cannot masquerade as "this facility does not exist".
                     List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                            activityConfiguration.getTenantId(), false, null);
+                            activityConfiguration.getTenantId(), false, null, false);
                     if(activityFacilities == null || activityFacilities.isEmpty()){
                         log.error("Activity facility not found for deletion, id: {}", activityFacility.getId());
                         throw new CustomException("Activity Facility Delete", "Activity Facility ID do not exist");
@@ -637,8 +670,11 @@ public class ActivityService {
                 .build();
 
         log.debug("Fetching existing activity facility for workflow update");
+        // Unscoped: this re-read feeds a workflow transition that workflow-v2 authorises on its
+        // own. Scoping it would turn a missing assignment row into FACILITY_NOT_FOUND on an
+        // approve the reviewer is entitled to make - a far worse failure than a short worklist.
         List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                activityConfiguration.getTenantId(), false, null);
+                activityConfiguration.getTenantId(), false, null, false);
 
         if (activityFacilities == null || activityFacilities.isEmpty()) {
             log.error("Activity facility not found for workflow update, id: {}", request.getActivityFacilityId());
@@ -1040,10 +1076,11 @@ public class ActivityService {
          * Search for installation plan based on installation plan IDs provided in the request
          */
         log.debug("Fetching existing activity facilities from database");
+        // Unscoped: fetching the stored rows to merge an update onto, not a listing.
         List<ActivityFacility> activityFacilityListFromDB = searchActivityFacility(
                 getSearchActivityFacilityRequest(request.getActivityFacilities(), request.getRequestInfo()),
                 activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                request.getActivityFacilities().get(0).getTenantId(), false, null);
+                request.getActivityFacilities().get(0).getTenantId(), false, null, false);
         log.debug("Retrieved {} activity facilities from database for update", activityFacilityListFromDB != null ? activityFacilityListFromDB.size() : 0);
 
         /*
@@ -1089,9 +1126,18 @@ public class ActivityService {
         /*
          * Process each project in the update request
          */
+        List<ActivityFacilityUserFanoutService.AssignmentChange> changes = new ArrayList<>();
         for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
+            changes.add(new ActivityFacilityUserFanoutService.AssignmentChange(
+                    findActivityAssignmentById(String.valueOf(activityAssignment.getId()), activityAssignmentListFromDB),
+                    activityAssignment));
             processActivityAssignmentUpdate(request, activityAssignment, activityAssignmentListFromDB);
         }
+
+        // One fan-out for the whole batch. Most of these are no-ops: the staffing screen replays
+        // every saved row on each save, and the fan-out drops anything whose user and role are
+        // unchanged.
+        facilityUserFanoutService.onAssignmentsUpdated(request.getRequestInfo(), changes);
 
         return request;
     }

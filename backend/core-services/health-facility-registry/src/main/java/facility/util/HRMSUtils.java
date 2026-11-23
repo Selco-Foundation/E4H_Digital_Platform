@@ -6,6 +6,7 @@ import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -335,6 +336,60 @@ public class HRMSUtils {
                 .build();
     }
 
+    /**
+     * The caller's own active jurisdictions. Never throws.
+     *
+     * Deliberately not {@link #getUserById}: that throws {@code EMPLOYEE_NOT_FOUND} on an empty
+     * result, and {@code ServiceRequestRepository.fetchResult} throws on transport errors, so both
+     * would surface as a 500 and be indistinguishable to the caller. Scoping needs to tell them
+     * apart - one is a correct answer about a user, the other is an outage.
+     *
+     * Hits the v2 employee search, which is the version that returns the roles attached to each
+     * jurisdiction.
+     */
+    public JurisdictionGrants getActiveJurisdictionsForCaller(RequestInfo requestInfo) {
+        String uuid = requestInfo != null && requestInfo.getUserInfo() != null
+                ? requestInfo.getUserInfo().getUuid()
+                : null;
+        if (uuid == null || uuid.trim().isEmpty()) {
+            log.warn("No caller uuid on the request; cannot resolve jurisdictions");
+            return JurisdictionGrants.failed(JurisdictionGrants.Status.NO_CALLER_UUID);
+        }
 
+        try {
+            String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                    + "?tenantId=in&isActive=true&uuids=" + uuid;
+            Map<String, Object> body = new HashMap<>();
+            body.put("RequestInfo", requestInfo);
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), body);
 
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+            if (employeeResponse == null || employeeResponse.getEmployees() == null
+                    || employeeResponse.getEmployees().isEmpty()) {
+                log.warn("HRMS returned no employee for caller {}", uuid);
+                return JurisdictionGrants.failed(JurisdictionGrants.Status.EMPLOYEE_NOT_FOUND);
+            }
+
+            List<Jurisdiction> active = new ArrayList<>();
+            List<Jurisdiction> stored = employeeResponse.getEmployees().get(0).getJurisdictions();
+            if (stored != null) {
+                for (Jurisdiction jurisdiction : stored) {
+                    if (jurisdiction == null || jurisdiction.getBoundary() == null) {
+                        continue;
+                    }
+                    // Only an explicit FALSE deactivates. Rows written before the column existed
+                    // carry null, and those are live grants.
+                    if (Boolean.FALSE.equals(jurisdiction.getIsActive())) {
+                        continue;
+                    }
+                    active.add(jurisdiction);
+                }
+            }
+            return JurisdictionGrants.ok(active);
+        } catch (Exception e) {
+            log.error("Could not read jurisdictions from HRMS for caller {}", uuid, e);
+            return JurisdictionGrants.failed(JurisdictionGrants.Status.HRMS_UNAVAILABLE);
+        }
+    }
 }

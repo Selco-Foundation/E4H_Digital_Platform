@@ -20,6 +20,10 @@ const Complaint = () => {
   const match1=`/${window.contextPath}/employee/pgr`
   console.log("match1", match1)
   const isCRMUser = roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
+  // Raising a ticket is the facility POC's screen. It was reachable by URL to anyone, which with
+  // role-scoped facility search now means landing on it with an empty facility dropdown and no
+  // explanation - the route gate and the picker's COMPLAINANT scope have to agree.
+  const isComplainant = roles?.some((role) => role.code === "COMPLAINANT");
 
   const breadcrumConfig = {
     home: {
@@ -57,6 +61,7 @@ const Complaint = () => {
   const CreateComplaint = Digit?.ComponentRegistryService?.getComponent('PGRCreateComplaintEmp');
   const PauseRMS = Digit?.ComponentRegistryService?.getComponent("PGRPauseRMS");
   const RMSPausedFacilities = Digit?.ComponentRegistryService?.getComponent("PGRRMSPausedFacilities");
+  const MobileChangeRequests = Digit?.ComponentRegistryService?.getComponent("PGRMobileChangeRequests");
   const ComplaintDetails = Digit?.ComponentRegistryService?.getComponent('PGRComplaintDetails');
   const ComplaintFeedback = Digit?.ComponentRegistryService?.getComponent('PGRComplaintFeedback');
   const Inbox = Digit?.ComponentRegistryService?.getComponent('PGRInbox');
@@ -93,9 +98,11 @@ const Complaint = () => {
           </Switch>
         )}
         <Switch>
-          <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
+          {isComplainant && <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />}
           {isCRMUser && <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />}
           {isCRMUser && <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />}
+          {/* CRM-only approval queue for registered-mobile-number change requests */}
+          {isCRMUser && <Route path={match.url + Employee.MobileChangeRequests} component={() => <MobileChangeRequests />} />}
           <Route path={match.url + Employee.ComplaintFeedback + ":incidentId/:tenantId"} component={() => <ComplaintFeedback parentRoute={match.url} />} />
           <Route path={match.url + Employee.ComplaintDetails + ":incidentId/:tenantId"} component={() => <ComplaintDetails />} />
           <Route path={match.url + Employee.Inbox} component={Inbox} />

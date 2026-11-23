@@ -4,6 +4,55 @@ import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
 import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
 import CustomUndoIcon from "../../Custom/CustomUndoButton";
+import CustomEditIcon from "../../Custom/CustomEditIcon";
+import AppliesToSelector from "./AppliesToSelector";
+import {
+  appliesToAllRoles,
+  buildRolesFromGroups,
+  collapseRoleCodesToGroups,
+  pruneAssignmentGroups,
+} from "../../../utilities/jurisdictionRoles";
+
+/**
+ * A saved jurisdiction stores only its own boundary code and type. The add-assignment
+ * cascade needs the whole chain above it, and every selector matches its options on
+ * parentCode, so the ancestors have to be the boundaryData entries themselves rather than
+ * bare codes - otherwise each selector drops the value it was given as stale.
+ */
+const buildBoundaryCascade = (boundary, boundaryType, boundaryData, t) => {
+  const cascade = { country: null, state: null, district: null, block: null, facility: null };
+  const levels = [
+    { key: "country", type: "Country", list: boundaryData?.countries },
+    { key: "state", type: "State", list: boundaryData?.states },
+    { key: "district", type: "District", list: boundaryData?.districts },
+    { key: "block", type: "Block", list: boundaryData?.blocks },
+    { key: "facility", type: "Facility", list: boundaryData?.facilities },
+  ];
+
+  let index = levels.findIndex((level) => level.type === boundaryType);
+  let code = boundary;
+  while (index >= 0 && code) {
+    const match = (levels[index].list || []).find((entry) => entry.code === code);
+    if (!match) break;
+    cascade[levels[index].key] = { ...match, name: t(`Boundary_${match.code}`) };
+    code = match.parentCode;
+    index -= 1;
+  }
+  return cascade;
+};
+
+/** The deepest level the cascade has a value for is the jurisdiction's boundary. */
+const resolveCascadeBoundary = (assignment) => {
+  const levels = [
+    { key: "facility", type: "Facility" },
+    { key: "block", type: "Block" },
+    { key: "district", type: "District" },
+    { key: "state", type: "State" },
+    { key: "country", type: "Country" },
+  ];
+  const level = levels.find(({ key }) => assignment?.[key]?.code);
+  return level ? { boundary: assignment[level.key].code, boundaryType: level.type } : null;
+};
 
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
@@ -20,6 +69,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const [debouncedJurisdictionSearch, setDebouncedJurisdictionSearch] = useState("");
   const isPlatformOrgAdmin = (info?.roles || []).map((role) => role?.code).includes("ORG_PLATFORM_ADMIN");
   const [totalAssignmentsToDisplay, setTotalAssignmentsToDisplay] = useState(0);
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState([]);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -63,16 +113,23 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         email: createdUser.emailId,
         roles: roleGroups.filter((roleGroup) => roleGroup.roleCodes.every((roleCode) => roleCodes.includes(roleCode))),
       });
+      setSelectedRoleGroups(roleGroups.filter((roleGroup) => roleGroup.roleCodes.every((roleCode) => roleCodes.includes(roleCode))));
     }
   }, [mdmsResponse]);
 
   useEffect(() => {
+    if (!mdmsResponse) return;
     const createdAssessments = [];
     (createdUser?.jurisdiction || []).forEach(jurisdiction => {
-      createdAssessments.push(jurisdiction);
+      createdAssessments.push({
+        ...jurisdiction,
+        // Stored as role codes; the form works in groups. An empty list stays empty, which
+        // is "all roles" and must not be confused with "no match found".
+        roles: jurisdiction.roles?.length ? collapseRoleCodesToGroups(jurisdiction.roles, roleGroups) : null,
+      });
     })
     setSavedAssignments(createdAssessments);
-  }, []);
+  }, [mdmsResponse]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {setDebouncedJurisdictionSearch(jurisdictionSearch)}, 500);
@@ -91,6 +148,48 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     setTotalAssignmentsToDisplay(filteredSavedAssignments.length);
     setSavedAssignmentsToDisplay(filteredSavedAssignments.slice(pageOffset, Math.min(filteredSavedAssignments.length, pageOffset + pageSize)));
   }, [t, savedAssignments, debouncedJurisdictionSearch, pageOffset, pageSize]);
+
+  /**
+   * Dropping a role group strips it from every assignment scoped to it.
+   *
+   * An assignment left with no groups is **not** removed. Empty means "applies to every role
+   * the user holds", so it widens - but that is the admin's decision to make, and the row says
+   * so in plain sight with an `All roles` chip. Deleting access on their behalf, or marking the
+   * row deleted for them, takes a choice away that they can make themselves with the bin.
+   *
+   * Pruning runs over the current lists rather than inside a setState updater: React runs an
+   * updater during the next render, so anything computed in there is not available to the rest
+   * of the effect. An assignment whose roles did not change is returned by identity, so the
+   * lists are only replaced on a real change and this effect cannot re-trigger itself.
+   */
+  useEffect(() => {
+    if (!mdmsResponse) return;
+    /**
+     * Don't prune while the form has reported no roles for a user who demonstrably has some.
+     * selectedRoleGroups is seeded from createdUser in an effect above, and this one runs in
+     * the same commit, where the state is still its initial [] - pruning against that reads as
+     * "holds no roles at all" and would strip the scoping off every jurisdiction they have.
+     */
+    if (createdUser?.orgUserId && !selectedRoleGroups.length && createdUser.roles?.length) return;
+
+    const prune = (list) => list.map((assignment) => {
+      const retained = pruneAssignmentGroups(assignment, selectedRoleGroups);
+      if (retained === null || retained.length === assignment.roles.length) return assignment;
+      return { ...assignment, roles: retained };
+    });
+
+    const changed = (next, prev) => next.some((item, i) => item !== prev[i]);
+
+    const nextAssignments = prune(assignments);
+    if (changed(nextAssignments, assignments)) setAssignments(nextAssignments);
+
+    const nextSaved = prune(savedAssignments);
+    if (changed(nextSaved, savedAssignments)) setSavedAssignments(nextSaved);
+  }, [selectedRoleGroups, mdmsResponse, assignments, savedAssignments]);
+
+  const setAssignmentRoles = useCallback((index, roles) => {
+    setAssignments((prev) => prev.map((assignment, i) => (i === index ? { ...assignment, roles } : assignment)));
+  }, []);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
 
@@ -270,66 +369,70 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const handleFormSubmit = useCallback((formData) => {
     if (formData?.roles?.length) {
 
-      const userRoles = roles.filter((role) => formData.roles.some((roleGroup) => roleGroup.roleCodes.includes(role.code)));
+      // Every code the chosen groups name, not just the ones OrgRoles describes - see
+      // buildRolesFromGroups. The user's roles and their jurisdictions' roles must be built
+      // the same way, because HRMS requires the second to be a subset of the first.
+      const userRoles = buildRolesFromGroups(formData.roles, roles);
       const formattedFormData = {
         ...formData,
         roles: userRoles,
       }
 
+      // §1.3: an incoming jurisdiction with an id and roles == null keeps its stored roles,
+      // so every row the form rendered sends `roles` explicitly. [] is "all roles", and is
+      // what clears stored scoping; omitting the key would mean "unchanged".
       const jurisdictions = (savedAssignments || [])
-        .map((savedAssignment) => ({...savedAssignment, isActive: !savedAssignment.isDeleted}));
+        .map((savedAssignment) => ({
+          ...savedAssignment,
+          isActive: !savedAssignment.isDeleted,
+          roles: appliesToAllRoles(savedAssignment) ? [] : buildRolesFromGroups(savedAssignment.roles, roles),
+        }));
 
-      assignments.forEach((assignment) => {
-        let jurisdiction;
-        if (assignment.facility?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.facility.code,
-            boundaryType: "Facility",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
+      for (const assignment of assignments) {
+        const resolved = resolveCascadeBoundary(assignment);
+        let jurisdiction = resolved && {
+          hierarchy: "SELCO",
+          boundary: resolved.boundary,
+          boundaryType: resolved.boundaryType,
+          tenantId: tenantId,
+          isActive: !assignment.isDeleted,
+        };
+        // A row lifted out of the table carries the stored identity, but takes its boundary
+        // from the cascade like any other - so moving it edits the grant instead of looking
+        // edited and saving the old boundary back.
+        if (assignment.id) {
+          if (!jurisdiction) {
+            setFormToast({ key: "error", label: t("ORG_ASSIGNMENT_BOUNDARY_REQUIRED") });
+            return;
           }
-        } else if (assignment.block?.code) {
           jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.block.code,
-            boundaryType: "Block",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
-        } else if (assignment.district?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.district.code,
-            boundaryType: "District",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
-        } else if (assignment.state?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.state.code,
-            boundaryType: "State",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
-        } else if (assignment.country?.code) {
-          jurisdiction = {
-            hierarchy: "SELCO",
-            boundary: assignment.country.code,
-            boundaryType: "Country",
-            tenantId: tenantId,
-            isActive: !assignment.isDeleted,
-          }
+            ...jurisdiction,
+            id: assignment.id,
+            orgId: assignment.orgId,
+            code: assignment.code,
+            additionalDetails: assignment.additionalDetails,
+            auditDetails: assignment.auditDetails,
+          };
         }
-        if (jurisdiction) jurisdictions.push(jurisdiction);
-      })
+        if (jurisdiction) {
+          jurisdiction.roles = appliesToAllRoles(assignment) ? [] : buildRolesFromGroups(assignment.roles, roles);
+          jurisdictions.push(jurisdiction);
+        }
+      }
+
+      // Rule 4 (Q9): a user with no active jurisdiction sees nothing. This holds on update as
+      // well as create - removing the last assignment is the easiest way to produce such a
+      // user, and the backend refuses it too (ORG_USER_JURISDICTION_REQUIRED).
+      if (!jurisdictions.some((jurisdiction) => jurisdiction.isActive)) {
+        setFormToast({ key: "error", label: t("ORG_USER_AT_LEAST_ONE_ASSIGNMENT") });
+        return;
+      }
 
       onFormSubmit(formattedFormData, jurisdictions);
     } else {
       setFormToast({ key: "error", label: t("USER_CREATION_SELECT_ROLE_ERROR") });
     }
-  }, [assignments, mdmsResponse, savedAssignments]);
+  }, [assignments, mdmsResponse, savedAssignments, createdUser]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
     if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
@@ -355,6 +458,36 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       }, []
     ));
   }
+
+  /**
+   * Editing a saved assignment lifts it out of the table into the same card used for adding
+   * one, with the boundary cascade pre-filled from its stored boundary. It keeps its id, so
+   * on save it updates the jurisdiction it came from rather than adding a second one.
+   */
+  const editSavedAssignment = (id) => {
+    const target = savedAssignments.find((savedAssignment) => savedAssignment.id === id);
+    if (!target) return;
+    setSavedAssignments((prev) => prev.filter((savedAssignment) => savedAssignment.id !== id));
+    setAssignments((prev) => [
+      { ...target, ...buildBoundaryCascade(target.boundary, target.boundaryType, boundaryData, t) },
+      ...prev,
+    ]);
+  };
+
+  /** Put it back in the table. Edits are kept — nothing is written until the form is saved. */
+  const returnSavedAssignmentToTable = (index) => {
+    const target = assignments[index];
+    if (!target) return;
+    // The table reads boundary/boundaryType, so a boundary changed in the card has to be
+    // written back onto them or the row would keep showing the one it was saved with.
+    const resolved = resolveCascadeBoundary(target);
+    if (!resolved) {
+      setFormToast({ key: "error", label: t("ORG_ASSIGNMENT_BOUNDARY_REQUIRED") });
+      return;
+    }
+    setAssignments((prev) => prev.filter((_, i) => i !== index));
+    setSavedAssignments((prev) => [...prev, { ...target, ...resolved }]);
+  };
 
   const deleteSavedAssignment = (id) => {
     setSavedAssignments((prevSavedAssignments) => prevSavedAssignments.reduce(
@@ -382,6 +515,31 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     ));
   }
 
+  /** Scoping as read-only chips, matching how the users table lists a user's roles. */
+  const GetRoleTags = (groups, isDeleted) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+      {appliesToAllRoles({ roles: groups }) ? (
+        <span style={{ backgroundColor: "#EEEEEE", color: isDeleted ? "#bc210a" : "#505A5F", width: "fit-content", padding: "5px 10px" }}>
+          {t("ORG_ASSIGNMENT_ALL_ROLES")}
+        </span>
+      ) : (
+        groups.map((group) => (
+          <span
+            key={group.code}
+            style={{
+              backgroundColor: "#F1FFF8",
+              color: isDeleted ? "#bc210a" : "#00703C",
+              width: "fit-content",
+              padding: "5px 10px",
+            }}
+          >
+            {group.name}
+          </span>
+        ))
+      )}
+    </div>
+  );
+
   const GetCell = (value, isDeleted) => (
     <span className="cell-text" style={{ color: isDeleted ? "#bc210a" : "#000000" }}>
       {value}
@@ -408,6 +566,10 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       },
     },
     {
+      Header: t("ORG_ASSIGNMENT_APPLIES_TO"),
+      Cell: ({ row }) => GetRoleTags(row.original["roles"], row.original["isDeleted"]),
+    },
+    {
       Header: t("CS_COMMON_ACTIONS"),
       Cell: ({ row }) => {
         return GetCell(
@@ -423,13 +585,22 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             )
             :
             (
-              <button
-                type="button"
-                style={{background: "none"}}
-                onClick={() => deleteSavedAssignment(row.original["id"])}
-              >
-                <CustomDustbinIcon colourFill={"#bc210a"} />
-              </button>
+              <div>
+                <button
+                  type="button"
+                  style={{paddingTop: "3px", backgroundColor: "white", marginRight: "5px"}}
+                  onClick={() => editSavedAssignment(row.original["id"])}
+                >
+                  <CustomEditIcon width={"18"} height={"18"} viewBox={"0 0 20 20"} />
+                </button>
+                <button
+                  type="button"
+                  style={{background: "none"}}
+                  onClick={() => deleteSavedAssignment(row.original["id"])}
+                >
+                  <CustomDustbinIcon colourFill={"#bc210a"} />
+                </button>
+              </div>
             )
         );
       },
@@ -478,6 +649,11 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         key={JSON.stringify(defaultValues)}
         defaultValues={defaultValues}
         config={userFormConfig}
+        onFormValueChange={(_, formData) => {
+          if (CommonUtils.isNotEqual(selectedRoleGroups, formData?.roles || [])) {
+            setSelectedRoleGroups(formData?.roles || []);
+          }
+        }}
         onSubmit={handleFormSubmit}
         label={t("CORE_COMMON_SAVE")}
         heading={""}
@@ -555,15 +731,39 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                     margin: 0,
                     fontSize: "18px",
                     fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
                   }}>
-                    {t("NEW_ASSIGNMENT") + ":"}
+                    {assignment.id ? t("EDIT_ASSIGNMENT") + ":" : t("NEW_ASSIGNMENT") + ":"}
+                    {assignment.id && (
+                      <span style={{
+                        backgroundColor: "#EEEEEE",
+                        color: "#505A5F",
+                        padding: "4px 12px",
+                        borderRadius: "4px",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                      }}>
+                        {t("ORG_ASSIGNMENT_SAVED_EARLIER")}
+                      </span>
+                    )}
                   </h2>
-                  <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
-                    <CustomDustbinIcon colourFill={"#bc210a"} />
-                  </button>
+                  {assignment.id ? (
+                    <Button
+                      variation="secondary"
+                      label={t("CORE_COMMON_DONE")}
+                      onButtonClick={() => returnSavedAssignmentToTable(index)}
+                      style={{ height: "32px" }}
+                    />
+                  ) : (
+                    <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
+                      <CustomDustbinIcon colourFill={"#bc210a"} />
+                    </button>
+                  )}
                 </div>
                 <FormComposerV2
-                  key={JSON.stringify(assignment)}
+                  key={JSON.stringify({ ...assignment, roles: undefined })}
                   defaultValues={assignment}
                   config={assignmentsConfig(false)}
                   onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
@@ -572,6 +772,15 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                   cardStyle={{ boxShadow: "none" }}
                   submitInForm={false}
                 />
+                <div style={{ padding: "0 0 20px" }}>
+                  <div style={{ fontWeight: 700, marginBottom: "8px" }}>{t("ORG_ASSIGNMENT_APPLIES_TO")}</div>
+                  <AppliesToSelector
+                    t={t}
+                    value={assignment.roles}
+                    options={selectedRoleGroups}
+                    onChange={(roles) => setAssignmentRoles(index, roles)}
+                  />
+                </div>
               </div>
             ))
           }

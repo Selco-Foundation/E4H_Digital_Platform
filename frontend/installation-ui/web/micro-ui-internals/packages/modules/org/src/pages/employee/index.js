@@ -4,6 +4,7 @@ import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
 import OrganizationDetails from "./OrganizationDetails";
+import { VENDOR_ADMIN } from "../../constants/Roles";
 import VendorOrganization from "./VendorOrgTable";
 import PlatformOrganization from "./PlatformOrgTable"
 
@@ -15,7 +16,10 @@ const ORGApp = () => {
   const navigator = useSelector((state) => state.org.common);
   const { info } = Digit.UserService.getUser();
   const currentUserRoles = info?.roles || [];
-  const isVendorAdminUser = currentUserRoles.map((role) => role.name)?.includes("Vendor Administrator");
+  // Matched on code, not on name: two MDMS roles are both named "Vendor Administrator" -
+  // VENDOR_ADMIN, which is current, and AMC_VENDOR_ADMIN, which is not. Matching the name
+  // admitted the dead one as well.
+  const isVendorAdminUser = currentUserRoles.some((role) => role?.code === VENDOR_ADMIN);
 
   const breadCrumbsConfig = {
     home: {

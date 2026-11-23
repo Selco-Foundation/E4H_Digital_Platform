@@ -6,6 +6,7 @@ import org.egov.common.models.core.URLParams;
 import org.egov.repository.querybuilder.*;
 import org.egov.repository.rowmapper.*;
 import org.egov.util.HRMSUtils;
+import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +36,30 @@ public class OrganisationUserRepository {
         this.hrmsUtils = hrmsUtils;
     }
 
+    /** The user uuids this search matches, unpaged. See the query builder for why. */
+    public List<String> getOrgUserIds(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
+        List<Object> preparedStmtList = new ArrayList<>();
+        String query = queryBuilder.getOrganisationUserIdsQuery(orgSearchRequest, urlParams, preparedStmtList);
+        return jdbcTemplate.queryForList(query, String.class, preparedStmtList.toArray());
+    }
+
     public List<OrgUser> getOrgUsers(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
+        return getOrgUsers(orgSearchRequest, urlParams, Collections.emptyMap(), JurisdictionScopeResolver.Scope.everything());
+    }
+
+    /**
+     * Organisation users, with the person and their jurisdictions attached.
+     *
+     * `prefetched` carries employees already fetched in bulk while working out which users the
+     * caller may administer; using them avoids a second HRMS call per row. When it is empty - an
+     * unscoped caller, who needs no such filtering - the per-user lookup still applies.
+     *
+     * Jurisdictions are trimmed to the caller's scope before they leave here, so an administrator
+     * never learns about an area they have no claim to. That trimming is also why the update path
+     * has to merge: what the caller cannot see, they cannot send back.
+     */
+    public List<OrgUser> getOrgUsers(OrgUserSearchRequest orgSearchRequest, URLParams urlParams,
+                                     Map<String, Employee> prefetched, JurisdictionScopeResolver.Scope scope) {
         log.trace("OrganisationUserRepository::getOrgUsers entry");
         String tenantId = urlParams != null ? urlParams.getTenantId() : "unknown";
         log.info("Starting organisation user search query for tenant: {}", tenantId);
@@ -55,10 +79,13 @@ public class OrganisationUserRepository {
                     .additionalDetails(orgUser.getAdditionalDetails())
                     .isDeleted(orgUser.getIsDeleted())
                     .build();
-            Employee employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
+            Employee employee = prefetched.get(orgUser.getUserId());
+            if (employee == null) {
+                employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
+            }
             if(employee != null){
                 enriched.setUser(employee.getUser());
-                enriched.getUser().setJurisdictions(employee.getJurisdictions());
+                enriched.getUser().setJurisdictions(scope.within(employee.getJurisdictions()));
             }
             orgUserEnricheds.add(enriched);
         }

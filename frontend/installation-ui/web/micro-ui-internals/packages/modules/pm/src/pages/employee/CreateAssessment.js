@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import useBoundary from "../../hooks/useBoundary";
+import { useJurisdictionBoundary } from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
@@ -50,7 +50,7 @@ const CreateAssessment = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const { data: fetchedBoundaryData } = useBoundary("State");
+  const { data: fetchedBoundaryData } = useJurisdictionBoundary();
 
   const { data: activityData } = useMDMS(tenantId, "common-masters", ["Activities"], {
     select: (data) => {

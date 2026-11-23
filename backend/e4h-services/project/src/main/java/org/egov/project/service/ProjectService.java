@@ -19,7 +19,10 @@ import org.egov.common.models.project.ProjectSearchRequest;
 import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
+import org.egov.common.models.project.ProjectStaff;
+import org.egov.common.models.project.ProjectStaffBulkRequest;
 import org.egov.project.service.enrichment.ProjectEnrichment;
+import org.egov.project.service.enrichment.ProjectStaffEnrichmentService;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
@@ -71,13 +74,16 @@ public class ProjectService {
 
     private final ProjectAnalyticsService projectAnalyticsService;
 
+    private final ProjectStaffEnrichmentService projectStaffEnrichmentService;
+
     @Autowired
     BoundaryV2Util boundaryV2Util;
 
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper, ProjectNameGenerationService projectNameGenerationService, ProjectAnalyticsService projectAnalyticsService) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper, ProjectNameGenerationService projectNameGenerationService, ProjectAnalyticsService projectAnalyticsService, ProjectStaffEnrichmentService projectStaffEnrichmentService) {
+        this.projectStaffEnrichmentService = projectStaffEnrichmentService;
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -134,6 +140,12 @@ public class ProjectService {
                 applyGeneratedProjectName(project, requestInfo, true);
             }
         }
+        // Staff the creator before the project itself is pushed. Project search is scoped to
+        // project_staff, so a project created without this row is invisible to the person who
+        // created it. Failing here therefore has to stop the create: an orphan staff row pointing
+        // at a project that was never written is harmless, an unreachable project is not.
+        staffCreator(projectRequest);
+
         log.debug("Pushing project request to Kafka topics");
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
@@ -146,6 +158,57 @@ public class ProjectService {
         log.info("Successfully completed project creation for {} projects", projectRequest.getProjects().size());
         log.trace("Exiting createProject");
         return projectRequest;
+    }
+
+    /**
+     * Records the caller as staff on each project they are creating.
+     *
+     * Goes straight to the persister topic rather than through ProjectStaffService.create. That
+     * path runs PsProjectIdValidator, which looks the project up in the database - and at this
+     * point the project has only been enriched, not persisted, because the write happens
+     * asynchronously over Kafka. Every row would be rejected as referring to a project that does
+     * not exist.
+     *
+     * Enrichment is still shared, so these rows carry the same generated id and audit details as
+     * any other staff row and are indistinguishable once written.
+     */
+    private void staffCreator(ProjectRequest projectRequest) {
+        RequestInfo requestInfo = projectRequest.getRequestInfo();
+        String creatorUuid = requestInfo.getUserInfo() != null ? requestInfo.getUserInfo().getUuid() : null;
+
+        if (StringUtils.isBlank(creatorUuid)) {
+            // Nothing to attribute the project to. Refusing is better than writing a project no
+            // one can reach, which is what project search would make of it.
+            throw new CustomException("INVALID_USER", "User UUID is required to create a project");
+        }
+
+        List<ProjectStaff> staff = projectRequest.getProjects().stream()
+                .map(project -> ProjectStaff.builder()
+                        .tenantId(project.getTenantId())
+                        .projectId(project.getId())
+                        .userId(creatorUuid)
+                        .build())
+                .collect(Collectors.toList());
+
+        if (staff.isEmpty()) {
+            return;
+        }
+
+        ProjectStaffBulkRequest staffRequest = ProjectStaffBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .projectStaff(staff)
+                .build();
+
+        try {
+            projectStaffEnrichmentService.create(staff, staffRequest);
+        } catch (Exception exception) {
+            log.error("Failed to enrich project staff for the creator", exception);
+            throw new CustomException("PROJECT_STAFF_ENRICHMENT_FAILED",
+                    "Failed to record the creator as project staff");
+        }
+
+        log.info("Recording creator as staff on {} project(s)", staff.size());
+        producer.push(projectConfiguration.getCreateProjectStaffTopic(), staff);
     }
 
     /**

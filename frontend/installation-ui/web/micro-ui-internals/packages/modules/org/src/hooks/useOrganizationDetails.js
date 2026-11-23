@@ -8,7 +8,9 @@ const fetchOrganizations = async (filter, limit, offset) => {
   };
 }
 
-const useOrganizationDetails = (queryFilter = {}, limit = 1000, offset = 0) => {
+// limit 1: this looks one organisation up by id and reads organisations[0]. The old default
+// of 1000 was ignored as a query param; as Pagination it would now breach the server's cap.
+const useOrganizationDetails = (queryFilter = {}, limit = 1, offset = 0) => {
 
   const { tenantId, id } = queryFilter;
 

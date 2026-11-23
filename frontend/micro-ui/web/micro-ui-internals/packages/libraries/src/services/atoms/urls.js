@@ -2,6 +2,15 @@ const Urls = {
   MDMS: `/egov-mdms-service/v1/_search`,
   WorkFlow: `/egov-workflow-v2/egov-wf/businessservice/_search`,
   WorkFlowProcessSearch: `/egov-workflow-v2/egov-wf/process/_search`,
+  /*
+   * Same request and response as WorkFlowProcessSearch, but im-services drops the actions the
+   * caller may not take where the ticket is. Workflow cannot do that itself - it only ever sees a
+   * businessId, so it has no idea what boundary a ticket is in.
+   *
+   * Used for a single ticket's actions. The list path stays on workflow: this one resolves the
+   * ticket's boundary per businessId, which is cheap for one and not for a page of them.
+   */
+  IMProcessSearch: `/im-services/v2/process/_search`,
   localization: `/localization/messages/v1/_search`,
   location: {
     localities: `/egov-location/location/v11/boundarys/_search?hierarchyTypeCode=ADMIN&boundaryType=Locality`,
@@ -118,6 +127,10 @@ const Urls = {
   },
   hrms: {
     search: "/egov-hrms/employees/_search",
+    // Role-aware search. Same service and criteria as v1; it only adds the roles each jurisdiction
+    // was granted for, which is what jurisdictionScope needs. v1 is not deprecated - the hrms
+    // module's own screens stay on it.
+    v2search: "/egov-hrms/v2/employees/_search",
     count: "/egov-hrms/employees/_count",
     create: "/egov-hrms/employees/_create",
     update: "/egov-hrms/employees/_update",

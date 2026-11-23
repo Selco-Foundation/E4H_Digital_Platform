@@ -2,12 +2,13 @@ import { Request } from "@egovernments/digit-ui-libraries";
 
 export const VendorService = {
 
-  fetchOrganizations: async (queryObject, limit = 1000, offset = 0) => {
+  fetchOrganizations: async (queryObject, limit = 10, offset = 0) => {
     const endpoint = "/vendor/organisation/v1/_search";
+    // See OrganizationService.searchOrganizations: this endpoint takes Pagination in the body
+    // and ignores limit/offset query params. Note Pagination.limit is capped at 100 server
+    // side, so a caller asking for more now fails validation instead of being ignored.
     const params = {
       tenantId: Digit.ULBService.getCurrentTenantId(),
-      limit,
-      offset,
     }
     const headers = {
       "Content-Type" : "application/json"
@@ -15,7 +16,7 @@ export const VendorService = {
 
     return await Request({
       url : endpoint,
-      data: queryObject,
+      data: { ...queryObject, Pagination: { limit, offset } },
       userService : true,
       method : "POST",
       auth : true,

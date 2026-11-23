@@ -367,6 +367,68 @@ public class WorkflowService {
     }
     
     /**
+     * The actionable statuses of {@code businessServices}, kept per role instead of merged.
+     *
+     * {@link #getActionableStatusesForRole} answers "which statuses can this user act on anywhere",
+     * which is the union across their roles. Paired with the union of their jurisdictions, that
+     * offers a Tech POC in one state the Tech POC work of another: the user holds the role, and
+     * holds a jurisdiction, but not that role *in that place*. Keeping the statuses per role lets
+     * the query pair each role with its own boundaries, which is what closes that.
+     *
+     * The tenant and pooled-role rules are the same as the merged version's, deliberately: a role
+     * held above the requested tenant still only counts when it is pooled.
+     */
+    public Map<String, Set<String>> getActionableStatusesByRole(RequestInfo requestInfo,
+                                                                List<BusinessService> businessServices,
+                                                                ProcessInstanceSearchCriteria criteria) {
+        Map<String, List<String>> tenantIdToUserRolesMap = getTenantIdToUserRolesMap(requestInfo);
+        Map<String, List<BusinessService>> tenantIdToBuisnessSevicesMap = getTenantIdToBuisnessSevicesMap(businessServices);
+        Map<String, Set<String>> stateToRoleMap = getStateToRoleMap(businessServices);
+        Map<String, Set<String>> statusesByRole = new HashMap<>();
+
+        for (Map.Entry<String, List<String>> entry : tenantIdToUserRolesMap.entrySet()) {
+            String statelevelTenantId = entry.getKey().split("\\.")[0];
+            boolean exactScope = entry.getKey().equals(criteria.getTenantId())
+                    || (entry.getValue().contains(FSMConstants.FSM_DSO) && entry.getKey().equals(statelevelTenantId));
+            List<String> roleCodes = exactScope ? entry.getValue()
+                    : pooledRolesCovering(entry.getKey(), criteria.getTenantId(), entry.getValue());
+            if (!exactScope && CollectionUtils.isEmpty(roleCodes)) {
+                continue;
+            }
+
+            List<BusinessService> businessServicesByTenantId;
+            if (entry.getKey().split("\\.").length == 1) {
+                businessServicesByTenantId = tenantIdToBuisnessSevicesMap.get(criteria.getTenantId());
+            } else {
+                businessServicesByTenantId = tenantIdToBuisnessSevicesMap.get(entry.getKey());
+            }
+            if (businessServicesByTenantId == null) {
+                businessServicesByTenantId = tenantIdToBuisnessSevicesMap.get(criteria.getTenantId());
+            }
+            if (businessServicesByTenantId == null) {
+                continue;
+            }
+
+            for (BusinessService service : businessServicesByTenantId) {
+                for (State state : service.getStates()) {
+                    Set<String> stateRoles = stateToRoleMap.get(state.getUuid());
+                    if (CollectionUtils.isEmpty(stateRoles) || state.getApplicationStatus() == null) {
+                        continue;
+                    }
+                    for (String roleCode : roleCodes) {
+                        if (stateRoles.contains(roleCode)) {
+                            statusesByRole.computeIfAbsent(roleCode, k -> new HashSet<>())
+                                    .add(state.getApplicationStatus());
+                        }
+                    }
+                }
+            }
+        }
+        log.debug("Actionable statuses resolved for {} role(s)", statusesByRole.size());
+        return statusesByRole;
+    }
+
+    /**
      * The pooled roles among {@code roleCodes} that, held at {@code roleTenantId}, govern tickets of
      * {@code requestedTenantId}.
      * <p>
