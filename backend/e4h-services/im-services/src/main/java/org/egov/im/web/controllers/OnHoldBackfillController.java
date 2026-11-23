@@ -36,7 +36,8 @@ public class OnHoldBackfillController {
 
     /**
      * Sets systemFunctional=ON_HOLD on tickets already in OUT_OF_WARRANTY_ON_HOLD, then re-publishes
-     * them so the ticket index and their facilities' solarPanelStatus are refreshed.
+     * them so the ticket index (systemFunctional, currentOwner = Not Applicable) and their facilities'
+     * solarPanelStatus are refreshed.
      */
     @RequestMapping(value = "/request/_backfill-onhold-systemfunctional", method = RequestMethod.POST)
     public ResponseEntity<OnHoldBackfillResponse> backfillOnHold(@Valid @RequestBody OnHoldBackfillRequest request) {
