@@ -9,6 +9,7 @@ import org.egov.repository.OrganisationRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.BoundaryUtil;
 import org.egov.util.MDMSUtil;
+import org.egov.util.PasswordPolicy;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -311,6 +312,11 @@ public class OrganisationServiceValidator {
             }
             if (StringUtils.isBlank(organisation.getOrgType())) {
                 throw new CustomException("ORG_TYPE", "Organisation type is mandatory");
+            }
+            // Optional, but a supplied one must meet the policy - checked here rather than left
+            // for egov-user to reject once the PoC's user is being created.
+            if (StringUtils.isNotEmpty(organisation.getOrgPocPassword())) {
+                PasswordPolicy.validate(organisation.getOrgPocPassword());
             }
             validateAddress(organisation);
         }

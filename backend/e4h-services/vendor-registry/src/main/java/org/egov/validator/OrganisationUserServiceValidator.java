@@ -16,6 +16,7 @@ import org.egov.util.HRMSUtils;
 import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
+import org.egov.util.PasswordPolicy;
 import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +65,7 @@ public class OrganisationUserServiceValidator {
     private static final String EMPLOYEE_ROLE_CODE = "EMPLOYEE";
     private static final String EMPLOYEE_ROLE_NAME = "Employee";
     private static final String DEFAULT_ROLE_TENANT = "in";
+    private static final long FIRST_LOGIN_EXPIRY_OFFSET_MS = 24L * 60 * 60 * 1000;
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
@@ -161,12 +163,28 @@ public class OrganisationUserServiceValidator {
         }
         // Validate user object fields
         validateUserRequest(orgUser);
+        // A supplied password must meet the policy; absent means derive one from this user's own
+        // name and mobile. Either way it is per user - there is no shared default.
+        // Derived here, before the mobile number below is replaced with its encrypted form.
+        String password;
+        if (StringUtils.isEmpty(orgUser.getPassword())) {
+            password = PasswordPolicy.derive(orgUser.getName(), orgUser.getMobileNumber());
+        } else {
+            PasswordPolicy.validate(orgUser.getPassword());
+            password = orgUser.getPassword();
+        }
         // A user with no jurisdiction can see nothing, so creation must supply one rather than
         // fall back to a country-wide grant.
         requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
 
         // Get existing user with mobile number from hrms service
         List<Employee> employee = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
+        if (employee != null && !employee.isEmpty()) {
+            // Creating against an existing account sets its password, so the caller must
+            // administer somewhere that user already works - the same rule as editing them.
+            // Without it, entering someone else's mobile number would take over their account.
+            requireCallerAdministers(request.getRequestInfo(), employee.get(0), orgUser.getMobileNumber());
+        }
         if (employee == null || employee.isEmpty()) { //If user doesn't exist
             Organisation organisation = organisations.get(0);
             String orgType = organisation.getOrgType();
@@ -213,15 +231,7 @@ public class OrganisationUserServiceValidator {
                     Employee employeeResp = employees.get(0);
                     request.setUser(employeeResp.getUser());
                     request.setUserId(employeeResp.getUser().getUuid());
-                    employeeResp.getUser().setPassword(configuration.getDefaultUserPassword());
-                    String url = configuration.getUserHost() + configuration.getUserUpdateEndpoint();
-                    UserRequest userRequest = userUtil.mapToUserRequest(employeeResp.getUser());
-                    CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                            .requestInfo(request.getRequestInfo())
-                            .user(userRequest)
-                            .build();
-                    UserDetailResponse response = userUtil.updateUserPassword(createUserRequest, new StringBuilder(url));
-                    log.info("New user created and updated");
+                    log.info("New user created");
                 }
                 else{
                     log.error("Error occured while creating the new user");
@@ -321,6 +331,11 @@ public class OrganisationUserServiceValidator {
             }
         }
 
+        // Every branch above leaves the settled egov user on the request. Setting the password on
+        // the linked branches too is what lets a retry recover from a create whose HRMS write
+        // succeeded but whose password write failed: the retry finds the user and links it.
+        setPassword(request.getRequestInfo(), request.getUser(), password);
+
         facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty())
@@ -332,6 +347,39 @@ public class OrganisationUserServiceValidator {
             return 0L;
         }
         return u.getAuditDetails().getLastModifiedTime();
+    }
+
+    /**
+     * Sets the user's password in egov-user and marks it for change at next sign-in.
+     *
+     * The password goes only on the outbound {@link UserRequest}, never on `user`: that object is
+     * the one returned to the caller and pushed to Kafka.
+     *
+     * The marker is a `pwdExpiryDate` in the past, which the web app reads from `/user/_search`.
+     * Nothing in egov-user enforces it, and nothing may: an expired date that blocked login
+     * would lock every field user out of the mobile app, which has no change-password screen.
+     */
+    private void setPassword(RequestInfo requestInfo, User user, String password) {
+        UserRequest userRequest = userUtil.mapToUserRequest(user);
+        userRequest.setPassword(password);
+        // A day back rather than a moment back, so no clock or timezone skew can land it in the future.
+        userRequest.setPwdExpiryDate(new Date(System.currentTimeMillis() - FIRST_LOGIN_EXPIRY_OFFSET_MS));
+        CreateUserRequest createUserRequest = CreateUserRequest.builder()
+                .requestInfo(requestInfo)
+                .user(userRequest)
+                .build();
+        String url = configuration.getUserHost() + configuration.getUserUpdateEndpoint();
+        userUtil.updateUserPassword(createUserRequest, new StringBuilder(url));
+        log.info("Password set for user {}", user.getUuid());
+    }
+
+    private void requireCallerAdministers(RequestInfo requestInfo, Employee employee, String mobileNumber) {
+        JurisdictionScopeResolver.Scope callerScope = jurisdictionScopeResolver.resolve(requestInfo);
+        if (!callerScope.unscoped() && callerScope.within(employee.getJurisdictions()).isEmpty()) {
+            log.error("Caller attempted to create over existing user with phone {} who holds no jurisdiction in their scope", mobileNumber);
+            throw new CustomException("USER_OUT_OF_SCOPE",
+                    "A user with this mobile number already exists and does not work in any jurisdiction you administer");
+        }
     }
 
     private void validateUserRequest(User user) {
@@ -388,6 +436,12 @@ public class OrganisationUserServiceValidator {
         if (request.getId() == null || request.getId().isBlank()) {
             log.error("Org User Id is mandatory in org user request body");
             throw new CustomException("UserOrg", "Org User Id is mandatory in org user request body");
+        }
+
+        // Absent means leave the existing password alone - never reset it, never default it.
+        String newPassword = StringUtils.isEmpty(orgUser.getPassword()) ? null : orgUser.getPassword();
+        if (newPassword != null) {
+            PasswordPolicy.validate(newPassword);
         }
 
         if (request.getOrganizationId() == null || request.getOrganizationId().isBlank()) {
@@ -571,6 +625,10 @@ public class OrganisationUserServiceValidator {
             request.setUserId(existingOrgUser.getUserId());
             request.setUser(employee.getUser());
             request.getUser().setJurisdictions(employee.getJurisdictions());
+        }
+
+        if (newPassword != null) {
+            setPassword(request.getRequestInfo(), request.getUser(), newPassword);
         }
 
         // Sync the facilities only now, after HRMS has accepted the write. Dispatching it from

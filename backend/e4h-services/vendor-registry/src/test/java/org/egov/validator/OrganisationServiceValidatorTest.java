@@ -9,7 +9,9 @@ import org.egov.repository.OrganisationRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.BoundaryUtil;
 import org.egov.util.MDMSUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.egov.web.models.OrgRequest;
+import org.egov.web.models.Organisation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -99,6 +101,23 @@ class OrganisationServiceValidatorTest {
         CustomException exception = assertThrows(CustomException.class, ()-> organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest));
         System.out.println(exception);
         assertTrue(exception.toString().contains("Organisation name is mandatory"));
+    }
+
+    @Test
+    void shouldThrowException_IfPocPasswordBreaksThePolicyForCreateOrganisation() {
+        OrgRequest orgRequest = OrganisationRequestTestBuilder.builder().withRequestInfo().addGoodOrganisationForCreate().build();
+        orgRequest.getOrganisations().get(0).setOrgType("VENDOR");
+        orgRequest.getOrganisations().get(0).setOrgPocPassword("password");
+        CustomException exception = assertThrows(CustomException.class, ()-> organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest));
+        assertEquals("INVALID_PWD_PATTERN", exception.getCode());
+    }
+
+    @Test
+    void pocPasswordIsNeverLoggedOrSerialised() throws Exception {
+        Organisation organisation = Organisation.builder().name("org").orgPocPassword("abc1@de").build();
+        assertFalse(organisation.toString().contains("abc1@de"));
+        assertFalse(new ObjectMapper().writeValueAsString(organisation).contains("abc1@de"));
+        assertEquals("abc1@de", new ObjectMapper().readValue("{\"orgPocPassword\":\"abc1@de\"}", Organisation.class).getOrgPocPassword());
     }
 
     @Test

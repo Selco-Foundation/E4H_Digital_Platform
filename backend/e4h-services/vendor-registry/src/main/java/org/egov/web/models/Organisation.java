@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.egov.common.contract.models.AuditDetails;
 import org.springframework.validation.annotation.Validated;
 
@@ -74,6 +75,12 @@ public class Organisation {
 
     @JsonProperty("orgPocUsername")
     private String orgPocUsername = null;
+
+    // Optional initial password for the PoC's admin user (MH2-03). Accepted on input only: never
+    // logged, never echoed in a response, a Kafka message or an index document.
+    @JsonProperty(value = "orgPocPassword", access = JsonProperty.Access.WRITE_ONLY)
+    @ToString.Exclude
+    private String orgPocPassword = null;
 
     @JsonProperty("externalRefNumber")
     @Size(min = 2, max = 64)
