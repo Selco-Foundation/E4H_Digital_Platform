@@ -25,6 +25,16 @@ export const isPlatformAdmin = (roles) => hasRole(roles, ORG_PLATFORM_ADMIN);
 export const isScopedOrgAdmin = (roles) => hasRole(roles, ORG_ADMIN) && !isPlatformAdmin(roles);
 
 /**
+ * An admin of exactly ONE organisation: VENDOR_ADMIN (a Vendor Org) or ORG_ADMIN (a Platform Org).
+ * They get no org list - the ORG card opens their own org and the "Organizations" crumb is dropped.
+ *
+ * The one check behind Module.js, ORGCard.js and pages/employee/index.js, which used to compute
+ * `isVendorAdminUser` separately - three copies drifting is how one ends up checking only one role.
+ * VENDOR_ADMIN behaves exactly as before; ORG_ADMIN counts only while it is scoped (see above).
+ */
+export const isSingleOrgAdmin = (roles) => hasRole(roles, VENDOR_ADMIN) || isScopedOrgAdmin(roles);
+
+/**
  * Role groups to offer on the user form .
  * An ORG_ADMIN must not be offered ORG_PLATFORM_ADMIN (the API rejects it anyway). ORG_ADMIN itself
  * stays in the list: an org admin may create peers. Everyone else gets the list unchanged.

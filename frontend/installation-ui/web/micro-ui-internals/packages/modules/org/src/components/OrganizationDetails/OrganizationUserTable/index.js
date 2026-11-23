@@ -11,9 +11,9 @@ import {VendorService} from "../../../services/Vendor";
 import CommonUtils from "../../../utilities/CommonUtils";
 
 import CustomKeyIcon from "../../Custom/CustomKeyIcon";
-import ResetPasswordModal from "./ResetPasswordModal";
-import { getResetPasswordLabel } from "./resetPasswordLabels";
+import { getOrgUserPasswordLabel } from "./orgUserPasswordLabels";
 import { canManageOrgUser, canResetOrgUserPassword } from "../../../utilities/orgAdminRoles";
+import { getPasswordPayload, getPasswordResultToast } from "../../../utilities/orgUserPassword";
 
 const OrganizationUserTable = ({ t, organizationId, organizationType, organizationSubType }) => {
 
@@ -28,15 +28,20 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
   const queryClient = useQueryClient();
-  // the row whose password is being reset (null = modal closed), and who is looking.
-  const [userToReset, setUserToReset] = useState(null);
+  // MH2-09 §5: "Reset password" opens the same edit form as the pencil, with the password focused.
+  const [focusPasswordOnEdit, setFocusPasswordOnEdit] = useState(false);
   const currentUserInfo = Digit.UserService.getUser()?.info;
+
+  // However the edit form closes, the next pencil click opens it normally again.
+  useEffect(() => {
+    if (!userToEdit) setFocusPasswordOnEdit(false);
+  }, [userToEdit]);
 
   useEffect(() => {
     if (toast) {
       setTimeout(() => {
         setToast(null);
-      }, 2500);
+      }, toast.duration || 2500); // MH2-09: an "email failed" toast stays longer (orgUserPassword.js)
     }
   }, [toast]);
 
@@ -203,18 +208,22 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
             >
               <CustomDustbinIcon colourFill={"#bc210a"} />
             </button>
-            {/*shown only when ROLE allows the reset - see canResetOrgUserPassword. */}
+            {/* MH2-09 §5: shown only when the role allows the reset - see canResetOrgUserPassword.
+                A shortcut, not a second form: it opens the edit form with the password focused. */}
             {canResetOrgUserPassword(currentUserInfo, row.original) && (
               <button
                 type="button"
-                title={getResetPasswordLabel(t, "ORG_RESET_PWD_ACTION")}
-                aria-label={getResetPasswordLabel(t, "ORG_RESET_PWD_ACTION")}
+                title={getOrgUserPasswordLabel(t, "ORG_RESET_PWD_ACTION")}
+                aria-label={getOrgUserPasswordLabel(t, "ORG_RESET_PWD_ACTION")}
                 style={{
                   paddingTop: "3px",
                   background: "none",
                   marginLeft: "5px",
                 }}
-                onClick={() => setUserToReset(row.original)}
+                onClick={() => {
+                  setFocusPasswordOnEdit(true);
+                  setUserToEdit(row.original);
+                }}
               >
                 <CustomKeyIcon />
               </button>
@@ -309,10 +318,13 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
           emailId: userFormData.email,
           tenantId: Digit.ULBService.getCurrentTenantId(),
           roles: userFormData.roles.map(role => ({...role, tenantId: Digit.ULBService.getCurrentTenantId()})),
-          jurisdiction: formattedJurisdictions
+          jurisdiction: formattedJurisdictions,
+          // MH2-09 §5: the reset IS this call - `user.password` only when one was typed (blank = unchanged).
+          ...getPasswordPayload(userFormData),
         }
       }
-      await VendorService.editOrganizationUser(organizationUser)
+      const passwordSent = !!organizationUser.user.password;
+      const response = await VendorService.editOrganizationUser(organizationUser)
 
       const delayForUserUpdateInSeconds = Math.min((formattedJurisdictions.length / 100) + 1, 5);
       await new Promise((resolve) =>
@@ -323,7 +335,8 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
 
       setBlockUI(false);
       setUserToEdit(null);
-      setToast({
+      // MH2-09 §5: after a password change, say whether the user was emailed (or that the mail failed).
+      setToast(getPasswordResultToast({ t, isCreate: false, passwordSent, response }) || {
         key: "success",
         label: t("ORGANIZATION_USER_UPDATION_SUCCESS"),
       })
@@ -374,10 +387,9 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
           createdUser={userToEdit}
           formToast={formToast}
           setFormToast={setFormToast}
+          allowPasswordChange={canResetOrgUserPassword(currentUserInfo, userToEdit)}
+          focusPassword={focusPasswordOnEdit}
         />
-      )}
-      {userToReset && (
-        <ResetPasswordModal t={t} user={userToReset} organizationId={organizationId} onClose={() => setUserToReset(null)} />
       )}
       {toast && (
         <Toast

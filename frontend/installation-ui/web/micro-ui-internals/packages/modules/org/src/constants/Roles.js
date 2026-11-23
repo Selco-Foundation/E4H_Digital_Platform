@@ -1,4 +1,4 @@
-  /**
+/**
  * Role codes this module gates on - see Module.js, ORGCard.js and pages/employee/index.js.
  *
  * Codes rather than names, because names are not unique in MDMS: `VENDOR_ADMIN` and the retired

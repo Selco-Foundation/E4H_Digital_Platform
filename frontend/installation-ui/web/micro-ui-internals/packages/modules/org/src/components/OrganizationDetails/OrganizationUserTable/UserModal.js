@@ -2,7 +2,7 @@ import React from "react";
 import { PopUp, Button } from "@egovernments/digit-ui-react-components";
 import UserForm from "./UserForm";
 
-const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType, organizationSubType, formToast, setFormToast }) => {
+const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType, organizationSubType, formToast, setFormToast, allowPasswordChange, focusPassword }) => {
   return (
     <PopUp>
       <div
@@ -65,6 +65,9 @@ const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType,
           setFormToast={setFormToast}
           organizationType={organizationType}
           organizationSubType={organizationSubType}
+          // MH2-09: password fields on edit only where a reset is allowed; focused for "Reset password"
+          allowPasswordChange={allowPasswordChange}
+          focusPassword={focusPassword}
         />
       </div>
     </PopUp>

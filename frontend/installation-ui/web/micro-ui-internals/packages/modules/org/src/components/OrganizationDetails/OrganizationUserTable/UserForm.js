@@ -1,4 +1,4 @@
-import React, {Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import React, {Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormComposerV2, Loader, Table, TextInput, Toast, Button } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
@@ -13,6 +13,8 @@ import {
   pruneAssignmentGroups,
 } from "../../../utilities/jurisdictionRoles";
 import { getAssignableRoleGroups } from "../../../utilities/orgAdminRoles";
+import { CONFIRM_PASSWORD_FIELD, PASSWORD_FIELD, getPasswordFieldsConfig, getPasswordPairError } from "../../../utilities/orgUserPassword";
+import { getOrgUserPasswordLabel } from "./orgUserPasswordLabels";
 
 /**
  * A saved jurisdiction stores only its own boundary code and type. The add-assignment
@@ -55,7 +57,15 @@ const resolveCascadeBoundary = (assignment) => {
   return level ? { boundary: assignment[level.key].code, boundaryType: level.type } : null;
 };
 
-const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
+const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast, allowPasswordChange = false, focusPassword = false }) => {
+
+  // MH2-09 §4: Password + Confirm Password - always on create (blank = backend makes one), and on
+  // edit only where the caller may reset this user's password (utilities/orgAdminRoles.js).
+  // focusPassword = opened from the row's "Reset password" action (§5): same form, fields focused.
+  const showPasswordFields = !createdUser?.orgUserId || allowPasswordChange;
+  const formAccessorsRef = useRef(null); // FormComposerV2's { setValue, getValues } - the validators read the other field
+  const formWrapperRef = useRef(null);
+  const hasFocusedPasswordRef = useRef(false);
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const { info } = Digit.UserService.getUser()
@@ -264,11 +274,35 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
               options: getAssignableRoleGroups(roleGroups, info?.roles),
             },
           },
+          // MH2-09 §4: optional password pair (never pre-filled - defaultValues has no password).
+          ...(showPasswordFields
+            ? getPasswordFieldsConfig({ t, isEdit: !!createdUser?.orgUserId, getValues: () => formAccessorsRef.current?.getValues?.() })
+            : []),
         ],
       },
     ],
-    [t, mdmsResponse, createdUser]
+    [t, mdmsResponse, createdUser, showPasswordFields]
   );
+
+  /**
+   * After every render (FormComposerV2 remounts when the edit defaults arrive):
+   *  - mark the password boxes autocomplete="new-password", so the browser does not fill in the
+   *    ADMIN's own saved password - FormComposerV2 has no prop for it;
+   *  - when opened from "Reset password", focus the Password box once the user's values are in.
+   */
+  useEffect(() => {
+    const wrapper = formWrapperRef.current;
+    if (!wrapper) return; // still loading
+    wrapper.querySelectorAll('input[type="password"]').forEach((input) => input.setAttribute("autocomplete", "new-password"));
+
+    if (!focusPassword || !showPasswordFields || hasFocusedPasswordRef.current) return;
+    if (createdUser?.orgUserId && !Object.keys(defaultValues || {}).length) return; // wait for the remount with the user's values
+    const input = wrapper.querySelector(`input[name="${PASSWORD_FIELD}"]`) || wrapper.querySelector('input[type="password"]');
+    if (!input) return;
+    hasFocusedPasswordRef.current = true;
+    if (typeof input.scrollIntoView === "function") input.scrollIntoView({ block: "center" });
+    input.focus();
+  });
 
   const assignmentsConfig = useCallback((disable) => [
     {
@@ -373,6 +407,12 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   ], [boundaryData])
 
   const handleFormSubmit = useCallback((formData) => {
+    // MH2-09 §4: the field validators already block this; checked again so a bad pair can never be sent.
+    const passwordError = showPasswordFields ? getPasswordPairError(formData?.[PASSWORD_FIELD], formData?.[CONFIRM_PASSWORD_FIELD]) : null;
+    if (passwordError) {
+      setFormToast({ key: "error", label: getOrgUserPasswordLabel(t, passwordError.key) });
+      return;
+    }
     if (formData?.roles?.length) {
 
       // Every code the chosen groups name, not just the ones OrgRoles describes - see
@@ -438,7 +478,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     } else {
       setFormToast({ key: "error", label: t("USER_CREATION_SELECT_ROLE_ERROR") });
     }
-  }, [assignments, mdmsResponse, savedAssignments, createdUser]);
+  }, [assignments, mdmsResponse, savedAssignments, createdUser, showPasswordFields]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
     if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
@@ -643,6 +683,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
   return (
     <div
+      ref={formWrapperRef}
       style={{
         position: "relative",
         padding: "15px 15px 30px",
@@ -661,6 +702,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           }
         }}
         onSubmit={handleFormSubmit}
+        getFormAccessors={(accessors) => { formAccessorsRef.current = accessors; }}
         label={t("CORE_COMMON_SAVE")}
         heading={""}
         cardStyle={{ boxShadow: "none" }}

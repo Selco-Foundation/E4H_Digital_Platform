@@ -4,6 +4,7 @@ import { Toast, Loader } from "@egovernments/digit-ui-react-components";
 import {VendorService} from "../../../services/Vendor";
 import {useQueryClient} from "react-query";
 import CommonUtils from "../../../utilities/CommonUtils";
+import { getPasswordPayload, getPasswordResultToast } from "../../../utilities/orgUserPassword";
 
 const OrganizationUserAdminActions = ({ t, organizationId, organizationType, organizationSubType }) => {
 
@@ -18,7 +19,7 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType, org
     if (toast) {
       setTimeout(() => {
         setToast(null);
-      }, 2500);
+      }, toast.duration || 2500); // MH2-09: an "email failed" toast stays longer (orgUserPassword.js)
     }
   }, [toast]);
 
@@ -49,10 +50,12 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType, org
           emailId: userFormData.email,
           tenantId: Digit.ULBService.getCurrentTenantId(),
           roles: userFormData.roles.map(role => ({...role, tenantId: Digit.ULBService.getCurrentTenantId()})),
-          jurisdiction: jurisdictions
+          jurisdiction: jurisdictions,
+          // MH2-09 §4: optional - left out when blank, and the backend makes one and emails it.
+          ...getPasswordPayload(userFormData),
         }
       }
-      await VendorService.createOrganizationUser(organizationUser);
+      const response = await VendorService.createOrganizationUser(organizationUser);
 
       const delayForUserUpdateInSeconds = Math.min((jurisdictions.length / 100) + 1, 5);
       await new Promise((resolve) =>
@@ -63,7 +66,8 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType, org
 
       setBlockUI(false);
       setShowUserModal(false);
-      setToast({
+      // MH2-09 §4: says so when the backend reports the login-details email went out or failed.
+      setToast(getPasswordResultToast({ t, isCreate: true, response }) || {
         key: "success",
         label: t("ORGANIZATION_USER_CREATION_SUCCESS"),
       })

@@ -62,7 +62,10 @@ export const VendorService = {
       headers : headers,
     });
 
-    return response?.data;
+    // MH2-09: the whole body - Request already unwraps axios, so `response.data` was always
+    // undefined, and the body is where MH2-06 reports whether the credentials email went out.
+    // The only caller (OrganizationUserAdminActions) ignored the old return value.
+    return response;
   },
 
   editOrganizationUser: async (queryObject) => {
@@ -80,7 +83,9 @@ export const VendorService = {
       headers : headers,
     });
 
-    return response?.data;
+    // MH2-09: the whole body, as in createOrganizationUser above (the only caller,
+    // OrganizationUserTable, ignored the old always-undefined return value).
+    return response;
   },
 
   deleteOrganizationUser: async (queryObject) => {
