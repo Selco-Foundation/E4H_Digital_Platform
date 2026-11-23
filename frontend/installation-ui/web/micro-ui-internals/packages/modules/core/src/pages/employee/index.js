@@ -16,6 +16,7 @@ import ErrorComponent from "../../components/ErrorComponent";
 import { PrivateRoute } from "@egovernments/digit-ui-components";
 import ImageComponent from "../../components/ImageComponent";
 import TermsPrivacyPolicy from "./TermsPrivacyPolicy";
+import { getPasswordChangeRedirect } from "../../utilities/passwordChangeRequired";
 const userScreensExempted = ["user/landing", "user/profile", "user/error", "user/productPage"];
 
 const EmployeeApp = ({
@@ -59,6 +60,14 @@ const EmployeeApp = ({
       history.replace(`${path}/sandbox/productPage`);
     }
   }, [location.pathname, location.search, path, history, isSuperUserWithMultipleRootTenant]);
+
+  // MH2-10: while the backend says this user must change their password, every employee route
+  // except the change screen (and login) redirects to it. Gating the route - not hiding the
+  // navigation - means a typed URL, Back or a refresh cannot get around it.
+  // Kept after every hook above, so the hooks always run in the same order.
+  const passwordChangeRedirect = getPasswordChangeRedirect(location.pathname);
+  if (passwordChangeRedirect) return <Redirect to={passwordChangeRedirect} />;
+
   return (
     <div className="employee">
       <Switch>
