@@ -2046,7 +2046,7 @@ public class FacilityService {
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
-        boolean isOnmReady = requestFacilityDetails.getIsOnmReady();
+        boolean isOnmReady = Boolean.TRUE.equals(requestFacilityDetails.getIsOnmReady());
         boolean pocDetailsUpdated = (!Objects.equals(existingFacilityDetails.getFacilityPocPhone(), requestFacilityDetails.getFacilityPocPhone()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocName(), requestFacilityDetails.getFacilityPocName()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocEmail(), requestFacilityDetails.getFacilityPocEmail()));
