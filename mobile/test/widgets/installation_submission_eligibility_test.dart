@@ -30,8 +30,7 @@ class LocalInit extends Bloc<InitEvent, InitState>
 
 void main() {
   for (final type in ['battery', 'inverter', 'panel']) {
-    testWidgets(
-        '$type Summary readiness enables facility submission even at low overall progress',
+    testWidgets('submission requires all types when $type is filled first',
         (tester) async {
       final store = AssetStore();
       final bloc = LocalActivityBloc(store);
@@ -69,7 +68,17 @@ void main() {
       store.assets.add(asset(type));
       await tester.pumpWidget(card());
       await tester.pumpAndSettle();
-      expect(submit().isDisabled, isFalse);
+      expect(submit().isDisabled, isTrue);
+      final remaining = ['battery', 'inverter', 'panel']
+          .where((current) => current != type)
+          .toList();
+      for (var i = 0; i < remaining.length; i++) {
+        store.counts.add(count(remaining[i]));
+        store.assets.add(asset(remaining[i]));
+        await tester.pumpWidget(card());
+        await tester.pumpAndSettle();
+        expect(submit().isDisabled, i != remaining.length - 1);
+      }
       submit().onPressed();
       expect(taps, 1);
       expect(tester.takeException(), isNull);

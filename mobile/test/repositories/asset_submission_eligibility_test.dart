@@ -13,20 +13,52 @@ void main() {
     ['battery', 'inverter', 'panel'],
   ]) {
     test(
-        '${types.join('+')} is ready and skips absent types, including retries',
+        '${types.join('+')} readiness requires all three types, including retries',
         () async {
       final store = AssetStore();
       store.counts.addAll(types.map((t) => count(t)));
       store.assets.addAll(types.map((t) => asset(t)));
       final repo = AssetSubmissionEligibilityRepository(store);
-      expect(await repo.hasReadyAssets('facility'), isTrue);
+      expect(await repo.hasReadyAssets('facility'), types.length == 3);
       expect((await repo.savedAssetsByType('facility')).keys.toSet(),
           types.toSet());
-      expect(await repo.hasReadyAssets('facility'), isTrue);
+      expect(await repo.hasReadyAssets('facility'), types.length == 3);
       expect((await repo.savedAssetsByType('facility')).keys.toSet(),
           types.toSet());
     });
   }
+  for (final type in ['battery', 'inverter', 'panel']) {
+    for (final missing in ['count', 'positive count', 'saved asset']) {
+      test('$type requires $missing even when other types are ready', () async {
+        final store = AssetStore();
+        for (final current in ['battery', 'inverter', 'panel']) {
+          if (current != type || missing != 'count') {
+            store.counts.add(count(current,
+                quantity:
+                    current == type && missing == 'positive count' ? 0 : 1));
+          }
+          if (current != type || missing != 'saved asset') {
+            store.assets.add(asset(current));
+          }
+        }
+        expect(
+            await AssetSubmissionEligibilityRepository(store)
+                .hasReadyAssets('facility'),
+            isFalse);
+      });
+    }
+  }
+  test('one saved entry per type qualifies with higher declared quantities',
+      () async {
+    final store = AssetStore();
+    store.counts.addAll(['battery', 'inverter', 'panel']
+        .map((type) => count(type, quantity: 3)));
+    store.assets.addAll(['battery', 'inverter', 'panel'].map(asset));
+    expect(
+        await AssetSubmissionEligibilityRepository(store)
+            .hasReadyAssets('facility'),
+        isTrue);
+  });
   test('zero assets, count-only and row-only entries are not ready', () async {
     final store = AssetStore();
     final repo = AssetSubmissionEligibilityRepository(store);
@@ -40,7 +72,7 @@ void main() {
     store.counts.add(count('battery', quantity: 0));
     expect(await repo.hasReadyAssets('facility'), isFalse);
   });
-  test('one ready type qualifies even when another type is only started',
+  test('one ready type does not qualify when another type is only started',
       () async {
     final store = AssetStore();
     store.counts.addAll([count('battery'), count('panel')]);
@@ -48,12 +80,13 @@ void main() {
     expect(
         await AssetSubmissionEligibilityRepository(store)
             .hasReadyAssets('facility'),
-        isTrue);
+        isFalse);
   });
   test('latest count wins by timestamp then id; progress is not a gate',
       () async {
     final store = AssetStore();
-    store.assets.add(asset('battery'));
+    store.assets.addAll(['battery', 'inverter', 'panel'].map(asset));
+    store.counts.addAll(['inverter', 'panel'].map(count));
     final old = count('battery')
       ..createdAt = DateTime(2026)
       ..id = 1
@@ -91,7 +124,7 @@ void main() {
   test('rectification sites must still complete a declared asset type',
       () async {
     final store = AssetStore();
-    store.counts.add(count('panel'));
+    store.counts.addAll([count('panel'), count('battery')]);
     final repo = AssetSubmissionEligibilityRepository(store);
     expect(
         await repo.hasReadyAssets('facility', allowZeroAssets: true), isFalse);

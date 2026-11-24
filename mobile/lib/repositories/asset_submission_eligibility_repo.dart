@@ -9,9 +9,9 @@ class AssetSubmissionEligibilityRepository {
 
   AssetSubmissionEligibilityRepository(this.isar);
 
-  /// [allowZeroAssets] is for rectification sites, where a visit may install
-  /// nothing (e.g. wiring only): they qualify when no asset type has a
-  /// non-zero count. A type declared with a count still has to be completed.
+  /// Regular sites require a positive count and a saved asset for every type.
+  /// [allowZeroAssets] preserves rectification eligibility: no declared assets
+  /// or at least one type with a positive count and a saved asset.
   Future<bool> hasReadyAssets(String activityFacilityId,
       {bool allowZeroAssets = false}) async {
     if (activityFacilityId.isEmpty) return false;
@@ -20,6 +20,7 @@ class AssetSubmissionEligibilityRepository {
         .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
     var anyDeclared = false;
+    var readyTypes = 0;
     for (final type in assetTypes) {
       final entries = counts
           .where((entry) => entry.assetType.trim().toLowerCase() == type)
@@ -37,9 +38,12 @@ class AssetSubmissionEligibilityRepository {
           .filter()
           .assetTypeEqualTo(type)
           .count();
-      if (saved > 0) return true;
+      if (saved > 0) {
+        if (allowZeroAssets) return true;
+        readyTypes++;
+      }
     }
-    return allowZeroAssets && !anyDeclared;
+    return allowZeroAssets ? !anyDeclared : readyTypes == assetTypes.length;
   }
 
   Future<Map<String, List<CacheAddNewAsset>>> savedAssetsByType(
