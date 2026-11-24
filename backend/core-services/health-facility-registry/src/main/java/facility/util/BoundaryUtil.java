@@ -74,14 +74,63 @@ public class BoundaryUtil {
     }
 
     public String getBoundaryData(List<String> codes) {
+        return searchRelationships(codes, true, false);
+    }
+
+    /**
+     * The boundary types and codes from the root of the hierarchy down to {@code code}, keyed by
+     * lower-cased boundary type (for example {@code state}, {@code district}, {@code block}), in
+     * that order. Empty when the code isn't in the hierarchy.
+     */
+    public Map<String, String> ancestryOf(String code) throws JsonProcessingException {
+        if (code == null || code.trim().isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+        return chainTo(objectMapper.readTree(searchRelationships(List.of(code.trim()), false, true)), code.trim());
+    }
+
+    /** {@link #ancestryOf} on an already-fetched relationship search response. */
+    static Map<String, String> chainTo(JsonNode root, String code) {
+        Map<String, String> chain = new LinkedHashMap<>();
+        for (JsonNode tenantBoundary : root.path("TenantBoundary")) {
+            for (JsonNode boundary : tenantBoundary.path("boundary")) {
+                Deque<JsonNode> path = new ArrayDeque<>();
+                if (pathTo(boundary, code.trim(), path)) {
+                    for (JsonNode node : path) {
+                        chain.put(node.path("boundaryType").asText("").toLowerCase(Locale.ROOT),
+                                node.path("code").asText());
+                    }
+                    return chain;
+                }
+            }
+        }
+        return chain;
+    }
+
+    /** Fills {@code path} with the nodes from {@code node} down to {@code code}, if it is beneath. */
+    private static boolean pathTo(JsonNode node, String code, Deque<JsonNode> path) {
+        path.addLast(node);
+        if (code.equals(node.path("code").asText())) {
+            return true;
+        }
+        for (JsonNode child : node.path("children")) {
+            if (pathTo(child, code, path)) {
+                return true;
+            }
+        }
+        path.removeLast();
+        return false;
+    }
+
+    private String searchRelationships(List<String> codes, boolean includeChildren, boolean includeParents) {
         String jsonString = null;
-//        String params = "?codes="+codes+"&includeChildren=true&tenantId=in&hierarchyType="+boundaryHierarchyType;
         StringBuilder uri = new StringBuilder();
         uri.append(boundaryHost).append(boundaryV2Url);
         RequestInfo requestInfo = new RequestInfo();
         BoundaryRelationshipSearchCriteria searchCriteria = BoundaryRelationshipSearchCriteria.builder()
                 .tenantId("in")
-                .includeChildren(true)
+                .includeChildren(includeChildren)
+                .includeParents(includeParents)
                 .hierarchyType(boundaryHierarchyType)
                 .codes(codes)
                 .build();

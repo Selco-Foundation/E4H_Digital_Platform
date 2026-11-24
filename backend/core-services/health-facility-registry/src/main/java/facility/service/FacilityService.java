@@ -979,6 +979,8 @@ public class FacilityService {
                     update.getTenantId(),
                     request.getRequestInfo());
         }
+        // Checked with everything else, before anything is written.
+        String newBlockBoundaryCode = resolveRequestedBlock(update, existingFacility, request.getRequestInfo());
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
@@ -995,6 +997,17 @@ public class FacilityService {
             facility.setIsOnmReady(false);
             update.setIsOnmReady(false);
             requestedOnmReady = false;
+        }
+
+        // A District/Block change goes first, so the PoC sync, the localizations and the Kafka push
+        // below all see the new boundary code. It throws if any step fails, before the push.
+        if (newBlockBoundaryCode != null) {
+            if (applyFacilityBlockBoundaryChange(existingFacility, update.getFacilityId(), update.getTenantId(),
+                    newBlockBoundaryCode, request.getRequestInfo()) == null) {
+                throw new CustomException("FACILITY_NOT_FOUND",
+                        "Facility " + update.getFacilityId() + " disappeared while its boundary was being changed");
+            }
+            facility.setBoundaryCode(existingFacility.getBoundaryCode());
         }
 
         // If POC details are updated AND facility is isOnmReady=true
@@ -1230,6 +1243,43 @@ public class FacilityService {
         );
         log.trace("Exiting updateFacilityDistrictBoundary method");
         return updated;
+    }
+
+    /**
+     * The block an update moves the facility to, once checked; null when the update doesn't move it
+     * (no {@code blockBoundaryCode}, or the block it already sits under).
+     *
+     * <p>The block must exist, be a {@code Block}-level boundary, and be in the facility's state. A
+     * district change needs nothing more: it is a block in another district.
+     */
+    String resolveRequestedBlock(FacilityUpdateRequestFacilityUpdate update, Facility existingFacility,
+                                 RequestInfo requestInfo) {
+        String block = update.getBlockBoundaryCode() == null ? null : update.getBlockBoundaryCode().trim();
+        if (block == null || block.isEmpty()
+                || (block + "_" + update.getFacilityId()).equals(existingFacility.getBoundaryCode())) {
+            return null;
+        }
+        boundaryValidator.validateBoundaries(Set.of(block), update.getTenantId(), requestInfo);
+
+        Map<String, String> newChain;
+        Map<String, String> oldChain;
+        try {
+            newChain = boundaryUtil.ancestryOf(block);
+            String oldBlock = deriveParentBlockBoundaryCode(existingFacility.getBoundaryCode(), update.getFacilityId());
+            oldChain = oldBlock == null ? Map.of() : boundaryUtil.ancestryOf(oldBlock);
+        } catch (JsonProcessingException e) {
+            throw new CustomException("BOUNDARY_LOOKUP_FAILED", "Could not read the boundary hierarchy: " + e.getMessage());
+        }
+        if (!block.equals(newChain.get("block"))) {
+            throw new CustomException("INVALID_BLOCK_BOUNDARY",
+                    "Boundary " + block + " is not a block; a facility can only be placed under a block");
+        }
+        String oldState = oldChain.get("state");
+        if (oldState != null && !oldState.equals(newChain.get("state"))) {
+            throw new CustomException("FACILITY_STATE_CHANGE_NOT_ALLOWED",
+                    "Block " + block + " is in a different state; a facility's state can't be changed");
+        }
+        return block;
     }
 
     /**

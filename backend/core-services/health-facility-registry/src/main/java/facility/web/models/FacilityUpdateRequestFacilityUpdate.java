@@ -144,6 +144,14 @@ public class FacilityUpdateRequestFacilityUpdate {
     private Double solarSystemCapacityKwp;
 
     /**
+     * Moves the facility under this block. Optional: absent means the boundary is untouched, and
+     * the block the facility already sits under is a no-op. A district change is a block in
+     * another district. Same name as on create.
+     */
+    @JsonProperty("blockBoundaryCode")
+    private String blockBoundaryCode;
+
+    /**
      * Who last changed the facility (the caller's user uuid). Set by the service on every update
      * push; a value a client sends is ignored. Persisted as {@code facility.updated_by}.
      */
