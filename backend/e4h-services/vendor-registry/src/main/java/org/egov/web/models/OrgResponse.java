@@ -1,5 +1,6 @@
 package org.egov.web.models;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,6 +34,11 @@ public class OrgResponse {
 
     @JsonProperty("pagination")
     private Pagination pagination = null;
+
+    /** On create and update only: the PoC admin user each organisation now has, and whether they were emailed. */
+    @JsonProperty("pocAdmins")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private List<PocAdmin> pocAdmins = null;
 
     public OrgResponse addOrganisationsItem(Organisation organisationsItem) {
         if (this.organisations == null) {

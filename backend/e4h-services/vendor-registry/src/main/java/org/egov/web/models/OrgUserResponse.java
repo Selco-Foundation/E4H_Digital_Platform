@@ -46,4 +46,11 @@ public class OrgUserResponse {
 
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
+
+    /**
+     * True when the login-details email was queued; false when the user was created or their
+     * password reset but the email could not be sent. Absent when no password was set.
+     */
+    @JsonProperty("credentialsEmailSent")
+    private Boolean credentialsEmailSent;
 }

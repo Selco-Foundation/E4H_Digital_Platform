@@ -113,6 +113,15 @@ class OrganisationServiceValidatorTest {
     }
 
     @Test
+    void shouldThrowException_IfPocDetailsAreMissingForCreateOrganisation() {
+        Organisation organisation = Organisation.builder().orgPocName(" ").orgPocPhone("12345").build();
+        CustomException exception = assertThrows(CustomException.class,
+                () -> OrganisationServiceValidator.validatePocDetails(organisation));
+        assertEquals(java.util.Set.of("ORG_POC_NAME_REQUIRED", "ORG_POC_PHONE_INVALID", "ORG_POC_EMAIL_REQUIRED", "ORG_POC_USERNAME_REQUIRED"),
+                exception.getErrors().keySet());
+    }
+
+    @Test
     void pocPasswordIsNeverLoggedOrSerialised() throws Exception {
         Organisation organisation = Organisation.builder().name("org").orgPocPassword("abc1@de").build();
         assertFalse(organisation.toString().contains("abc1@de"));
