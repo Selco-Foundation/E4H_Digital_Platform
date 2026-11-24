@@ -902,6 +902,9 @@ public class FacilityService {
         // which fills an omitted flag from the stored row so the persister doesn't null it.
         Boolean requestedOnmReady = update.getIsOnmReady();
         FacilityUpdateMerger.fillOmittedFromStored(update, existingFacility);
+        // After the merge every identifier on the request is the value that will be saved: a blank
+        // one is a deliberate clear, and from here on validation and the HRMS sync see exactly that.
+        FacilityUpdateMerger.normalizeIdentifiers(update);
 
         // Normalize facility name (trim + collapse multiple spaces) before mapping
         if (update.getFacilityName() != null) {
@@ -926,7 +929,7 @@ public class FacilityService {
         facility.setFacilityPocName(update.getPocName());
         facility.setFacilityPocPhone(update.getPocContact());
         facility.setFacilityPocEmail(update.getPocEmail());
-        facility.setFacilityPocUsername(firstNonBlank(update.getFacilityPocUsername(), existingFacility.getFacilityPocUsername()));
+        facility.setFacilityPocUsername(update.getFacilityPocUsername());
         facility.setHfrId(update.getHfrId());
         facility.setNinId(update.getNinId());
         facility.setFacilityStatus(update.getStatus());
@@ -946,9 +949,11 @@ public class FacilityService {
         update.setMappedVendorName(facility.getMappedVendorName());
         update.setMappedVendorUserName(facility.getMappedVendorUserName());
 
+        // Already merged and normalized: falling back to the stored value here would validate a
+        // cleared identifier as if it were still set.
         String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
-        String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
-        String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
+        String effectiveHfrId = update.getHfrId();
+        String effectiveNinId = update.getNinId();
         validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
 
         validateAnganwadiPocUsernamePresent(effectiveCategory, facility.getFacilityPocUsername(), update.getTenantId());
@@ -1018,14 +1023,15 @@ public class FacilityService {
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocName())
                     .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
                     .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
-                    .facilityPocUsername(facility.getFacilityPocUsername()!=null && !facility.getFacilityPocUsername().isBlank() ? facility.getFacilityPocUsername(): existingFacility.getFacilityPocUsername())
-                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
-                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
+                    .facilityPocUsername(facility.getFacilityPocUsername())
+                    .hfrId(facility.getHfrId())
+                    .ninId(facility.getNinId())
                     .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
-                    // A copy: the sync writes working values into it, and those must not reach the
-                    // Kibana document or the response.
-                    .facilityDetails(FacilityUpdateMerger.copyOf(
+                    // A copy without the PoC and identifier keys: the merged columns above are the
+                    // truth, so a stale copy in the details can't bring a cleared identifier back.
+                    // The sync writes working values into it; they don't reach Kibana or the response.
+                    .facilityDetails(FacilityUpdateMerger.withoutPocFields(
                             facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails()))
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
@@ -1089,9 +1095,9 @@ public class FacilityService {
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocName())
                     .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
                     .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
-                    .facilityPocUsername(facility.getFacilityPocUsername()!=null && !facility.getFacilityPocUsername().isBlank() ? facility.getFacilityPocUsername(): existingFacility.getFacilityPocUsername())
-                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
-                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
+                    .facilityPocUsername(facility.getFacilityPocUsername())
+                    .hfrId(facility.getHfrId())
+                    .ninId(facility.getNinId())
                     .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())

@@ -121,6 +121,19 @@ class FacilityUpdateMergerTest {
     }
 
     @Test
+    void clearedIdentifierIsSavedAsNullAndIsNotRefilledFromTheStoredRow() {
+        FacilityUpdateRequestFacilityUpdate update = FacilityUpdateRequestFacilityUpdate.builder()
+                .ninId("  ").hfrId(" HFR2 ").build();
+
+        FacilityUpdateMerger.fillOmittedFromStored(update, stored());
+        FacilityUpdateMerger.normalizeIdentifiers(update);
+
+        assertNull(update.getNinId());
+        assertEquals("HFR2", update.getHfrId());
+        assertEquals("asha01", update.getFacilityPocUsername());
+    }
+
+    @Test
     void pocChangeCheckDoesNotThrowWhenOnmReadyIsAbsent() {
         FacilityService service = mock(FacilityService.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
         Facility existing = stored();

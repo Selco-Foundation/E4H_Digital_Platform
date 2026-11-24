@@ -68,6 +68,28 @@ public final class FacilityUpdateMerger {
                 stored.getFacilityDetails(), update.getFacilityDetails(), HealthFacilityDetails.class));
     }
 
+    /**
+     * Trims HFR ID, NIN ID and PoC username, and turns a blank one into null. Run after
+     * {@link #fillOmittedFromStored}: by then null can only mean the caller cleared the field, and
+     * it is saved as NULL rather than as an empty string.
+     */
+    public static void normalizeIdentifiers(FacilityUpdateRequestFacilityUpdate update) {
+        if (update == null) {
+            return;
+        }
+        update.setHfrId(trimToNull(update.getHfrId()));
+        update.setNinId(trimToNull(update.getNinId()));
+        update.setFacilityPocUsername(trimToNull(update.getFacilityPocUsername()));
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private static <T> void fill(Supplier<T> current, Consumer<T> setter, T stored) {
         if (current.get() == null && stored != null) {
             setter.accept(stored);
