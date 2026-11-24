@@ -25,6 +25,12 @@ public class FacilityBulkSearchCriteria {
     private List<String> facilityStatus;
     private List<String> userIds;
     private List<String> boundaryCodes;
+    /**
+     * Free text matched against facility name, HFR ID, NIN ID and PoC username: partial,
+     * case-insensitive, any of the four. ANDed with every other criterion, including the
+     * caller's jurisdiction. Blank means no text filter.
+     */
+    private String searchText;
     private List<String> state;
     private List<String> district;
     private List<String> block;

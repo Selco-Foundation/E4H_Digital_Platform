@@ -141,6 +141,21 @@ public class QueryBuilderUtil {
             log.debug("Added {} facility names to WHERE clause", criteria.getFacilityNames().size());
         }
 
+        // One box over name and the three identifiers, partial and case-insensitive. Bracketed, so
+        // the ORs stay inside this condition and everything else (filters, ONM, the jurisdiction
+        // ceiling) still ANDs around it.
+        String searchText = criteria.getSearchText() == null ? "" : criteria.getSearchText().trim();
+        if (!searchText.isEmpty()) {
+            whereClause.append(" AND (fac.facility_name ILIKE ? OR fac.hfr_id ILIKE ?"
+                    + " OR fac.nin_id ILIKE ? OR fac.facility_poc_username ILIKE ?)");
+            String pattern = "%" + escapeLike(searchText) + "%";
+            params.add(pattern);
+            params.add(pattern);
+            params.add(pattern);
+            params.add(pattern);
+            log.debug("Added search text to bulk WHERE clause");
+        }
+
         if (!CollectionUtils.isEmpty(criteria.getHfrIds())) {
             whereClause.append(" AND hfr_id in ( ").append(createQuery(criteria.getHfrIds().size())).append(" )");
             params.addAll(criteria.getHfrIds());
@@ -230,6 +245,15 @@ public class QueryBuilderUtil {
         log.debug("Built bulk WHERE clause with {} parameters", params.size());
         log.trace("Exiting buildBulkWhereClause method");
         return new QueryBuilderResult(whereClause.toString(), params);
+    }
+
+    /**
+     * Escapes LIKE wildcards so the text is matched literally: a search for {@code 50%} or
+     * {@code HC_1} finds those characters rather than treating them as patterns. Postgres' default
+     * LIKE escape character is the backslash, so it is escaped first.
+     */
+    static String escapeLike(String text) {
+        return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /**
