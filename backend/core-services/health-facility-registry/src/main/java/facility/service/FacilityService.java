@@ -905,6 +905,11 @@ public class FacilityService {
         }
         catch(Exception e){}
 
+        // The ONM-ready branches below act on what the caller asked for. Read it before the merge,
+        // which fills an omitted flag from the stored row so the persister doesn't null it.
+        Boolean requestedOnmReady = update.getIsOnmReady();
+        FacilityUpdateMerger.fillOmittedFromStored(update, existingFacility);
+
         // Normalize facility name (trim + collapse multiple spaces) before mapping
         if (update.getFacilityName() != null) {
             update.setFacilityName(
@@ -941,22 +946,6 @@ public class FacilityService {
                 update.getRmsInstallationDate() != null ? update.getRmsInstallationDate() : existingFacility.getRmsInstallationDate());
         facility.setSolarSystemCapacityKwp(
                 update.getSolarSystemCapacityKwp() != null ? update.getSolarSystemCapacityKwp() : existingFacility.getSolarSystemCapacityKwp());
-
-        // Preserve CO2 fields on partial update payloads sent to persister
-        if (update.getSolarInstallationDate() == null) {
-            update.setSolarInstallationDate(existingFacility.getSolarInstallationDate());
-        }
-        if (update.getRmsInstallationDate() == null) {
-            update.setRmsInstallationDate(existingFacility.getRmsInstallationDate());
-        }
-        if (update.getSolarSystemCapacityKwp() == null) {
-            update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
-        }
-        // facility_poc_phone is now also set by the persister query; preserve it on payloads that
-        // don't touch it (existingFacility.getFacilityPocPhone() was decrypted above).
-        if (update.getPocContact() == null) {
-            update.setPocContact(existingFacility.getFacilityPocPhone());
-        }
 
         FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
         FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
@@ -1007,6 +996,7 @@ public class FacilityService {
                     sanitizeForLog(update.getFacilityId()));
             facility.setIsOnmReady(false);
             update.setIsOnmReady(false);
+            requestedOnmReady = false;
         }
 
         // If POC details are updated AND facility is isOnmReady=true
@@ -1022,7 +1012,7 @@ public class FacilityService {
         facilityRepository.pushUpdateFacility(request);
         boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendorUpdateInPayload(update);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
-        if (Boolean.TRUE.equals(update.getIsOnmReady())) {
+        if (Boolean.TRUE.equals(requestedOnmReady)) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
             // Merge update request data with existing facility data to get complete facility info
             Facility facilityForProcessing = Facility.builder()
@@ -1120,7 +1110,7 @@ public class FacilityService {
                     facilityForKibanaUpdate, request.getRequestInfo(), mappedVendorUpdated);
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
-        } else if (Boolean.FALSE.equals(update.getIsOnmReady())) {
+        } else if (Boolean.FALSE.equals(requestedOnmReady)) {
             // Facility marked as non ONM-ready: deactivate the HRMS POC user (if any) and
             // remove the facility document from the Kibana/Elasticsearch index (if present).
             log.info("Facility {} marked as non ONM-ready, deactivating POC user and removing Kibana index",
