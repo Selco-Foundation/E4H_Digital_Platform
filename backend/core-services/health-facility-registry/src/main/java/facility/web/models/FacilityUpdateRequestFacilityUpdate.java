@@ -142,4 +142,15 @@ public class FacilityUpdateRequestFacilityUpdate {
 
     @JsonProperty("solar_system_capacity_kwp")
     private Double solarSystemCapacityKwp;
+
+    /**
+     * Who last changed the facility (the caller's user uuid). Set by the service on every update
+     * push; a value a client sends is ignored. Persisted as {@code facility.updated_by}.
+     */
+    @JsonProperty(value = "updated_by", access = JsonProperty.Access.READ_ONLY)
+    private String updatedBy;
+
+    /** When the facility was last changed, epoch millis. Set like {@link #updatedBy}. */
+    @JsonProperty(value = "updated_at", access = JsonProperty.Access.READ_ONLY)
+    private Long updatedAt;
 }

@@ -45,10 +45,19 @@ public class FacilityRepository {
         producer.push(createTopic, facility);
     }
 
+    /**
+     * Also stamps "last changed by / at" on every update, so no caller can forget it. An update
+     * with no signed-in user (operator scripts) leaves {@code updated_by} null, which the persister
+     * query keeps as the current value ({@code COALESCE}).
+     */
     public void pushUpdateFacility(FacilityUpdateRequest request) {
         FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
         if (update != null) {
             update.setPocContact(pocPhoneCipher.encrypt(update.getPocContact()));
+            update.setUpdatedAt(System.currentTimeMillis());
+            update.setUpdatedBy(request.getRequestInfo() != null && request.getRequestInfo().getUserInfo() != null
+                    ? request.getRequestInfo().getUserInfo().getUuid()
+                    : null);
         }
         producer.push(updateTopic, request);
     }
