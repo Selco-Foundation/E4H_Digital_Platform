@@ -97,6 +97,28 @@ public final class FacilityUpdateMerger {
         return MAPPER.convertValue(MAPPER.convertValue(address, MAP_TYPE), FacilityAddress.class);
     }
 
+    /** A deep copy, so a caller can change it without touching the original. */
+    public static HealthFacilityDetails copyOf(HealthFacilityDetails details) {
+        return details == null ? null : MAPPER.convertValue(MAPPER.convertValue(details, MAP_TYPE), HealthFacilityDetails.class);
+    }
+
+    /**
+     * A copy of {@code details} without the PoC and identifier keys. Those live in the facility's
+     * own columns; the HRMS sync copies them into {@code facility_details} as working values, and
+     * they must not be written back into the row (the phone there would be in plain text).
+     */
+    public static HealthFacilityDetails withoutPocFields(HealthFacilityDetails details) {
+        HealthFacilityDetails copy = copyOf(details);
+        if (copy != null) {
+            copy.setPocName(null);
+            copy.setPocContact(null);
+            copy.setPocEmail(null);
+            copy.setHfrId(null);
+            copy.setNinId(null);
+        }
+        return copy;
+    }
+
     /**
      * {@code stored} with every non-null field of {@code incoming} laid over it. Returns whichever
      * side is present when the other is null.

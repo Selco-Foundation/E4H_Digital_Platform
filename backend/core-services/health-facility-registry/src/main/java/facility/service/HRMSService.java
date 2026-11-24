@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.util.MdmsUtil;
+import facility.util.PasswordPolicy;
 import facility.web.models.Facility;
 import facility.web.models.HealthFacilityDetails;
 import facility.web.models.User;
@@ -236,6 +237,9 @@ public class HRMSService {
         log.info("Creating POC employee for facility {} with employee code {}",
                 sanitizeForLog(facility.getFacilityId()), sanitizeForLog(employeeCode));
         try {
+            // Derived before HRMS is called, so a failure leaves no user without a known password.
+            String initialPassword = PasswordPolicy.derive(facilityDetails.getPocName(), facilityDetails.getPocContact());
+
             // Build employee object
             Map<String, Object> user = new HashMap<>();
             user.put("userName", employeeCode);
@@ -339,8 +343,9 @@ public class HRMSService {
                 log.info("Successfully created POC employee for facility {} with employee code {}",
                         sanitizeForLog(facility.getFacilityId()), sanitizeForLog(employeeCode));
                 
-                // Update user password after successful creation
-                updateUserPassword(response, requestInfo);
+                // Every new PoC user gets the derived password, active or not: activation later
+                // sets the same value again, so the PoC's first login is predictable either way.
+                updateUserPassword(response, requestInfo, initialPassword);
                 
                 log.trace("Exiting createFacilityPOCEmployee method");
                 return true;
@@ -361,8 +366,9 @@ public class HRMSService {
      * 
      * @param hrmsResponse The HRMS create employee response containing employee and user details
      * @param requestInfo RequestInfo for the API call
+     * @param password the password to set; never logged
      */
-    private void updateUserPassword(Map<String, Object> hrmsResponse, RequestInfo requestInfo) {
+    private void updateUserPassword(Map<String, Object> hrmsResponse, RequestInfo requestInfo, String password) {
         log.trace("Entering updateUserPassword method");
         try {
             // Extract employees from HRMS response
@@ -397,8 +403,7 @@ public class HRMSService {
                 return;
             }
 
-            // Set default password
-            user.put("password", configs.getDefaultUserPassword());
+            user.put("password", password);
             
             // Build user update request
             Map<String, Object> userUpdateRequest = new HashMap<>();
@@ -421,23 +426,23 @@ public class HRMSService {
     }
 
     /**
-     * Resets the password of an existing user to the configured default password.
-     * Used when a facility is marked ONM ready and a POC user with the given HFR/NIN
-     * already exists, so the POC always lands on the known default credentials.
+     * Sets the password of an existing user. Used when a facility PoC user is activated, which is
+     * the only time an existing PoC user's password is set.
      *
-     * @param user        The existing user (must carry uuid or id) to reset
+     * @param user        The existing user (must carry uuid or id)
+     * @param password    the password to set; never logged
      * @param requestInfo RequestInfo for the API call
      */
-    public void resetUserPasswordToDefault(User user, RequestInfo requestInfo) {
-        log.trace("Entering resetUserPasswordToDefault method");
+    public void setUserPassword(User user, String password, RequestInfo requestInfo) {
+        log.trace("Entering setUserPassword method");
         if (user == null || (user.getUuid() == null && user.getId() == null)) {
-            log.warn("Cannot reset password to default: user is null or missing uuid/id");
+            log.warn("Cannot set password: user is null or missing uuid/id");
             return;
         }
         try {
             // Preserve all existing user fields and only override the password to avoid wiping data
             Map<String, Object> userMap = mapper.convertValue(user, new TypeReference<Map<String, Object>>() {});
-            userMap.put("password", configs.getDefaultUserPassword());
+            userMap.put("password", password);
 
             Map<String, Object> userUpdateRequest = new HashMap<>();
             userUpdateRequest.put("RequestInfo", requestInfo);
@@ -445,13 +450,12 @@ public class HRMSService {
 
             String updateUri = configs.getUserHost() + configs.getUserContextPath() + configs.getUserUpdateEndpoint();
 
-            log.debug("Resetting password to default for user: {}", sanitizeForLog(user.getUserName()));
             serviceRequestRepository.fetchResult(new StringBuilder(updateUri), userUpdateRequest);
 
-            log.info("Successfully reset password to default for user: {}", sanitizeForLog(user.getUserName()));
-            log.trace("Exiting resetUserPasswordToDefault method");
+            log.info("Set password for user: {}", sanitizeForLog(user.getUserName()));
+            log.trace("Exiting setUserPassword method");
         } catch (Exception e) {
-            log.error("Error resetting password to default for user {}: {}",
+            log.error("Error setting password for user {}: {}",
                     sanitizeForLog(user.getUserName()), e.getMessage(), e);
         }
     }
