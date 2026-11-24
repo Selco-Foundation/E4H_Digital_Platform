@@ -88,6 +88,28 @@ public class HRMSUtils {
     }
 
     /**
+     * Every employee, active or inactive and of any role, holding an active jurisdiction on exactly
+     * {@code boundaryCode}: the facility's PoC user, its vendors' resolvers, and anyone else scoped
+     * to that facility.
+     *
+     * <p>Unlike the lookups above this throws when HRMS can't be reached: a caller moving these
+     * jurisdictions must not mistake an outage for "nobody to move".
+     */
+    public List<Employee> getEmployeesByBoundaryCode(Object requestInfo, String boundaryCode) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&boundaryCodes=" + boundaryCode + "&searchOnlyInBoundary=true";
+        Map<String, Object> searchRequest = new HashMap<>();
+        searchRequest.put(REQUEST_INFO_KEY, requestInfo);
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+            return new ArrayList<>();
+        }
+        return employeeResponse.getEmployees();
+    }
+
+    /**
      * The vendor user HRMS currently maps to a facility: the active {@code COMPLAINT_RESOLVER}
      * holding an active {@code Facility} jurisdiction on {@code boundaryCode}.
      *

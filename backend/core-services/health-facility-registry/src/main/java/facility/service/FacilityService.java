@@ -1232,6 +1232,24 @@ public class FacilityService {
         return updated;
     }
 
+    /**
+     * Re-keys a facility to {@code <newBlock>_<facilityId>} and moves everything keyed on the code.
+     *
+     * <p>Every step but the row update is a call to another service, and none of those can be
+     * rolled back. So the steps are ordered to make a retry finish the job instead: each one is
+     * idempotent, the facility row changes only after HRMS and im-services have moved, and the old
+     * boundary - the only destructive step - is removed last. A failure anywhere throws, and
+     * resubmitting the same change completes it.
+     *
+     * <ol>
+     *   <li>Create the new facility boundary under the block.</li>
+     *   <li>Move every HRMS jurisdiction on the old code: the PoC user, the vendors' resolvers,
+     *       anyone scoped to the facility.</li>
+     *   <li>Re-key the facility's incidents in im-services.</li>
+     *   <li>Update the facility row, with last changed by / at.</li>
+     *   <li>Localize the new code, and delete the old boundary if nothing else uses it.</li>
+     * </ol>
+     */
     private Facility applyFacilityBlockBoundaryChange(
             Facility existingFacility,
             String facilityId,
@@ -1246,10 +1264,23 @@ public class FacilityService {
         }
 
         ensureFacilityBoundaryExists(updatedFacilityBoundaryCode, newBlockBoundaryCode, tenantId, requestInfo);
-
-        int updatedRows = jdbcTemplate.update(
-                "UPDATE facility SET boundary_code = ? WHERE id = ? AND tenant_id = ?",
+        moveHrmsJurisdictions(oldFacilityBoundaryCode, updatedFacilityBoundaryCode, facilityId, requestInfo);
+        syncImIncidentBoundaryCodesForFacility(
+                tenantId,
+                facilityId,
                 updatedFacilityBoundaryCode,
+                newBlockBoundaryCode,
+                requestInfo
+        );
+
+        String updatedBy = requestInfo != null && requestInfo.getUserInfo() != null
+                ? requestInfo.getUserInfo().getUuid() : null;
+        int updatedRows = jdbcTemplate.update(
+                "UPDATE facility SET boundary_code = ?, updated_by = COALESCE(?, updated_by), updated_at = ? "
+                        + "WHERE id = ? AND tenant_id = ?",
+                updatedFacilityBoundaryCode,
+                updatedBy,
+                System.currentTimeMillis(),
                 facilityId,
                 tenantId
         );
@@ -1262,15 +1293,49 @@ public class FacilityService {
         existingFacility.setBoundaryCode(updatedFacilityBoundaryCode);
         upsertFacilityBoundaryLocalizations(List.of(existingFacility), requestInfo);
         cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, tenantId, requestInfo);
-        syncImIncidentBoundaryCodesForFacility(
-                tenantId,
-                facilityId,
-                updatedFacilityBoundaryCode,
-                newBlockBoundaryCode,
-                requestInfo
-        );
         log.info("Updated boundary code for facility {} to {}", facilityId, updatedFacilityBoundaryCode);
         return existingFacility;
+    }
+
+    /**
+     * Rewrites every active HRMS jurisdiction on {@code oldCode} to {@code newCode}, keeping its
+     * hierarchy, boundary type and roles. Employees are found with no role or status filter, so the
+     * PoC user, each vendor's resolver and any facility-scoped user all move, inactive ones too.
+     * Throws if HRMS can't be read or refuses an update.
+     */
+    void moveHrmsJurisdictions(String oldCode, String newCode, String facilityId, RequestInfo requestInfo) {
+        if (oldCode == null || oldCode.isBlank()) {
+            return;
+        }
+        List<Employee> holders = hrmsUtils.getEmployeesByBoundaryCode(requestInfo, oldCode);
+        for (Employee employee : holders) {
+            boolean moved = false;
+            for (Jurisdiction jurisdiction : employee.getJurisdictions() == null
+                    ? List.<Jurisdiction>of() : employee.getJurisdictions()) {
+                if (oldCode.equals(jurisdiction.getBoundary())) {
+                    jurisdiction.setBoundary(newCode);
+                    moved = true;
+                }
+            }
+            if (!moved) {
+                continue;
+            }
+            // HRMS reads this flag unboxed on every active employee's update; search leaves it null.
+            if (employee.getReActivateEmployee() == null) {
+                employee.setReActivateEmployee(false);
+            }
+            List<Employee> updated = hrmsUtils.updateHRMSUser(EmployeeRequest.builder()
+                    .requestInfo(requestInfo)
+                    .employees(List.of(employee))
+                    .build());
+            if (updated == null || updated.isEmpty()) {
+                throw new CustomException("FACILITY_REKEY_HRMS_FAILED",
+                        "Could not move HRMS user " + employee.getCode() + " to the facility's new boundary. "
+                                + "Nothing on the facility has changed yet; retry the change.");
+            }
+            log.info("Moved HRMS user {} from {} to {} for facility {}", sanitizeForLog(employee.getCode()),
+                    sanitizeForLog(oldCode), sanitizeForLog(newCode), sanitizeForLog(facilityId));
+        }
     }
 
     /**
