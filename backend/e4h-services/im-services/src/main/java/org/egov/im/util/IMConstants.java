@@ -137,6 +137,13 @@ public class IMConstants {
 
     public static final String IM_WF_ON_HOLD = "ON_HOLD";
 
+    public static final String SYSTEM_FUNCTIONAL_FUNCTIONAL = "FUNCTIONAL";
+
+    public static final String SYSTEM_FUNCTIONAL_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+
+    /** systemFunctional of a ticket while it sits in {@link #OUT_OF_WARRANTY_ON_HOLD}. */
+    public static final String SYSTEM_FUNCTIONAL_ON_HOLD = "ON_HOLD";
+
     public static final String ON_HOLD_REASON_FUND_UNAVAILABLE = "ON_HOLD_REASON_FUND_UNAVAILABLE";
 
     public static final String ON_HOLD_REASON_OTHER = "ON_HOLD_REASON_OTHER";
@@ -279,6 +286,9 @@ public class IMConstants {
 
     // Placeholder indexed for a ticket that has never been assigned to a COMPLAINT_RESOLVER.
     public static final String MAPPED_VENDOR_NOT_APPLICABLE = "Not Applicable";
+
+    // currentOwner indexed for a ticket in OUT_OF_WARRANTY_ON_HOLD: it is waiting on no one.
+    public static final String CURRENT_OWNER_NOT_APPLICABLE = "Not Applicable";
 
     public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
 

@@ -23,6 +23,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import static org.egov.im.util.IMConstants.CURRENT_OWNER_NOT_APPLICABLE;
+import static org.egov.im.util.IMConstants.OUT_OF_WARRANTY_ON_HOLD;
 import static org.egov.im.util.IMConstants.USER_TYPE_JSONPATH;
 
 /**
@@ -118,6 +120,7 @@ public class CurrentOwnerService {
     /**
      * Derives the owner of a ticket sitting in {@code currentState}, or null when the ticket is owned
      * by nobody (a terminal state) or by a role outside {@code USER_TYPE} (SYSTEM, AUTO_ESCALATE).
+     * A ticket on hold is reported as {@code Not Applicable}, with no system role.
      *
      * @param currentState             the state as defined on the BusinessService, i.e. carrying its
      *                                 actions and their roles
@@ -128,6 +131,12 @@ public class CurrentOwnerService {
      */
     public CurrentOwner resolveOwner(State currentState, Supplier<Map<String, String>> systemRoleToProgramRole,
                                      String contextId) {
+        if (OUT_OF_WARRANTY_ON_HOLD.equals(currentState.getApplicationStatus())
+                || OUT_OF_WARRANTY_ON_HOLD.equals(currentState.getState())) {
+            // On hold the ticket waits on no one, even though the workflow still lets State SPOC resume it.
+            return new CurrentOwner(CURRENT_OWNER_NOT_APPLICABLE, null);
+        }
+
         Set<String> systemRoles = resolveOwningSystemRoles(currentState);
         if (systemRoles.isEmpty()) {
             // A closed ticket is owned by nobody: terminal states are either action-less
