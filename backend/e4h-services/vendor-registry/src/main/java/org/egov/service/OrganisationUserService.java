@@ -7,6 +7,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.models.core.URLParams;
 import org.egov.config.Configuration;
 import org.egov.kafka.OrganizationProducer;
+import org.egov.repository.OrganisationRepository;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
@@ -52,8 +53,12 @@ public class OrganisationUserService {
 
     private final OrgAdminScopeResolver orgAdminScopeResolver;
 
+    private final CredentialsNotificationService credentialsNotificationService;
+
+    private final OrganisationRepository organisationRepository;
+
     @Autowired
-    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver, OrgAdminScopeResolver orgAdminScopeResolver) {
+    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver, OrgAdminScopeResolver orgAdminScopeResolver, CredentialsNotificationService credentialsNotificationService, OrganisationRepository organisationRepository) {
         this.validator = validator;
         this.userRepository = userRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -64,6 +69,8 @@ public class OrganisationUserService {
         this.mapper = mapper;
         this.jurisdictionScopeResolver = jurisdictionScopeResolver;
         this.orgAdminScopeResolver = orgAdminScopeResolver;
+        this.credentialsNotificationService = credentialsNotificationService;
+        this.organisationRepository = organisationRepository;
     }
 
 
@@ -76,13 +83,14 @@ public class OrganisationUserService {
             request.setOrganizationId(orgScope.orgId());
         }
 
-        validator.validateCreateOrgUserRequest(request);
+        String password = validator.validateCreateOrgUserRequest(request);
 
         if (request.getId() != null && !request.getId().isBlank()) {
             log.info("User with same phone already exists in org {}, HRMS employee updated, pushing to update topic",
                     request.getOrganizationId());
             organisationEnrichmentService.enrichOrgUserRequestOnUpdate(request);
             organizationProducer.push(configuration.getUpdateOrgUserTopic(), request);
+            sendCredentials(request, password, false);
             return request;
         }
 
@@ -97,7 +105,38 @@ public class OrganisationUserService {
             throw exception;
         }
 
+        sendCredentials(request, password, false);
         return request;
+    }
+
+    /**
+     * Requests the login-details email (sent by im-services-analytics) and records on the request
+     * whether the request was published.
+     * Only after the user exists, and never failing the call that created them.
+     */
+    private void sendCredentials(OrgUserRequest request, String password, boolean reset) {
+        User user = request.getUser();
+        CredentialsNotificationService.Credentials credentials = new CredentialsNotificationService.Credentials(
+                user.getEmailId(), user.getName(), organisationName(request),
+                CredentialsNotificationService.describeRoles(user.getRoles()),
+                user.getUserName(), password, reset);
+        request.setCredentialsEmailSent(credentialsNotificationService.send(credentials));
+    }
+
+    /** The organisation's name for the email; blank rather than a failure if it cannot be read. */
+    private String organisationName(OrgUserRequest request) {
+        try {
+            OrgSearchCriteria criteria = OrgSearchCriteria.builder()
+                    .ids(List.of(request.getOrganizationId()))
+                    .tenantId(request.getUser().getTenantId())
+                    .build();
+            List<Organisation> organisations = organisationRepository.getOrganisations(
+                    OrgSearchRequest.builder().requestInfo(request.getRequestInfo()).searchCriteria(criteria).build());
+            return organisations == null || organisations.isEmpty() ? null : organisations.get(0).getName();
+        } catch (Exception e) {
+            log.warn("Could not read organisation {} for the credentials email", request.getOrganizationId(), e);
+            return null;
+        }
     }
 
     public List<OrgUser> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {
@@ -311,7 +350,7 @@ public class OrganisationUserService {
             throw new CustomException("Organization", "Organization ID do not exist");
         }
 
-        validator.validateUpdateOrgUserRequest(request);
+        String newPassword = validator.validateUpdateOrgUserRequest(request);
 //        List<OrgUser> orgUserList = request.getOrgUsers();
         try {
             log.info("processing  {} valid entities", request.getUser());
@@ -320,6 +359,10 @@ public class OrganisationUserService {
             organizationProducer.push(configuration.getUpdateOrgUserTopic(), request);
         } catch (Exception exception) {
             log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        if (newPassword != null) {
+            sendCredentials(request, newPassword, true);
         }
 
         return request;
