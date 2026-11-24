@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.config.Configuration;
 import org.egov.kafka.OrganizationProducer;
+import org.egov.repository.OrganisationRepository;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.repository.OrganisationUserRepository.OrgUserLink;
 import org.egov.tracer.model.CustomException;
@@ -49,13 +50,16 @@ class OrganisationUserServiceOrgAdminTest {
     @Mock private HRMSUtils hrmsUtils;
     @Mock private JurisdictionScopeResolver jurisdictionScopeResolver;
     @Mock private OrgAdminScopeResolver orgAdminScopeResolver;
+    @Mock private CredentialsNotificationService credentialsNotificationService;
+    @Mock private OrganisationRepository organisationRepository;
 
     private OrganisationUserService service;
 
     @BeforeEach
     void setUp() {
         service = new OrganisationUserService(validator, userRepository, enrichmentService, producer, configuration,
-                notificationService, hrmsUtils, new ObjectMapper(), jurisdictionScopeResolver, orgAdminScopeResolver);
+                notificationService, hrmsUtils, new ObjectMapper(), jurisdictionScopeResolver, orgAdminScopeResolver,
+                credentialsNotificationService, organisationRepository);
         when(orgAdminScopeResolver.resolve(any())).thenReturn(new OrgAdminScopeResolver.OrgScope(OWN_ORG));
         when(userRepository.getOrgUserLink(ROW)).thenReturn(Optional.of(new OrgUserLink(OWN_ORG, TARGET)));
     }

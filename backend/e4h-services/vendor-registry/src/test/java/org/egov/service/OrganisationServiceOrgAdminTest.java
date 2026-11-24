@@ -40,13 +40,14 @@ class OrganisationServiceOrgAdminTest {
     @Mock private IndividualService individualService;
     @Mock private NotificationService notificationService;
     @Mock private OrgAdminScopeResolver orgAdminScopeResolver;
+    @Mock private PocAdminService pocAdminService;
 
     private OrganisationService service;
 
     @BeforeEach
     void setUp() {
         service = new OrganisationService(validator, repository, enrichmentService, producer, configuration,
-                individualService, notificationService, new ObjectMapper(), orgAdminScopeResolver);
+                individualService, notificationService, new ObjectMapper(), orgAdminScopeResolver, pocAdminService);
         when(orgAdminScopeResolver.resolve(any())).thenReturn(new OrgAdminScopeResolver.OrgScope(OWN_ORG));
         when(repository.getOrganisations(any())).thenReturn(List.of(stored()));
     }
