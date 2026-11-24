@@ -20,7 +20,7 @@ const fetchOrganizationUsers = async (filter, limit, offset) => {
 
 const useOrganizationUser = (queryFilter = {}, limit = 1000, offset = 0) => {
 
-  const { tenantId, organizationIds } = queryFilter;
+  const { tenantId, organizationIds, name, roles } = queryFilter;
 
   const filter = {
     OrgUser: {
@@ -34,6 +34,14 @@ const useOrganizationUser = (queryFilter = {}, limit = 1000, offset = 0) => {
 
   if (organizationIds) {
     filter.OrgUser.organizationIds = organizationIds;
+  }
+
+  if(name){
+    filter.OrgUser.name = name;
+  }
+
+  if(roles && roles.length) {
+    filter.OrgUser.roles = roles;
   }
 
   const queryClient = useQueryClient();
