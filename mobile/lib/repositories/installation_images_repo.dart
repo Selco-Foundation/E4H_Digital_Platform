@@ -18,8 +18,10 @@ class InstallationImagesRepository {
   final AppInitRepo _appInitRepo;
   final Isar _isar;
 
-  Future<List<InstallationImageItem>> fetchMdms(
-      {bool cacheOnly = false}) async {
+  Future<List<InstallationImageItem>> fetchMdms({
+    required String systemType,
+    bool cacheOnly = false,
+  }) async {
     List<Mdms<InstallationImagesData>> docs;
 
     if (cacheOnly) {
@@ -58,11 +60,12 @@ class InstallationImagesRepository {
       }
     }
 
-    return _mapActiveDocItems(docs);
+    return _mapActiveDocItems(docs, systemType);
   }
 
   List<InstallationImageItem> _mapActiveDocItems(
     List<Mdms<InstallationImagesData>> docs,
+    String systemType,
   ) {
     Mdms<InstallationImagesData>? activeDoc;
     for (final doc in docs) {
@@ -77,28 +80,32 @@ class InstallationImagesRepository {
     }
 
     final data = activeDoc.data;
-    return data.installationImage;
+    final items = data.installationImage
+        .where((item) =>
+            item.active && item.systemTypeEntry(systemType) != null)
+        .toList()
+      ..sort((a, b) => a
+          .systemTypeEntry(systemType)!
+          .order
+          .compareTo(b.systemTypeEntry(systemType)!.order));
+
+    return items;
   }
 
   Future<List<CacheInstallationImage>> getCachedImages({
     required String activityFacilityId,
-    required String userType,
   }) {
     return _isar.cacheInstallationImages
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
-        .userTypeEqualTo(userType)
         .findAll();
   }
 
   Future<bool> hasCachedImages({
     required String activityFacilityId,
-    required String userType,
   }) async {
     final entries = await getCachedImages(
       activityFacilityId: activityFacilityId,
-      userType: userType,
     );
 
     return entries.isNotEmpty;
@@ -106,14 +113,11 @@ class InstallationImagesRepository {
 
   Future<void> deleteAllCachedImages({
     required String activityFacilityId,
-    required String userType,
   }) async {
     await _isar.writeTxn(() async {
       final entries = await _isar.cacheInstallationImages
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
-          .filter()
-          .userTypeEqualTo(userType)
           .findAll();
 
       for (final entry in entries) {

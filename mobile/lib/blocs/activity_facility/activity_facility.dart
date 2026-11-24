@@ -17,9 +17,13 @@ class ActivityFacilityBloc
     extends Bloc<ActivityFacilityEvent, ActivityFacilityState> {
   static const _pageSize = ActivityFacilityRepository.defaultPageSize;
   final Isar isar;
+  final ActivityFacilityRepository _listRepository;
+  // Counts and cache checks share this bloc; retain pagination separately.
+  ActivityFacilityPaginatedLoaded? _lastList;
 
-  ActivityFacilityBloc(this.isar)
-      : super(const ActivityFacilityState.initial()) {
+  ActivityFacilityBloc(this.isar, {ActivityFacilityRepository? repository})
+      : _listRepository = repository ?? ActivityFacilityRepository(isar),
+        super(const ActivityFacilityState.initial()) {
     on<ActivityFacilitySelectEvent>(_selectActivityFacility);
     on<FetchActivityFacilityByWorkflowEvent>(
         _handleFetchActivityFacilityByWorkflow);
@@ -226,20 +230,20 @@ class ActivityFacilityBloc
     LoadMoreActivityFacilityEvent event,
     Emitter<ActivityFacilityState> emit,
   ) async {
-    final currentState = state;
+    final currentState = _lastList;
     if (currentState is! ActivityFacilityPaginatedLoaded) return;
     if (!currentState.hasMore || currentState.isLoadingMore) return;
 
-    emit(currentState.copyWith(isLoadingMore: true));
+    final loadingState = currentState.copyWith(isLoadingMore: true);
+    _emitList(loadingState, emit);
 
-    final repo = ActivityFacilityRepository(isar);
     final body = ActivityFacilitySearchModel(
       tenantId: envConfig.variables.tenantId,
       facilityName: event.query,
     );
 
     try {
-      final result = await repo.fetchByWorkflowPaginated(
+      final result = await _listRepository.fetchByWorkflowPaginated(
         body: body,
         workflowStatuses: event.workflowStatuses,
         limit: _pageSize,
@@ -247,6 +251,7 @@ class ActivityFacilityBloc
         sortDirection: event.sortDirection ?? DEFAULT_SORT_DIRECTION,
       );
 
+      if (!identical(_lastList, loadingState)) return;
       final ids = currentState.items
           .map((e) => e.activityFacility.id)
           .where((e) => e.isNotEmpty)
@@ -259,16 +264,21 @@ class ActivityFacilityBloc
         merged.add(item);
       }
 
-      emit(currentState.copyWith(
-        items: merged,
-        hasMore: result.items.isNotEmpty && merged.length < result.totalCount,
-        totalCount: result.totalCount,
-        fromCache: result.fromCache,
-        rawFetchedCount: currentState.rawFetchedCount + _pageSize,
-        isLoadingMore: false,
-      ));
+      _emitList(
+          currentState.copyWith(
+            items: merged,
+            hasMore:
+                result.items.isNotEmpty && merged.length < result.totalCount,
+            totalCount: result.totalCount,
+            fromCache: result.fromCache,
+            rawFetchedCount: currentState.rawFetchedCount + _pageSize,
+            isLoadingMore: false,
+          ),
+          emit);
     } catch (_) {
-      emit(currentState.copyWith(isLoadingMore: false));
+      if (identical(_lastList, loadingState)) {
+        _emitList(currentState.copyWith(isLoadingMore: false), emit);
+      }
     }
   }
 
@@ -297,36 +307,44 @@ class ActivityFacilityBloc
     String? query,
     String? sortDirection,
   }) async {
-    emit(const ActivityFacilityState.loading());
+    _lastList = null;
+    emit(const ActivityFacilityState.searchLoading());
 
-    final repo = ActivityFacilityRepository(isar);
     final body = ActivityFacilitySearchModel(
       tenantId: envConfig.variables.tenantId,
       facilityName: query,
     );
 
     try {
-      final result = await repo.fetchByWorkflowPaginated(
+      final result = await _listRepository.fetchByWorkflowPaginated(
         body: body,
         workflowStatuses: workflowStatuses,
         limit: _pageSize,
         offset: 0,
         sortDirection: sortDirection ?? DEFAULT_SORT_DIRECTION,
       );
-      emit(ActivityFacilityState.paginatedLoaded(
-        items: result.items,
-        hasMore: result.items.length < result.totalCount,
-        totalCount: result.totalCount,
-        fromCache: result.fromCache,
-        rawFetchedCount: _pageSize,
-      ));
+      if (result.fromCache && result.items.isEmpty) {
+        emit(const ActivityFacilityState.listFailure());
+        return;
+      }
+      _emitList(
+          ActivityFacilityPaginatedLoaded(
+            items: result.items,
+            hasMore: result.items.length < result.totalCount,
+            totalCount: result.totalCount,
+            fromCache: result.fromCache,
+            rawFetchedCount: _pageSize,
+          ),
+          emit);
     } catch (_) {
-      emit(const ActivityFacilityState.paginatedLoaded(
-        items: [],
-        hasMore: false,
-        totalCount: 0,
-      ));
+      emit(const ActivityFacilityState.listFailure());
     }
+  }
+
+  void _emitList(ActivityFacilityPaginatedLoaded result,
+      Emitter<ActivityFacilityState> emit) {
+    _lastList = result;
+    emit(result);
   }
 }
 
@@ -383,6 +401,9 @@ class ActivityFacilityState with _$ActivityFacilityState {
   const factory ActivityFacilityState.initial() = _ActivityFacilityInitialState;
 
   const factory ActivityFacilityState.loading() = _ActivityFacilityLoadingState;
+
+  const factory ActivityFacilityState.listFailure() =
+      ActivityFacilityListFailure;
 
   const factory ActivityFacilityState.inCache(bool isInCache) =
       ActivityFacilityInCache;

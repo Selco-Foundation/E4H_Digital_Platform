@@ -1,150 +1,141 @@
+import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/app_init/app_init.dart';
-import '../../blocs/auth/authbloc.dart';
-import '../../router/app_router.dart';
+import '../../data/api_interceptors.dart';
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as i18;
-import '../../utils/utils.dart';
 
+/// Home-only configuration loading. A failed load blocks entry until Retry succeeds.
 class MdmsGate extends StatefulWidget {
-  const MdmsGate({super.key});
+  final Widget child;
+  final MdmsModule module;
+  final Future<void> Function()? load;
+
+  const MdmsGate({
+    super.key,
+    required this.module,
+    required this.child,
+    this.load,
+  });
 
   @override
   State<MdmsGate> createState() => _MdmsGateState();
 }
 
 class _MdmsGateState extends State<MdmsGate> {
-  bool _dialogShown = false;
-  bool _fetchScheduled = false;
-  bool _logoutInFlight = false;
-
-  void _postFrame(VoidCallback fn) =>
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        fn();
-      });
-
-  void _openBlockingLoader() {
-    if (_dialogShown) return;
-    _dialogShown = true;
-    _postFrame(() {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        useRootNavigator: true,
-        builder: (_) => PopScope(
-          canPop: false,
-          onPopInvoked: (didPop) {},
-          child: Dialog(
-            insetPadding: const EdgeInsets.all(24),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(width: 16),
-                  Flexible(
-                      child:
-                          Text(context.translate(i18.mdmsGate.loadingAppData))),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  void _closeBlockingLoader() {
-    if (!_dialogShown) return;
-    _dialogShown = false;
-    _postFrame(() {
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-    });
-  }
+  bool _loading = false;
+  bool _ready = false;
+  bool _failed = false;
+  DialogRoute<void>? _dialog;
 
   @override
   void initState() {
     super.initState();
-    _postFrame(() {
-      final s = context.read<AppInitialization>().state;
-      s.maybeWhen(
-        defaulted: (_) => _startMdms(),
-        orElse: () {},
-      );
+    _ready = context.read<AppInitialization>().isModuleReady(widget.module);
+    if (_ready) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
     });
   }
 
-  void _startMdms() {
-    if (_fetchScheduled) return;
-    _fetchScheduled = true;
-    _openBlockingLoader();
-    context.read<AppInitialization>().add(const InitEvent.fetchMdms());
-  }
-
-  Future<void> _logoutToWelcome(String message) async {
-    if (_logoutInFlight) return;
-    _logoutInFlight = true;
-
-    final authBloc = context.read<AuthBloc>();
-    authBloc.add(const AuthEvent.logout());
-
-    final alreadyLoggedOut = authBloc.state.maybeWhen(
-      unauthenticated: () => true,
-      orElse: () => false,
+  Future<void> _loadInstallation() async {
+    final bloc = context.read<AppInitialization>();
+    final result = bloc.stream.firstWhere(
+      (state) => state is Initialized || state is Error,
     );
+    bloc.add(const InitEvent.fetchMdms());
+    final state = await result;
+    if (state is Error) throw StateError(state.message);
+  }
 
-    if (!alreadyLoggedOut) {
-      await authBloc.stream.firstWhere(
-        (state) => state.maybeWhen(
-          unauthenticated: () => true,
-          orElse: () => false,
-        ),
-      );
-    }
-
-    if (!mounted) return;
-
-    final rootRouter = context.router.root;
-    _postFrame(() {
-      if (!mounted) return;
-      rootRouter.replaceAll([const UnauthenticatedRouteWrapper()]);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-      _logoutInFlight = false;
+  Future<void> _load() async {
+    if (_loading) return;
+    final initialization = context.read<AppInitialization>();
+    final session = AuthTokenInterceptor.sessionGeneration;
+    setState(() {
+      _loading = true;
+      _failed = false;
     });
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final dialog = DialogRoute<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(spacer6),
+            child: Row(children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: spacer4),
+              Flexible(
+                  child: Text(context.translate(i18.common.loadingAppData))),
+            ]),
+          ),
+        ),
+      ),
+    );
+    _dialog = dialog;
+    navigator.push(dialog);
+    var succeeded = false;
+    try {
+      await (widget.load ?? _loadInstallation)();
+      succeeded = true;
+      if (mounted) initialization.markModuleReady(widget.module, session);
+    } catch (_) {
+      // The auth interceptor handles expired sessions. Other errors stay retryable.
+    } finally {
+      _closeDialog();
+      if (mounted && session == AuthTokenInterceptor.sessionGeneration) {
+        setState(() {
+          _loading = false;
+          _ready = succeeded;
+          _failed = !succeeded;
+        });
+      }
+    }
+  }
+
+  void _closeDialog() {
+    final dialog = _dialog;
+    _dialog = null;
+    if (dialog?.isActive == true) dialog!.navigator?.removeRoute(dialog);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BlocListener<AppInitialization, InitState>(
-      listenWhen: (p, c) =>
-          c is LoadingMdms || c is Initialized || c is Error || c is Defaulted,
-      listener: (context, state) async {
-        state.map(
-          uninitialized: (_) {},
-          defaulted: (_) => _startMdms(),
-          loadingMdms: (_) => _openBlockingLoader(),
-          initialized: (_) => _closeBlockingLoader(),
-          error: (err) async {
-            _closeBlockingLoader();
-
-            final isSessionExpired = isSessionExpiredMessage(err.message);
-            final message = isSessionExpired
-                ? 'Token expired! Please login again.'
-                : err.message;
-
-            await _logoutToWelcome(message);
-          },
-        );
-      },
-      child: const SizedBox.shrink(),
-    );
+  void dispose() {
+    // Removal can coincide with the auth router replacing the home route.
+    final dialog = _dialog;
+    _dialog = null;
+    if (dialog != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (dialog.isActive) dialog.navigator?.removeRoute(dialog);
+      });
+    }
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        fit: StackFit.expand,
+        children: [
+          IgnorePointer(ignoring: !_ready, child: widget.child),
+          if (_failed)
+            Material(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(context.translate(i18.home.somethingWentWrong)),
+                  const SizedBox(height: spacer4),
+                  TextButton(
+                    onPressed: _load,
+                    child: Text(context.translate(i18.common.retry)),
+                  ),
+                ]),
+              ),
+            ),
+        ],
+      );
 }

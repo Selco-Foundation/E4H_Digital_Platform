@@ -2,7 +2,6 @@ import 'package:collection/collection.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
-import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
 import '../model/document/document.dart';
@@ -74,9 +73,7 @@ class ActivityFacilityWorkflowRepository {
   }
 
   Future<void> deleteWorkflowMediaDocs(
-      {required Isar isar,
-      required String activityFacilityId,
-      required String userType}) async {
+      {required Isar isar, required String activityFacilityId}) async {
     await isar.writeTxn(() async {
       final mediaCol = isar.cacheMediaUploads;
       final mediaEntries = await mediaCol
@@ -86,15 +83,6 @@ class ActivityFacilityWorkflowRepository {
       for (final entry in mediaEntries) {
         await mediaCol.delete(entry.id);
       }
-
-      final installationImageCol = isar.cacheInstallationImages;
-      final installationImages = await installationImageCol
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findAll();
-      for (final entry in installationImages) {
-        await installationImageCol.delete(entry.id);
-      }
     });
   }
 
@@ -102,6 +90,7 @@ class ActivityFacilityWorkflowRepository {
     required Isar isar,
     required String activityFacilityId,
     required List<Mdms<SolutionDesignType>> solutionDesignList,
+    required String? facilitySystemType,
     required String? facilitySolutionDesignCode,
   }) async {
     String fallback = SYSTEM_TYPE.DC.name;
@@ -112,6 +101,11 @@ class ActivityFacilityWorkflowRepository {
 
     final saved = spec?.system.trim();
     if (saved != null && saved.isNotEmpty) return saved;
+
+    final directSystemType = facilitySystemType?.trim();
+    if (directSystemType != null && directSystemType.isNotEmpty) {
+      return directSystemType;
+    }
 
     if (facilitySolutionDesignCode != null &&
         facilitySolutionDesignCode.trim().isNotEmpty) {

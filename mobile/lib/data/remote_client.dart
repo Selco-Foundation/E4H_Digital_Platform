@@ -3,6 +3,15 @@ import "package:dio/dio.dart";
 import '../utils/envConfig.dart';
 import 'api_interceptors.dart';
 
+BaseOptions configuredApiOptions() => BaseOptions(
+      baseUrl: envConfig.variables.baseUrl,
+      connectTimeout:
+          Duration(milliseconds: envConfig.variables.connectTimeout),
+      sendTimeout: Duration(milliseconds: envConfig.variables.sendTimeout),
+      receiveTimeout:
+          Duration(milliseconds: envConfig.variables.receiveTimeout),
+    );
+
 class DioClient {
   late Dio _dio;
 
@@ -22,19 +31,9 @@ class DioClient {
     _dio = Dio()
       ..interceptors.addAll([
         AuthTokenInterceptor(),
+        DebugHttpBodyLoggingInterceptor(),
       ])
-      ..options = BaseOptions(
-        connectTimeout: Duration(
-          milliseconds: envConfig.variables.connectTimeout,
-        ),
-        sendTimeout: Duration(
-          milliseconds: envConfig.variables.sendTimeout,
-        ),
-        receiveTimeout: Duration(
-          milliseconds: envConfig.variables.receiveTimeout,
-        ),
-        baseUrl: envConfig.variables.baseUrl,
-      );
+      ..options = configuredApiOptions();
 
     _dio.options.baseUrl = envConfig.variables.baseUrl;
   }

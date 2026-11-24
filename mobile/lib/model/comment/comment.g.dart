@@ -38,8 +38,13 @@ const CommentSchema = Schema(
       name: r'reason',
       type: IsarType.string,
     ),
-    r'transactionId': PropertySchema(
+    r'sectionLabel': PropertySchema(
       id: 5,
+      name: r'sectionLabel',
+      type: IsarType.string,
+    ),
+    r'transactionId': PropertySchema(
+      id: 6,
       name: r'transactionId',
       type: IsarType.string,
     )
@@ -82,6 +87,12 @@ int _commentEstimateSize(
     }
   }
   {
+    final value = object.sectionLabel;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.transactionId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -101,7 +112,8 @@ void _commentSerialize(
   writer.writeString(offsets[2], object.commentMessage);
   writer.writeString(offsets[3], object.displayComment);
   writer.writeString(offsets[4], object.reason);
-  writer.writeString(offsets[5], object.transactionId);
+  writer.writeString(offsets[5], object.sectionLabel);
+  writer.writeString(offsets[6], object.transactionId);
 }
 
 Comment _commentDeserialize(
@@ -114,7 +126,7 @@ Comment _commentDeserialize(
     assetType: reader.readStringOrNull(offsets[0]),
     commentId: reader.readStringOrNull(offsets[1]),
     commentMessage: reader.readStringOrNull(offsets[2]),
-    transactionId: reader.readStringOrNull(offsets[5]),
+    transactionId: reader.readStringOrNull(offsets[6]),
   );
   return object;
 }
@@ -137,6 +149,8 @@ P _commentDeserializeProp<P>(
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -863,6 +877,154 @@ extension CommentQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'reason',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'sectionLabel',
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition>
+      sectionLabelIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'sectionLabel',
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sectionLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'sectionLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'sectionLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'sectionLabel',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'sectionLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'sectionLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'sectionLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'sectionLabel',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition> sectionLabelIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sectionLabel',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Comment, Comment, QAfterFilterCondition>
+      sectionLabelIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'sectionLabel',
         value: '',
       ));
     });

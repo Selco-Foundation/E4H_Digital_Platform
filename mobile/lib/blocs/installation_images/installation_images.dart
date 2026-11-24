@@ -30,7 +30,8 @@ class InstallationImagesBloc
     emit(const InstallationImagesState.loading());
 
     try {
-      final activeItems = await _repository.fetchMdms();
+      final activeItems =
+          await _repository.fetchMdms(systemType: event.systemType);
       if (activeItems.isNotEmpty) {
         emit(InstallationImagesState.loaded(activeItems));
         return;
@@ -50,7 +51,9 @@ class InstallationImagesBloc
 
 @freezed
 class InstallationImagesEvent with _$InstallationImagesEvent {
-  const factory InstallationImagesEvent.fetch() = _Fetch;
+  const factory InstallationImagesEvent.fetch({
+    required String systemType,
+  }) = _Fetch;
 }
 
 @freezed

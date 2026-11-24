@@ -81,6 +81,19 @@ const CacheUnsubmittedActivityFacilitySchema = CollectionSchema(
           caseSensitive: true,
         )
       ],
+    ),
+    r'userType': IndexSchema(
+      id: -7871966206036222683,
+      name: r'userType',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'userType',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
     )
   },
   links: {},
@@ -91,6 +104,7 @@ const CacheUnsubmittedActivityFacilitySchema = CollectionSchema(
     r'ProjectAdditionalDetails': ProjectAdditionalDetailsSchema,
     r'Facility': FacilitySchema,
     r'FacilityAddress': FacilityAddressSchema,
+    r'FacilityAdditionalDetails': FacilityAdditionalDetailsSchema,
     r'FacilityDetails': FacilityDetailsSchema,
     r'GeographyDetails': GeographyDetailsSchema,
     r'StateRef': StateRefSchema,
@@ -385,6 +399,55 @@ extension CacheUnsubmittedActivityFacilityQueryWhere on QueryBuilder<
               indexName: r'status',
               lower: [],
               upper: [status],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterWhereClause> userTypeEqualTo(String userType) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'userType',
+        value: [userType],
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterWhereClause> userTypeNotEqualTo(String userType) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userType',
+              lower: [],
+              upper: [userType],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userType',
+              lower: [userType],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userType',
+              lower: [userType],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userType',
+              lower: [],
+              upper: [userType],
               includeUpper: false,
             ));
       }

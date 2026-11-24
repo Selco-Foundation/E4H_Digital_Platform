@@ -141,7 +141,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
   }
 
   bool get _disableFooter =>
-      _inverterCount == 0 || _batteryCount == 0 || _panelCount == 0;
+      _inverterCount == 0 && _batteryCount == 0 && _panelCount == 0;
 
   @override
   Widget build(BuildContext context) {

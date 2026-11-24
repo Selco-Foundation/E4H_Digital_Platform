@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,6 +12,7 @@ import '../../model/installation_images/installation_images.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/mdms/mdms.dart';
 import '../../model/rejection_reason/rejection_reason.dart';
+import '../../model/required_bom_form_keys/required_bom_form_keys.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
 import '../../model/solution_design_type/solution_design_type.dart';
@@ -28,13 +31,16 @@ class _SecureStorageKeys {
   static const String solutionDesignBom = 'solutionDesignBom';
   static const String formConfigsRaw = 'formConfigsRaw';
   static const String amcFormConfigsRaw = 'amcFormConfigsRaw';
+  static const String assessmentFormConfigsRaw = 'assessmentFormConfigsRaw';
   static const String installationImages = 'installationImages';
   static const String rejectionReasons = 'rejectionReasons';
+  static const String requiredBomFormKeys = 'requiredBomFormKeys';
   static const String formSchemas = 'forms_schemas';
   static const String accessToken = 'accessToken';
   static const String accessInfo = 'accessInfo';
   static const String actionsWrapper = 'actionsWrapper';
   static const String individualId = 'individualId';
+  static const String loginConsentAccepted = 'loginConsentAccepted';
 }
 
 class SecureStore {
@@ -45,6 +51,104 @@ class SecureStore {
     ),
   );
   SecureStore();
+
+  Future<List<Map<String, dynamic>>> getAssessmentQueueResponses(
+      String tenantId, String assessorId, String phase) async {
+    final entries = await storage.readAll();
+    final responses = <Map<String, dynamic>>[];
+    const prefix = 'assessmentResponse:';
+    for (final entry in entries.entries) {
+      if (!entry.key.startsWith(prefix)) continue;
+      try {
+        final key = jsonDecode(entry.key.substring(prefix.length));
+        if (key is! List ||
+            key.length != 8 ||
+            key[0] != 'queue' ||
+            key[1] != tenantId ||
+            key[2] != assessorId ||
+            key[3] != phase) {
+          continue;
+        }
+        final response = jsonDecode(entry.value);
+        if (response is Map) responses.add(Map<String, dynamic>.from(response));
+      } on FormatException {
+        // Ignore malformed legacy entries; keep the original data intact.
+      }
+    }
+    return responses;
+  }
+
+  Future<Map<String, dynamic>?> getAssessmentResponse(List<Object> key) async {
+    final raw =
+        await storage.read(key: 'assessmentResponse:${jsonEncode(key)}');
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<void> setAssessmentResponse(
+    List<Object> key,
+    Map<String, dynamic> response,
+  ) async {
+    await storage.write(
+      key: 'assessmentResponse:${jsonEncode(key)}',
+      value: jsonEncode(response),
+    );
+  }
+
+  Future<Map<String, dynamic>> getAssessmentBookmarks(
+    String tenantId,
+    String assessorId,
+    String phase,
+  ) async {
+    final raw = await storage.read(
+        key:
+            'assessmentBookmarks:${jsonEncode([tenantId, assessorId, phase])}');
+    if (raw == null) return {};
+    return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+  }
+
+  Future<void> setAssessmentBookmarks(
+    String tenantId,
+    String assessorId,
+    String phase,
+    Map<String, dynamic> bookmarks,
+  ) async {
+    await storage.write(
+      key: 'assessmentBookmarks:${jsonEncode([tenantId, assessorId, phase])}',
+      value: jsonEncode(bookmarks),
+    );
+  }
+
+  Future<Map<String, dynamic>> getReportBookmarks(
+    String kind,
+    String tenantId,
+    String userId,
+    String userType,
+  ) async {
+    final raw = await storage.read(
+      key: 'reportBookmarks:${jsonEncode([kind, tenantId, userId, userType])}',
+    );
+    if (raw == null) return {};
+    return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+  }
+
+  Future<void> setReportBookmarks(
+    String kind,
+    String tenantId,
+    String userId,
+    String userType,
+    Map<String, dynamic> entries,
+  ) =>
+      storage.write(
+        key:
+            'reportBookmarks:${jsonEncode([kind, tenantId, userId, userType])}',
+        value: jsonEncode(entries),
+      );
 
   Future setLocalizations(
       LocalizationModel localizationList, String locale) async {
@@ -188,6 +292,21 @@ class SecureStore {
     return await storage.read(key: _SecureStorageKeys.amcFormConfigsRaw);
   }
 
+  Future<void> setAssessmentFormConfigsRaw(
+    List<Map<String, dynamic>> list,
+  ) async {
+    await storage.write(
+      key: _SecureStorageKeys.assessmentFormConfigsRaw,
+      value: json.encode(list),
+    );
+  }
+
+  Future<String?> getAssessmentFormConfigsRaw() async {
+    return await storage.read(
+      key: _SecureStorageKeys.assessmentFormConfigsRaw,
+    );
+  }
+
   Future<void> setInstallationImages(
       List<Mdms<InstallationImagesData>> list) async {
     final List<Map<String, dynamic>> jsonList =
@@ -213,6 +332,20 @@ class SecureStore {
 
   Future<String?> getRejectionReasons() async {
     return await storage.read(key: _SecureStorageKeys.rejectionReasons);
+  }
+
+  Future<void> setRequiredBomFormKeys(
+      List<Mdms<RequiredBomFormKeysData>> list) async {
+    final List<Map<String, dynamic>> jsonList =
+        list.map((mdms) => mdms.toJson((data) => data.toJson())).toList();
+    await storage.write(
+      key: _SecureStorageKeys.requiredBomFormKeys,
+      value: json.encode(jsonList),
+    );
+  }
+
+  Future<String?> getRequiredBomFormKeys() async {
+    return await storage.read(key: _SecureStorageKeys.requiredBomFormKeys);
   }
 
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {
@@ -294,6 +427,20 @@ class SecureStore {
 
   Future deleteSelectedIndividual() async {
     await storage.delete(key: _SecureStorageKeys.individualId);
+  }
+
+  Future<bool> hasAcceptedLoginConsent() async {
+    final value = await storage.read(
+      key: _SecureStorageKeys.loginConsentAccepted,
+    );
+    return value != null;
+  }
+
+  Future<void> setLoginConsentAccepted() async {
+    await storage.write(
+      key: _SecureStorageKeys.loginConsentAccepted,
+      value: 'true',
+    );
   }
 
   String _kRawSchema(String schemaKey) => 'raw_schema_$schemaKey';

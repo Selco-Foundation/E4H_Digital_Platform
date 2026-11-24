@@ -29,7 +29,6 @@ class CacheInstallationImageBloc
     try {
       final entries = await _repository.getCachedImages(
         activityFacilityId: event.activityFacilityId,
-        userType: event.userType,
       );
 
       if (entries.isEmpty) {
@@ -50,7 +49,6 @@ class CacheInstallationImageBloc
     try {
       await _repository.deleteAllCachedImages(
         activityFacilityId: event.activityFacilityId,
-        userType: event.userType,
       );
 
       for (final entry in event.selectedImages.entries) {
@@ -61,6 +59,7 @@ class CacheInstallationImageBloc
               activityFacilityId: event.activityFacilityId,
               userType: event.userType,
               code: entry.key,
+              order: event.orderByCode[entry.key] ?? '',
               photoPath: copiedPath,
               latitude: event.latitude,
               longitude: event.longitude,
@@ -87,6 +86,7 @@ class CacheInstallationImageEvent with _$CacheInstallationImageEvent {
     required String activityFacilityId,
     required String userType,
     required Map<String, List<File>> selectedImages,
+    required Map<String, String> orderByCode,
     required String latitude,
     required String longitude,
   }) = CacheInstallationImageEventSaveAll;

@@ -28,7 +28,6 @@ class CacheSyncRecordBloc
 
       final drafts = await _isar.cacheUnsubmittedActivityFacilitys
           .where()
-          .filter()
           .userTypeEqualTo(event.userType)
           .findAll();
       final pendingCount = drafts.length;
