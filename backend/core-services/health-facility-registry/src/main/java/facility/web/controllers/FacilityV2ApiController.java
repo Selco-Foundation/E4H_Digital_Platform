@@ -476,6 +476,25 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok(result);
     }
 
+    /** The vendor organisations mapped to a facility (Facility Admin's facility details page). */
+    @PostMapping("/vendor-organisations/_search")
+    public ResponseEntity<FacilityVendorMappingResponse> searchVendorOrganisations(
+            @Valid @RequestBody FacilityVendorMappingRequest request) {
+        return ResponseEntity.ok(facilityService.searchVendorOrganisations(request));
+    }
+
+    /**
+     * Sets the vendor organisations mapped to a facility. {@code organisationCodes} is the full
+     * desired list; an empty list unmaps every organisation. Returns the resulting mapping.
+     */
+    @PostMapping("/vendor-organisations/_update")
+    public ResponseEntity<FacilityVendorMappingResponse> updateVendorOrganisations(
+            @Valid @RequestBody FacilityVendorMappingRequest request) {
+        log.info("Received vendor organisation mapping for facilityId={}: {}",
+                request.getFacilityId(), request.getOrganisationCodes());
+        return ResponseEntity.ok(facilityService.updateVendorOrganisations(request));
+    }
+
     /**
      * Settles mappedVendorName / mappedVendorUserName from HRMS on facilities that carry none,
      * writing both the facility row and its index document. Operator endpoint, disabled unless

@@ -62,6 +62,13 @@ public class HealthFacilityDetails {
     )
     private String pocDesignation;
 
-    @JsonProperty("vendor_code")
+    /**
+     * Legacy place for the vendor code on create; it now belongs on {@link FacilityCreate#getVendorCode()}.
+     * Still read, so a caller not yet moved (ingestion until FA-ING-1) keeps mapping its vendor, but
+     * never written back: it is not persisted into {@code facility_details} and not returned.
+     * Remove once every caller sends the code on the facility.
+     */
+    @Deprecated
+    @JsonProperty(value = "vendor_code", access = JsonProperty.Access.WRITE_ONLY)
     private String vendorCode;
 }

@@ -164,6 +164,8 @@ public class FacilityService {
 
             List<Boundary> boundaryList = new ArrayList<>();
             List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
+            // Not persisted: the vendor is validated with everything else and then mapped in HRMS.
+            Map<String, String> vendorCodeByFacilityId = new HashMap<>();
 
             for (FacilityCreate facilityCreate : facilityCreateList) {
                 Facility facility = Facility.builder()
@@ -196,6 +198,10 @@ public class FacilityService {
                 facility.setFacilityId(idgenUtil.getIdList(
                         request.getRequestInfo(), tenantId, "facility.id", "", 1
                 ).get(0));
+                String vendorCode = vendorCodeOf(facilityCreate);
+                if (vendorCode != null) {
+                    vendorCodeByFacilityId.put(facility.getFacilityId(), vendorCode);
+                }
 
                 String facilityBoundaryCode = facilityCreate.getBlockBoundaryCode() + "_" + facility.getFacilityId();
 
@@ -248,6 +254,14 @@ public class FacilityService {
             log.info("Validating {} facilities against MDMS for tenant {}", tenantFacilities.size(), tenantId);
             facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
 
+            // Every vendor must exist and have an active Complaint Resolver, checked here because
+            // the mapping itself runs after the boundaries are written and can't refuse a facility.
+            // Skipped, like the mapping, when the caller maps vendors itself.
+            boolean mapVendors = !Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment());
+            Map<String, VendorOrganisationService.ResolvedVendor> resolvedVendors = mapVendors
+                    ? vendorOrganisationService.resolveVendors(vendorCodeByFacilityId.values(), tenantId, request.getRequestInfo())
+                    : Map.of();
+
             //todo: handle boundary or boundary relation creation failure??
             log.info("Creating {} boundaries for tenant {}", boundaryList.size(), tenantId);
             BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
@@ -268,22 +282,14 @@ public class FacilityService {
             // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
             upsertFacilityBoundaryLocalizations(tenantFacilities, request.getRequestInfo());
 
-            // Hand the facility boundaries to the vendor's HRMS user BEFORE the mapped vendor is
-            // resolved and before anything is pushed. The resolution below, and the Kibana mapper's
-            // HRMS-first lookup further down, both read that jurisdiction back - running the
-            // assignment afterwards left them reading an HRMS that did not hold the mapping yet, so
-            // a facility created without a vendor code kept a null mapped vendor on both the row and
-            // the index, with nothing to ever re-resolve it.
-            if (!Boolean.TRUE.equals(request.getSkipVendorJurisdictionAssignment())) {
-                vendorOrganisationService.assignFacilityJurisdictionsBulk(
-                        tenantFacilities, tenantId, request.getRequestInfo());
-
-                // Resolve the mapped vendor before anything is pushed, so it is persisted with the
-                // row rather than only reaching the index. Skipped under the same flag as the
-                // assignment above: when the caller owns the vendor mapping, a vendor stamped from
-                // here would name one this service never actually mapped.
-                vendorOrganisationService.applyMappedVendorFromVendorCode(
-                        tenantFacilities, tenantId, request.getRequestInfo());
+            // Map each facility to its vendor's resolver and stamp the mapped-vendor label, after the
+            // boundaries exist and before anything is pushed, so the label is persisted with the row
+            // and the Kibana mapper's HRMS lookup further down finds the mapping. Skipped when the
+            // caller owns the vendor mapping: a label stamped here would name a vendor this service
+            // never mapped.
+            if (mapVendors) {
+                vendorOrganisationService.mapCreatedFacilities(tenantFacilities, vendorCodeByFacilityId,
+                        resolvedVendors, tenantId, request.getRequestInfo());
             }
 
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
@@ -599,12 +605,17 @@ public class FacilityService {
         }
     }
 
-    private String extractVendorCode(Facility facility) {
-        if (facility.getFacilityDetails() == null) {
-            return null;
+    /**
+     * The facility's vendor code, trimmed; null when it has none. Falls back to the legacy
+     * {@code facility_details.vendor_code} for callers not yet sending it on the facility.
+     */
+    @SuppressWarnings("deprecation")
+    static String vendorCodeOf(FacilityCreate facilityCreate) {
+        String code = facilityCreate.getVendorCode();
+        if ((code == null || code.isBlank()) && facilityCreate.getFacilityDetails() != null) {
+            code = facilityCreate.getFacilityDetails().getVendorCode();
         }
-        String vendorCode = facility.getFacilityDetails().getVendorCode();
-        return vendorCode != null ? vendorCode.trim() : null;
+        return code == null || code.isBlank() ? null : code.trim();
     }
 
     private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {
@@ -2360,6 +2371,48 @@ public class FacilityService {
         if (!isFacilityAdmin && !isSystemUser) {
             throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
         }
+    }
+
+    /** The vendor organisations mapped to a facility. Facility Admin only, like editing it. */
+    public FacilityVendorMappingResponse searchVendorOrganisations(FacilityVendorMappingRequest request) {
+        validateFacilityEditAuthorization(request.getRequestInfo());
+        Facility facility = facilityForVendorMapping(request);
+        return FacilityVendorMappingResponse.builder()
+                .facilityId(facility.getFacilityId())
+                .organisations(vendorOrganisationService.mappedOrganisations(
+                        facility.getBoundaryCode(), request.getTenantId(), request.getRequestInfo()))
+                .build();
+    }
+
+    /**
+     * Sets a facility's vendor organisations to exactly {@code organisationCodes}: missing ones are
+     * mapped, unlisted ones unmapped. All in HRMS; the facility row is not touched.
+     */
+    public FacilityVendorMappingResponse updateVendorOrganisations(FacilityVendorMappingRequest request) {
+        validateFacilityEditAuthorization(request.getRequestInfo());
+        if (request.getOrganisationCodes() == null) {
+            throw new CustomException("INVALID_REQUEST",
+                    "organisationCodes is required; send an empty list to unmap every organisation");
+        }
+        Facility facility = facilityForVendorMapping(request);
+        return FacilityVendorMappingResponse.builder()
+                .facilityId(facility.getFacilityId())
+                .organisations(vendorOrganisationService.setMappedOrganisations(facility.getBoundaryCode(),
+                        request.getOrganisationCodes(), request.getTenantId(), request.getRequestInfo()))
+                .build();
+    }
+
+    private Facility facilityForVendorMapping(FacilityVendorMappingRequest request) {
+        Facility facility = getFacilityFromDb(request.getFacilityId(), request.getTenantId());
+        if (facility == null) {
+            throw new CustomException("FACILITY_NOT_FOUND", "No facility " + request.getFacilityId()
+                    + " in tenant " + request.getTenantId());
+        }
+        if (facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
+            throw new CustomException("FACILITY_BOUNDARY_MISSING",
+                    "Facility " + request.getFacilityId() + " has no boundary code to map vendors to");
+        }
+        return facility;
     }
 
     /**

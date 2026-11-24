@@ -97,4 +97,13 @@ public class FacilityCreate {
 
     @JsonProperty("solar_system_capacity_kwp")
     private Double solarSystemCapacityKwp = null;
+
+    /**
+     * Code of the vendor organisation to map the facility to. Optional; at most one at create,
+     * further organisations go through the vendor mapping endpoint. Validated before anything is
+     * written, and not persisted: the mapping lives in the organisation's resolver's HRMS
+     * jurisdictions.
+     */
+    @JsonProperty("vendor_code")
+    private String vendorCode = null;
 }

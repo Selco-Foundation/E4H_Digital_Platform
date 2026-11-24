@@ -110,4 +110,21 @@ class HRMSUtilsTest {
         assertEquals(JurisdictionGrants.Status.HRMS_UNAVAILABLE, grants.status(),
                 "the resolver needs the failure mode to decide; an exception here would be a 500");
     }
+
+    @Test
+    @DisplayName("only active employees with the COMPLAINT_RESOLVER role count as an organisation's resolver")
+    void activeComplaintResolversAreFilteredLocally() throws Exception {
+        hrmsRespondsWith("""
+                {"Employees":[
+                  {"uuid":"admin","isActive":true,"user":{"roles":[{"code":"ORG_ADMIN"}]}},
+                  {"uuid":"gone","isActive":false,"user":{"roles":[{"code":"COMPLAINT_RESOLVER"}]}},
+                  {"uuid":"resolver","isActive":true,"user":{"roles":[{"code":"EMPLOYEE"},{"code":"COMPLAINT_RESOLVER"}]}}
+                ]}""");
+
+        java.util.List<String> found = hrmsUtils.findActiveComplaintResolvers(caller("c"),
+                java.util.List.of("admin", "gone", "resolver")).stream()
+                .map(facility.web.models.Employee::getUuid).toList();
+
+        assertEquals(java.util.List.of("resolver"), found);
+    }
 }

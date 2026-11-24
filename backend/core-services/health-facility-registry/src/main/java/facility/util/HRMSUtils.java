@@ -110,6 +110,39 @@ public class HRMSUtils {
     }
 
     /**
+     * The active {@code COMPLAINT_RESOLVER}s among the given employee uuids, in HRMS's order (which
+     * it does not guarantee). Throws when HRMS can't be reached.
+     */
+    public List<Employee> findActiveComplaintResolvers(Object requestInfo, Collection<String> uuids) {
+        if (uuids == null || uuids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
+                + "?tenantId=in&uuids=" + String.join(",", uuids)
+                + "&roles=" + ROLE_COMPLAINT_RESOLVER + "&isActive=true";
+        Map<String, Object> searchRequest = new HashMap<>();
+        searchRequest.put(REQUEST_INFO_KEY, requestInfo);
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+            return new ArrayList<>();
+        }
+        // Re-checked locally rather than trusting the query filters alone, as the lookups above do.
+        return employeeResponse.getEmployees().stream()
+                .filter(Objects::nonNull)
+                .filter(employee -> !Boolean.FALSE.equals(employee.getIsActive()))
+                .filter(HRMSUtils::isComplaintResolver)
+                .collect(Collectors.toList());
+    }
+
+    private static boolean isComplaintResolver(Employee employee) {
+        return employee.getUser() != null && employee.getUser().getRoles() != null
+                && employee.getUser().getRoles().stream()
+                .anyMatch(role -> role != null && ROLE_COMPLAINT_RESOLVER.equals(role.getCode()));
+    }
+
+    /**
      * The vendor user HRMS currently maps to a facility: the active {@code COMPLAINT_RESOLVER}
      * holding an active {@code Facility} jurisdiction on {@code boundaryCode}.
      *
