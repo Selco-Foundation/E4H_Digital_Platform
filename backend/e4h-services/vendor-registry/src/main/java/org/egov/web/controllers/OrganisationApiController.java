@@ -57,7 +57,8 @@ public class OrganisationApiController {
                 orgRequest.getOrganisations() != null ? orgRequest.getOrganisations().size() : 0);
 
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
-        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations()).build();
+        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations())
+                .pocAdmins(orgRequest.getPocAdmins()).build();
 
         log.info("Create organisation request completed successfully");
         return new ResponseEntity<OrgResponse>(orgResponse, HttpStatus.OK);
@@ -101,7 +102,8 @@ public class OrganisationApiController {
                 orgRequest.getOrganisations() != null ? orgRequest.getOrganisations().size() : 0);
 
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
-        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations()).build();
+        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations())
+                .pocAdmins(orgRequest.getPocAdmins()).build();
 
         log.info("Update organisation request completed successfully");
         return new ResponseEntity<OrgResponse>(orgResponse, HttpStatus.OK);
@@ -118,6 +120,7 @@ public class OrganisationApiController {
                 .id(orgUserList.getId())
                 .organizationId(orgUserList.getOrganizationId())
                 .auditDetails(orgUserList.getAuditDetails())
+                .credentialsEmailSent(orgUserList.getCredentialsEmailSent())
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .build();
         log.info("Create organisation user request completed successfully");
@@ -156,6 +159,7 @@ public class OrganisationApiController {
                 .id(orgUserList.getId())
                 .organizationId(orgUserList.getOrganizationId())
                 .auditDetails(orgUserList.getAuditDetails())
+                .credentialsEmailSent(orgUserList.getCredentialsEmailSent())
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);

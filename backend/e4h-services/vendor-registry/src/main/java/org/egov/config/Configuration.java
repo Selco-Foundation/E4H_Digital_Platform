@@ -216,6 +216,17 @@ public class Configuration {
     @Value("${kafka.topics.notification.sms}")
     private String smsNotifTopic;
 
+    /** Login-details emails; im-services-analytics renders and sends them from this topic. */
+    @Value("${notification.credentials.enabled:true}")
+    private Boolean isCredentialsNotificationEnabled;
+
+    @Value("${kafka.topics.user.credentials.notification:user-credentials-notification}")
+    private String credentialsNotificationTopic;
+
+    //PoC change audit
+    @Value("${org.kafka.poc.change.audit.topic:save-org-poc-change-audit}")
+    private String pocChangeAuditTopic;
+
     //CBO url for message tenplate
     @Value("${works.cbo.url.host}")
     private String cboUrlHost;

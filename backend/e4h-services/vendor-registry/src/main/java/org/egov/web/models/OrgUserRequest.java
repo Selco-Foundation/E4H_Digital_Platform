@@ -1,5 +1,6 @@
 package org.egov.web.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -52,4 +53,8 @@ public class OrgUserRequest {
 
     @JsonProperty("assignments")
     private List<Assignment> assignments = null;
+
+    /** Whether the credentials email was queued. Response-only: never part of the Kafka payload. */
+    @JsonIgnore
+    private Boolean credentialsEmailSent;
 }

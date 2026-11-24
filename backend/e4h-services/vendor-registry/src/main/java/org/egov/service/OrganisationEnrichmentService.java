@@ -226,24 +226,8 @@ public class OrganisationEnrichmentService {
         log.debug("Audit details set for organisations");
 
         for (Organisation organisation : organisationList) {
-            // If org has a POC user (check if org_poc_username exists and has associated HRMS user)
-            if(organisation.getOrgPocUsername() !=null && !organisation.getOrgPocUsername().isEmpty()){
-                Employee employee = hrmsUtils.getUserById(orgRequest, organisation.getOrgPocUsername());
-                if (employee != null) {
-                    // Updating POC user details (name, phone, email) in HRMS
-                    employee.getUser().setName(organisation.getName());
-                    employee.getUser().setMobileNumber(organisation.getOrgPocPhone());
-                    employee.getUser().setEmailId(organisation.getOrgPocEmail());
-
-                    EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(orgRequest.getRequestInfo()).employees(List.of(employee)).build();
-                    List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
-                    if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
-                        // User updated successfully
-                        Employee employeeResp = updatedEmployees.get(0);
-                        log.info("Organisation with username {} updated successfully", organisation.getOrgPocUsername());
-                    }
-                }
-            }
+            // PoC changes are handled before enrichment by PocAdminService, which compares against
+            // the stored organisation and moves the admin user; nothing PoC-related happens here.
 
             // Encrypt org_poc_phone before storing in organisation table
             String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(organisation.getOrgPocPhone());

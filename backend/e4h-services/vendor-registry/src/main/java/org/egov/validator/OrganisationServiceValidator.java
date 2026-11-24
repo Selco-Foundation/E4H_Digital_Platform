@@ -35,6 +35,7 @@ public class OrganisationServiceValidator {
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
     private static final String INVALID_ORG_SEARCH_DATE ="INVALID_ORG_SEARCH_DATE";
+    private static final java.util.regex.Pattern POC_PHONE = java.util.regex.Pattern.compile("^[0-9]{10}$");
     @Autowired
     public OrganisationServiceValidator(MDMSUtil mdmsUtil, OrganisationRepository organisationRepository, BoundaryUtil boundaryUtil, Configuration config) {
         this.mdmsUtil = mdmsUtil;
@@ -63,6 +64,9 @@ public class OrganisationServiceValidator {
 
         validateOrganisationDetails(organisationList);
         log.debug("Organisation details validation completed");
+
+        // The PoC becomes the organisation's admin user, so it cannot be optional.
+        organisationList.forEach(OrganisationServiceValidator::validatePocDetails);
 
         //validate organisation details against MDMS
         validateMDMSData(organisationList, requestInfo, organisationList.get(0).getTenantId(), errorMap);
@@ -321,6 +325,33 @@ public class OrganisationServiceValidator {
             validateAddress(organisation);
         }
         log.debug("Organisation details validation completed for {} organisations", organisationList.size());
+    }
+
+    /**
+     * The PoC's name, mobile, email and username must all be present: they are what the
+     * organisation's admin user is created from. Used on create, and on any update that changes
+     * the PoC.
+     */
+    public static void validatePocDetails(Organisation organisation) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        if (StringUtils.isBlank(organisation.getOrgPocName())) {
+            errors.put("ORG_POC_NAME_REQUIRED", "PoC name is mandatory");
+        }
+        if (StringUtils.isBlank(organisation.getOrgPocPhone())) {
+            errors.put("ORG_POC_PHONE_REQUIRED", "PoC contact number is mandatory");
+        } else if (!POC_PHONE.matcher(organisation.getOrgPocPhone()).matches()) {
+            errors.put("ORG_POC_PHONE_INVALID", "PoC contact number must be 10 digits");
+        }
+        if (StringUtils.isBlank(organisation.getOrgPocEmail())) {
+            errors.put("ORG_POC_EMAIL_REQUIRED", "PoC email is mandatory");
+        }
+        if (StringUtils.isBlank(organisation.getOrgPocUsername())) {
+            errors.put("ORG_POC_USERNAME_REQUIRED", "PoC username is mandatory");
+        }
+        if (!errors.isEmpty()) {
+            log.error("Organisation PoC details incomplete: {}", errors.keySet());
+            throw new CustomException(errors);
+        }
     }
 
     private void validateAddress(Organisation organisation){

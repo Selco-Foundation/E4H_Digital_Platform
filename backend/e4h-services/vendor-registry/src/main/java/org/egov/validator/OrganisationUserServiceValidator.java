@@ -84,7 +84,13 @@ public class OrganisationUserServiceValidator {
 
     }
 
-    public void validateCreateOrgUserRequest(OrgUserRequest request) {
+    /**
+     * Validates the request and creates (or links) the user in HRMS and egov-user.
+     *
+     * @return the password the user was given - supplied or derived - so the caller can send it
+     *         in the credentials email. Never log it.
+     */
+    public String validateCreateOrgUserRequest(OrgUserRequest request) {
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
@@ -92,7 +98,23 @@ public class OrganisationUserServiceValidator {
         //Verify every jurisdiction being granted is one the caller holds
         validateGrantedJurisdictions(request);
         //Verify if org users request and mandatory fields are present
-        validateUserOrgCreation(request);
+        return validateUserOrgCreation(request);
+    }
+
+    /**
+     * Creates the admin user for an organisation that is being created in this same request.
+     *
+     * The organisation is passed in rather than looked up: it has not reached the database yet,
+     * and is written only after this returns, so a failure here leaves no organisation behind.
+     * The admin role is chosen by the system from the org type, not by the caller, so it is not
+     * checked against the MDMS roles a caller may assign.
+     *
+     * @return the password the user was given. Never log it.
+     */
+    public String createPocAdmin(OrgUserRequest request, Organisation organisation) {
+        validateRequestInfo(request.getRequestInfo());
+        validateGrantedJurisdictions(request);
+        return createOrLinkUser(request, organisation, true);
     }
 
     /**
@@ -137,12 +159,8 @@ public class OrganisationUserServiceValidator {
         log.debug("Request info validation completed");
     }
 
-    private void validateUserOrgCreation(OrgUserRequest request) {
-        Map<String, String> errorMap = new HashMap<>();
+    private String validateUserOrgCreation(OrgUserRequest request) {
         User orgUser = request.getUser();
-        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
-        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
-        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in creation");
             throw new CustomException("Org User", "User is mandatory");
@@ -150,7 +168,7 @@ public class OrganisationUserServiceValidator {
 
         if (request.getOrganizationId() == null || request.getOrganizationId().isBlank()) {
             log.error("Organization is mandatory in org user request body");
-            errorMap.put("ORGANIZATION", "Organization ID is mandatory");
+            throw new CustomException("ORGANIZATION", "Organization ID is mandatory");
         }
 
         // Check if organisationId already exist
@@ -161,6 +179,22 @@ public class OrganisationUserServiceValidator {
             log.error("Organization is mandatory in org user request body");
             throw new CustomException("Organization", "Organization ID do not exist");
         }
+        return createOrLinkUser(request, organisations.get(0), false);
+    }
+
+    /**
+     * Creates the user in HRMS, or links the existing user with this mobile number, then sets
+     * their password.
+     *
+     * @param systemAssignedRoles true when the roles were chosen by this service rather than the
+     *                            caller (the PoC admin), so they are not checked against MDMS
+     * @return the password the user was given
+     */
+    private String createOrLinkUser(OrgUserRequest request, Organisation organisation, boolean systemAssignedRoles) {
+        User orgUser = request.getUser();
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser.getJurisdictions());
+        String facilitySyncVendorName = orgUser.getName();
+        String facilitySyncVendorUserName = orgUser.getUserName();
         // Validate user object fields
         validateUserRequest(orgUser);
         // A supplied password must meet the policy; absent means derive one from this user's own
@@ -186,17 +220,11 @@ public class OrganisationUserServiceValidator {
             requireCallerAdministers(request.getRequestInfo(), employee.get(0), orgUser.getMobileNumber());
         }
         if (employee == null || employee.isEmpty()) { //If user doesn't exist
-            Organisation organisation = organisations.get(0);
             String orgType = organisation.getOrgType();
-            Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
+            if (!systemAssignedRoles) {
+                validateRequestedRoles(request.getRequestInfo(), orgType, orgUser.getRoles());
+            }
             {
-                List<Role> roles = rolesForOrgType(rolesMap, orgType);
-                List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                Set<String> orgRolesReqSet = new HashSet<>();
-                orgRolesReqSet.addAll(requestRoleCodes);
-                // Check if Roles from request are valid
-                validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
                 //Encrypt poc mobile number
                 String mobileNumber = orgUser.getMobileNumber();
                 String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
@@ -263,16 +291,8 @@ public class OrganisationUserServiceValidator {
                     log.info("User with phone {} already exists in org {}, updating existing user",
                             orgUser.getMobileNumber(), request.getOrganizationId());
                     Employee existingEmployee = employee.get(0);
-                    Organisation organisation = organisations.get(0);
-                    String orgType = organisation.getOrgType();
-
-                    Map<String, List<Role>> rolesMap = getOrgRoles(request.getRequestInfo());
-                    {
-                        List<Role> roles = rolesForOrgType(rolesMap, orgType);
-                        List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                        List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                        Set<String> orgRolesReqSet = new HashSet<>(requestRoleCodes);
-                        validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
+                    if (!systemAssignedRoles) {
+                        validateRequestedRoles(request.getRequestInfo(), organisation.getOrgType(), orgUser.getRoles());
                     }
 
                     existingEmployee.getUser().setName(orgUser.getName());
@@ -337,9 +357,16 @@ public class OrganisationUserServiceValidator {
         setPassword(request.getRequestInfo(), request.getUser(), password);
 
         facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+        return password;
+    }
 
-        if (!errorMap.isEmpty())
-            throw new CustomException(errorMap);
+    /** Checks the roles a caller asked for against those MDMS allows for this org type. */
+    private void validateRequestedRoles(RequestInfo requestInfo, String orgType, List<Role> requestedRoles) {
+        List<Role> roles = rolesForOrgType(getOrgRoles(requestInfo), orgType);
+        List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
+        Set<String> orgRolesReqSet = requestedRoles.stream().map(Role::getCode).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
     }
 
     private static long orgUserRowLastModifiedTime(OrgUser u) {
@@ -359,7 +386,7 @@ public class OrganisationUserServiceValidator {
      * Nothing in egov-user enforces it, and nothing may: an expired date that blocked login
      * would lock every field user out of the mobile app, which has no change-password screen.
      */
-    private void setPassword(RequestInfo requestInfo, User user, String password) {
+    public void setPassword(RequestInfo requestInfo, User user, String password) {
         UserRequest userRequest = userUtil.mapToUserRequest(user);
         userRequest.setPassword(password);
         // A day back rather than a moment back, so no clock or timezone skew can land it in the future.
@@ -409,17 +436,22 @@ public class OrganisationUserServiceValidator {
         }
     }
 
-    public void validateUpdateOrgUserRequest(OrgUserRequest request) {
+    /**
+     * Validates the request and applies the update in HRMS and egov-user.
+     *
+     * @return the new password when this update reset it, else null. Never log it.
+     */
+    public String validateUpdateOrgUserRequest(OrgUserRequest request) {
         RequestInfo requestInfo = request.getRequestInfo();
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify every jurisdiction being granted is one the caller holds
         validateGrantedJurisdictions(request);
         //Verify if org users request and mandatory fields are present
-        validateUserOrgUpdate(request);
+        return validateUserOrgUpdate(request);
     }
 
-    private void validateUserOrgUpdate(OrgUserRequest request) {
+    private String validateUserOrgUpdate(OrgUserRequest request) {
 
         Map<String, String> errorMap = new HashMap<>();
         List<Organisation> organisations = new ArrayList<>();
@@ -663,6 +695,7 @@ public class OrganisationUserServiceValidator {
             throw new CustomException(errorMap);
         }
         log.debug("Organisation user request validation completed");
+        return newPassword;
     }
 
     /**

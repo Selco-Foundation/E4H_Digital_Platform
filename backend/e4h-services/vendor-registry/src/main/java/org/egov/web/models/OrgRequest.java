@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.validation.annotation.Validated;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.AllArgsConstructor;
@@ -36,5 +37,9 @@ public class OrgRequest {
 	@NotNull
 	@Size(min = 1)
 	private List<Organisation> organisations = null;
+
+	/** The PoC admin users this request created or changed. Response-only: never in the Kafka payload. */
+	@JsonIgnore
+	private List<PocAdmin> pocAdmins = null;
 
 }
