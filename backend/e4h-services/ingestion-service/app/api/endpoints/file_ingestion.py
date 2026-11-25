@@ -41,6 +41,7 @@ import requests
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
+from app.ingest.facility_error_file import reset_status_columns, keep_failed_rows_only, clear_status_columns
 from app.ingest.facility_vendor import ComplaintResolverCheck, VendorResolver, find_vendor_column
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
@@ -558,15 +559,8 @@ async def validate_facilities_excel_sheet(
         if 'Facility Id' not in df.columns:
             raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
 
-        # Ensure status/error columns exist
-        if 'status' not in df.columns:
-            df['status'] = ''
-        if 'error' not in df.columns:
-            df['error'] = ''
-        # Re-uploaded sheets may carry empty status/error columns that pandas reads as float64
-        df['status'] = df['status'].astype(object)
-        df['error'] = df['error'].astype(object)
-
+        # A re-uploaded error file is a new batch: its old status/error are ignored.
+        df = reset_status_columns(df)
 
         # Resolve boundary codes from State/District/Block via localization
         df = resolve_boundary_codes_for_dataframe(
@@ -665,33 +659,17 @@ async def validate_facilities_excel_sheet(
                 df.at[i, 'status'] = 'PASSED'
                 df.at[i, 'error'] = ''
 
-        # ----------------- Update Facility Sheet In-Place ----------------- #
-        ws = wb[facility_sheet_name]
-        header_values = [cell.value for cell in ws[1]]
-
-        # Add columns in same order as DataFrame: status, error, Boundary Code
-        for col_name in ["status", "error", "Boundary Code (Mandatory)"]:
-            if col_name not in header_values:
-                new_col_idx = len(header_values) + 1
-                cell = ws.cell(row=1, column=new_col_idx, value=col_name)
-                cell.font = Font(bold=True)
-                header_values.append(col_name)
-
-        grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
-        # Write data rows back (without header row)
-        export_df = prepare_dataframe_for_excel_export(df)
-        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
-            for c_idx, value in enumerate(row, start=1):
-                cell = ws.cell(row=r_idx, column=c_idx, value=value)
-
-                # force lock for status/error columns
-                # if ws.cell(1, c_idx).value in ["status", "error"]:
-                #     cell.protection = Protection(locked=True)
-                #     cell.fill = grey_fill
-
-        # Ensure sheet protection is ON
-        # ws.protection.sheet = True
-        # ws.protection.enable()
+        # ----------------- Error file, or a clean file for the create stage ----------------- #
+        # Edited in place, so dropdowns, the hidden Facility Id column and the other sheets survive.
+        if error_count:
+            failures = {
+                i: str(df.at[i, 'error'])
+                for i in range(len(df))
+                if str(df.at[i, 'status']).strip().upper() == 'FAILED'
+            }
+            keep_failed_rows_only(wb, facility_sheet_name, len(df), failures, failed_status='FAILED')
+        else:
+            clear_status_columns(wb, facility_sheet_name)
 
         # ----------------- Save to new temp file ----------------- #
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -751,10 +729,8 @@ async def upload_facilities_excel_sheet(
         df = clean_excel_text_cells(df)
         df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
-        if 'status' not in df.columns:
-            df['status'] = ''
-        if 'error' not in df.columns:
-            df['error'] = ''
+        # Every upload is a new batch: statuses carried in the file are ignored.
+        df = reset_status_columns(df)
         df['status'] = df['status'].fillna('').astype(str)
         df['error'] = df['error'].fillna('').astype(str)
 
@@ -782,14 +758,23 @@ async def upload_facilities_excel_sheet(
                 are_facilities_onm_ready=are_facilities_onm_ready,
             )
 
-        writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)
-        writer.write_data(df)
+        # The uploaded workbook, edited in place: only the rows that failed, each with its reason.
+        failures = {
+            i: str(df.at[i, 'error'])
+            for i in range(len(df))
+            if str(df.at[i, 'status']).strip().lower() != 'success'
+        }
+        wb = load_workbook(facility_file_path)
+        keep_failed_rows_only(wb, facility_sheet_name, len(df), failures, failed_status='failed')
+        wb.save(output_file_path)
 
-        return FileResponse(
+        response = FileResponse(
             path=output_file_path,
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        response.headers["X-Error-Count"] = str(len(failures))
+        return response
     except Exception as e:
         logger.error(f"Error processing facility data: {e}")
         raise HTTPException(
