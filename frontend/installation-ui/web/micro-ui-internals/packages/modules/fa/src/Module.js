@@ -12,6 +12,7 @@ import StateToggleField from "./components/FormComposer/StateToggleField";
 import DistrictToggleField from "./components/FormComposer/DistrictToggleField";
 import OnmReadyToggler from "./components/FormComposer/ONMReadyToggler";
 import GeographyLevelSelector, { GeographyHeader } from "./components/FormComposer/GeographySelector";
+import VendorSelector from "./components/FormComposer/VendorSelector";
 
 export const FAReducers = getRootReducer;
 
@@ -44,7 +45,8 @@ const componentsToRegister = {
   FADistrictToggleField: DistrictToggleField,
   FAOnmReadyToggler: OnmReadyToggler,
   FAGeographyHeader: GeographyHeader,
-  FAGeographyLevelSelector: GeographyLevelSelector
+  FAGeographyLevelSelector: GeographyLevelSelector,
+  FAVendorSelector: VendorSelector,
 };
 
 export const initFAComponents = () => {

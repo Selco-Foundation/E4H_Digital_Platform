@@ -1,15 +1,24 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
 import CommonUtils from "../utilities/CommonUtils";
 
-const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}, formToast, setFormToast }) => {
+/**
+ * Add and Edit facility; `createdFacility?.id` means edit. In edit, the state stays fixed (a
+ * facility moves only to another block in the same state) and the identifiers stay editable.
+ * `fieldErrors` (`{field: localization key}`) marks fields the backend rejected, such as an
+ * identifier another facility already uses; each clears once its field is edited.
+ */
+const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}, formToast, setFormToast, fieldErrors = {} }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [selectedFacilityCategory, setSelectedFacilityCategory] = useState({});
   const [selectedIsOperational, setSelectedIsOperational] = useState({});
+  const isEdit = !!createdFacility?.id;
+  const [activeFieldErrors, setActiveFieldErrors] = useState({});
+  const formAccessors = useRef({});
   const yesChoice = { code: "YES", name: t("TL_COMMON_YES") };
   const noChoice = { code: "NO", name: t("TL_COMMON_NO") };
 
@@ -102,7 +111,6 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               stateIdentifier: "state",
               t,
               boundaryData,
-              disable: !!createdFacility?.id,
             },
             populators: {
               name: "district",
@@ -121,7 +129,6 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               districtIdentifier: "district",
               t,
               boundaryData,
-              disable: !!createdFacility?.id,
             },
             populators: {
               name: "block",
@@ -182,6 +189,19 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               options: solarSolutionDesignTypes,
             },
           },
+          // Add only: vendor edits belong to the facility's Vendor Details.
+          ...(isEdit ? [] : [
+            {
+              inline: true,
+              label: "FA_VENDOR_ORGANISATION",
+              isMandatory: false,
+              key: "vendorOrganisation",
+              type: "component",
+              component: "FAVendorSelector",
+              customProps: { name: "vendorOrganisation", t },
+              populators: { name: "vendorOrganisation" },
+            },
+          ]),
           {
             inline: true,
             label: "FACILITY_POC_NAME",
@@ -199,12 +219,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               inline: true,
               label: "FACILITY_POC_USERNAME",
               isMandatory: true,
-              disable: !!createdFacility?.id,
               key: "facilityPocUsername",
               type: "text",
               populators: {
                 name: "facilityPocUsername",
-                error: t("CORE_COMMON_REQUIRED"),
+                error: activeFieldErrors.facilityPocUsername || t("CORE_COMMON_REQUIRED"),
                 validation: { pattern: { value: /^\S*$/, message: t("FACILITY_POC_USERNAME_VALIDATION_ERROR") } },
               },
             },
@@ -238,11 +257,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               inline: true,
               label: "FACILITY_HFR_ID",
               isMandatory: false,
-              disable: !!createdFacility?.id,
               key: "hfrId",
               type: "text",
               populators: {
                 name: "hfrId",
+                error: activeFieldErrors.hfrId,
                 validation: { pattern: { value: /^\S*$/, message: t("FACILITY_HFR_ID_VALIDATION_ERROR") } },
               },
             },
@@ -250,11 +269,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               inline: true,
               label: "FACILITY_NIN_ID",
               isMandatory: false,
-              disable: !!createdFacility?.id,
               key: "ninId",
               type: "text",
               populators: {
                 name: "ninId",
+                error: activeFieldErrors.ninId,
                 validation: { pattern: { value: /^\S*$/, message: t("FACILITY_NIN_ID_VALIDATION_ERROR") } },
               },
             },
@@ -328,7 +347,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         ],
       },
     ],
-    [t, mdmsResponse, createdFacility, boundaryData, selectedFacilityCategory, selectedIsOperational]
+    [t, mdmsResponse, createdFacility, boundaryData, selectedFacilityCategory, selectedIsOperational, activeFieldErrors, isEdit]
   );
 
   const handleFormSubmit = (formData) => {
@@ -345,7 +364,26 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
     }
   };
 
-  const handleFormChange = (setValue, formData) => {
+  // The backend's field errors: shown on their fields, each cleared once its value is edited.
+  useEffect(() => {
+    const { setError, getValues } = formAccessors.current;
+    const keys = Object.keys(fieldErrors || {});
+    if (!keys.length || !setError) return;
+    const values = getValues ? getValues() : {};
+    setActiveFieldErrors(Object.fromEntries(keys.map((key) => [key, t(fieldErrors[key])])));
+    formAccessors.current.erroredValues = Object.fromEntries(keys.map((key) => [key, values?.[key]]));
+    keys.forEach((key) => setError(key, { type: "manual", message: fieldErrors[key] }));
+  }, [fieldErrors]);
+
+  const handleFormChange = (setValue, formData, formState, reset, setError, clearErrors, trigger, getValues) => {
+    formAccessors.current = { ...formAccessors.current, setError, clearErrors, getValues };
+    const erroredValues = formAccessors.current.erroredValues || {};
+    const edited = Object.keys(activeFieldErrors).filter((key) => formData?.[key] !== erroredValues[key]);
+    if (edited.length) {
+      edited.forEach((key) => clearErrors && clearErrors(key));
+      setActiveFieldErrors(Object.fromEntries(Object.entries(activeFieldErrors).filter(([key]) => !edited.includes(key))));
+    }
+
     if (formData?.isOperational?.code === "NO" && formData?.isOnmReady?.code !== "NO") {
       setValue("isOnmReady", noChoice);
       setDefaultValues({

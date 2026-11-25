@@ -14,6 +14,8 @@ import AssetTable from "../../components/FacilityDetails/AssetTable";
 import AMCTable from "../../components/FacilityDetails/AMCTable";
 import { FacilityService } from "../../services/Facility";
 import CommonUtils from "../../utilities/CommonUtils";
+import ConfirmChangesModal from "../../components/ConfirmChangesModal";
+import { apiErrorText, duplicateIdentifierFields, facilityEditChanges } from "../../utilities/FacilityEdit";
 
 const FacilityDetails = () => {
 
@@ -30,6 +32,9 @@ const FacilityDetails = () => {
   const [activeTab, setActiveTab] = useState("ACTIVITY");
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
+  // An edit waiting on the confirmation pop-up: the form's data and what it changes.
+  const [pendingEdit, setPendingEdit] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const history = useHistory();
   const queryClient = useQueryClient();
 
@@ -114,7 +119,22 @@ const FacilityDetails = () => {
     }
   }, [facilityData, mdmsResponse, t]);
 
-  const handleFacilityUpdate = async (formData) => {
+  /**
+   * Save from the Edit form. A change to an identifier (the PoC's login) or to District/Block
+   * goes through one confirmation first; anything else saves straight away. Either way it is one
+   * update call.
+   */
+  const handleFacilityUpdate = (formData) => {
+    const edit = facilityEditChanges(createdFacility, formData);
+    if (edit.changes.length) {
+      setPendingEdit({ formData, edit });
+    } else {
+      saveFacility(formData, edit);
+    }
+  };
+
+  const saveFacility = async (formData, edit) => {
+    setPendingEdit(null);
     try {
       setBlockUI(true);
       const facilityCategoryValue = formData?.facilityCategory;
@@ -144,6 +164,14 @@ const FacilityDetails = () => {
           facility_poc_name: formData?.facilityPocName,
           facility_poc_phone: formData?.facilityPocPhone,
           facility_poc_email: formData?.facilityPocEmail,
+          // Only the identifiers this category's form shows; the others keep their stored value.
+          // A cleared field goes as "", which the backend saves as cleared.
+          ...("hfrId" in formData ? { hfr_id: `${formData.hfrId || ""}`.trim() } : {}),
+          ...("ninId" in formData ? { nin_id: `${formData.ninId || ""}`.trim() } : {}),
+          ...("facilityPocUsername" in formData ? { facility_poc_username: `${formData.facilityPocUsername || ""}`.trim() } : {}),
+          // Present only when the block changed: the backend moves the facility, its incidents and
+          // every HRMS jurisdiction on it to the new block.
+          ...(edit?.blockBoundaryCode ? { blockBoundaryCode: edit.blockBoundaryCode } : {}),
           facility_details: {
             solar_solution_design_type: solarDesignCode,
           },
@@ -161,19 +189,23 @@ const FacilityDetails = () => {
       }
 
       await invalidateFacilityDetails();
+      if (edit?.blockBoundaryCode) await queryClient.invalidateQueries(["FACILITY"]);
 
       setBlockUI(false);
       setShowEditFacilityModal(false);
+      setFieldErrors({});
       setToast({
         key: "success",
         label: t("FACILITY_UPDATION_SUCCESS"),
       });
     } catch (e) {
-      console.error("Failed to upload facility", e);
+      console.error("Failed to update facility", e);
       setBlockUI(false);
+      const clashes = duplicateIdentifierFields(e);
+      setFieldErrors(Object.fromEntries(clashes.map((field) => [field, "FA_IDENTIFIER_ALREADY_USED"])));
       setFormToast({
         key: "error",
-        label: CommonUtils.getApiErrorMessage(e) || t("FACILITY_UPDATION_FAILED"),
+        label: apiErrorText(e) || CommonUtils.getApiErrorMessage(e) || t("FACILITY_UPDATION_FAILED"),
       });
     }
   }
@@ -286,10 +318,57 @@ const FacilityDetails = () => {
           title={"EDIT_FACILITY"}
           createdFacility={createdFacility}
           onSubmit={handleFacilityUpdate}
-          onClose={() => setShowEditFacilityModal(false)}
+          onClose={() => {
+            setShowEditFacilityModal(false);
+            setFieldErrors({});
+          }}
           formToast={formToast}
           setFormToast={setFormToast}
+          fieldErrors={fieldErrors}
         />
+      )}
+      {pendingEdit && (
+        <ConfirmChangesModal
+          t={t}
+          title={"FA_CONFIRM_FACILITY_CHANGES"}
+          description={"FA_CONFIRM_FACILITY_CHANGES_DESC"}
+          confirmLabel={"FA_SAVE_CHANGES"}
+          warnings={[
+            ...(pendingEdit.edit.loginChange
+              ? [
+                  pendingEdit.edit.loginChange.to
+                    ? t("FA_WARN_POC_LOGIN_CHANGES", { from: pendingEdit.edit.loginChange.from || "-", to: pendingEdit.edit.loginChange.to, interpolation: { escapeValue: false } })
+                    : t("FA_WARN_POC_LOGIN_REMOVED"),
+                ]
+              : []),
+            ...(pendingEdit.edit.blockBoundaryCode ? [t("FA_WARN_FACILITY_MOVES")] : []),
+          ]}
+          onConfirm={() => saveFacility(pendingEdit.formData, pendingEdit.edit)}
+          onCancel={() => setPendingEdit(null)}
+        >
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "15px" }}>
+            <thead>
+              <tr style={{ textAlign: "left", borderBottom: "1px solid #D6D5D4" }}>
+                <th style={{ padding: "8px 8px 8px 0" }}>{t("FA_FIELD")}</th>
+                <th style={{ padding: "8px" }}>{t("FA_CURRENT_VALUE")}</th>
+                <th style={{ padding: "8px 0 8px 8px" }}>{t("FA_NEW_VALUE")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingEdit.edit.changes.map((change) => (
+                <tr key={change.key} style={{ borderBottom: "1px solid #EEEEEE" }}>
+                  <td style={{ padding: "8px 8px 8px 0", fontWeight: 700 }}>{t(change.labelKey)}</td>
+                  <td style={{ padding: "8px", wordBreak: "break-word" }}>
+                    {change.from ? (change.translate ? t(change.from) : change.from) : t("CORE_COMMON_NOT_APPLICABLE")}
+                  </td>
+                  <td style={{ padding: "8px 0 8px 8px", wordBreak: "break-word" }}>
+                    {change.to ? (change.translate ? t(change.to) : change.to) : t("FA_VALUE_CLEARED")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ConfirmChangesModal>
       )}
       <Tab
         activeLink={activeTab}

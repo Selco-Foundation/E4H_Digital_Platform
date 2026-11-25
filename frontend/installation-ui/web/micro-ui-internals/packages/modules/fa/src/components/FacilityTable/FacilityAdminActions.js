@@ -5,11 +5,13 @@ import FacilityModal from "../FacilityModal";
 import { useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import CommonUtils from "../../utilities/CommonUtils";
+import { apiErrorText, duplicateIdentifierFields } from "../../utilities/FacilityEdit";
 
 const FacilityAdminActions = ({ t }) => {
 
   const [toast, setToast] = useState(null);
   const [formToast, setFormToast] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
@@ -62,6 +64,8 @@ const FacilityAdminActions = ({ t }) => {
             isActive: formData?.isOperational?.code === "YES",
             isOnmReady: formData?.isOnmReady?.code === "YES",
             blockBoundaryCode: block?.code,
+            // Optional; mapped through the organisation's Complaint Resolver, not stored on the facility.
+            ...(formData?.vendorOrganisation?.code ? { vendor_code: formData.vendorOrganisation.code } : {}),
             address: {
               tenantId: tenantId,
               ...(formData?.latitude ? { latitude: parseFloat(formData.latitude) } : {}),
@@ -93,9 +97,12 @@ const FacilityAdminActions = ({ t }) => {
     } catch (e) {
       console.error("Failed to create facility", e);
       setBlockUI(false);
+      const clashes = duplicateIdentifierFields(e);
+      setFieldErrors(Object.fromEntries(clashes.map((field) => [field, "FA_IDENTIFIER_ALREADY_USED"])));
       setFormToast({
         key: "error",
-        label: CommonUtils.getApiErrorMessage(e) || t("FACILITY_CREATION_FAILED"),
+        // Every message: a vendor error names each organisation, and one request can carry two.
+        label: apiErrorText(e) || CommonUtils.getApiErrorMessage(e) || t("FACILITY_CREATION_FAILED"),
       });
     }
   };
@@ -205,9 +212,13 @@ const FacilityAdminActions = ({ t }) => {
             t={t}
             title={"ADD_FACILITY"}
             onSubmit={handleAddFacilitySubmit}
-            onClose={() => setShowAddFacilityModal(false)}
+            onClose={() => {
+              setShowAddFacilityModal(false);
+              setFieldErrors({});
+            }}
             formToast={formToast}
             setFormToast={setFormToast}
+            fieldErrors={fieldErrors}
           />
         )}
       </div>
