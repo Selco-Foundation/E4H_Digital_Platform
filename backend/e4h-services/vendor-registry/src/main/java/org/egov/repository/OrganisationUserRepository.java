@@ -92,9 +92,44 @@ public class OrganisationUserRepository {
         return orgUserEnricheds;
     }
 
-    public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest) {
+    /** An active organisation a user is linked to, with its type. */
+    public record UserOrgLink(String organizationId, String orgType) {}
+
+    /**
+     * The active organisations this user is an active (not deleted) member of.
+     * Used to work out which organisation an ORG_ADMIN caller is bound to.
+     */
+    public List<UserOrgLink> getActiveOrgLinksForUser(String userUuid) {
+        String query = "SELECT DISTINCT ou.organizationid, org.org_type FROM eg_org_user ou "
+                + "JOIN eg_org org ON org.id = ou.organizationid "
+                + "WHERE ou.userid = ? AND ou.isdeleted = false AND org.is_active = true";
+        return jdbcTemplate.query(query, (rs, i) -> new UserOrgLink(rs.getString(1), rs.getString(2)), userUuid);
+    }
+
+    /** Whether this user has ever been linked to this organisation, deleted links included. */
+    public boolean isUserLinkedToOrg(String userUuid, String organizationId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM eg_org_user WHERE userid = ? AND organizationid = ?",
+                Integer.class, userUuid, organizationId);
+        return count != null && count > 0;
+    }
+
+    /** Who an org-user row links, and to which organisation. */
+    public record OrgUserLink(String organizationId, String userId) {}
+
+    /** The organisation and user of an org-user row, deleted rows included; empty when no such row. */
+    public Optional<OrgUserLink> getOrgUserLink(String orgUserId) {
+        List<OrgUserLink> rows = jdbcTemplate.query(
+                "SELECT organizationid, userid FROM eg_org_user WHERE id = ?",
+                (rs, i) -> new OrgUserLink(rs.getString(1), rs.getString(2)), orgUserId);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
         List<Object> preparedStatement = new ArrayList<>();
-        URLParams urlParams = URLParams.builder().build();
+        if (urlParams == null) {
+            urlParams = URLParams.builder().build();
+        }
         String queryDocument = queryBuilder.getOrganisationUserSearchQuery(orgSearchRequest, urlParams, preparedStatement, true);
         if (queryDocument == null)
             return 0;

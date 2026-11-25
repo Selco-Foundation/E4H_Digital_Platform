@@ -13,6 +13,8 @@ import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static org.egov.util.OrganisationConstant.HRMS_USER_MOBILE_NO;
@@ -96,6 +98,28 @@ public class HRMSUtils {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()
                 + "?tenantId=in&uuids=" + String.join(",", uuids);
         return searchEmployees(request, url);
+    }
+
+    /**
+     * The employees among these uuids who hold any of the given role codes, in one HRMS v2 call.
+     *
+     * HRMS pages its own results (200 by default), so limit/offset are sent explicitly to cover the
+     * whole candidate set; otherwise a large organisation would silently lose matches past the
+     * first page. No boundary criteria are sent, so searchOnlyInBoundary does not come into play.
+     */
+    public List<Employee> getUsersByIdsAndRoles(Object request, Collection<String> uuids, Collection<String> roleCodes) {
+        if (uuids == null || uuids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        StringBuilder url = new StringBuilder(config.getHrmsHost()).append(config.getHrmsSearchEndPoint())
+                .append("?tenantId=in&uuids=").append(String.join(",", uuids))
+                .append("&offset=0&limit=").append(uuids.size());
+        if (roleCodes != null && !roleCodes.isEmpty()) {
+            url.append("&roles=").append(roleCodes.stream()
+                    .map(code -> URLEncoder.encode(code, StandardCharsets.UTF_8))
+                    .collect(java.util.stream.Collectors.joining(",")));
+        }
+        return searchEmployees(request, url.toString());
     }
 
     private List<Employee> searchEmployees(Object request, String url) {

@@ -12,6 +12,9 @@ import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
 import org.egov.util.JurisdictionScopeResolver;
+import org.egov.util.OrgAdminScopeResolver;
+
+import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
 import org.egov.validator.OrganisationUserServiceValidator;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -47,13 +51,14 @@ public class OrganisationUserService {
 
     private final JurisdictionScopeResolver jurisdictionScopeResolver;
 
+    private final OrgAdminScopeResolver orgAdminScopeResolver;
+
     private final CredentialsNotificationService credentialsNotificationService;
 
     private final OrganisationRepository organisationRepository;
 
     @Autowired
-    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver,
-                                   CredentialsNotificationService credentialsNotificationService, OrganisationRepository organisationRepository) {
+    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, JurisdictionScopeResolver jurisdictionScopeResolver, OrgAdminScopeResolver orgAdminScopeResolver, CredentialsNotificationService credentialsNotificationService, OrganisationRepository organisationRepository) {
         this.validator = validator;
         this.userRepository = userRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -63,6 +68,7 @@ public class OrganisationUserService {
         this.hrmsUtils = hrmsUtils;
         this.mapper = mapper;
         this.jurisdictionScopeResolver = jurisdictionScopeResolver;
+        this.orgAdminScopeResolver = orgAdminScopeResolver;
         this.credentialsNotificationService = credentialsNotificationService;
         this.organisationRepository = organisationRepository;
     }
@@ -70,6 +76,12 @@ public class OrganisationUserService {
 
     public OrgUserRequest createOrgUser(OrgUserRequest request) {
         log.info("received request to create org user {} ", request );
+
+        // An ORG_ADMIN creates users in their own organisation only; the payload's id is ignored.
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
+        if (orgScope.restricted()) {
+            request.setOrganizationId(orgScope.orgId());
+        }
 
         String password = validator.validateCreateOrgUserRequest(request);
 
@@ -131,6 +143,10 @@ public class OrganisationUserService {
         validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
         log.debug("Search request validation completed");
 
+        if (!narrowToCallerOrg(request) || !narrowByHrmsFilters(request, urlParams)) {
+            return Collections.emptyList();
+        }
+
         JurisdictionScopeResolver.Scope scope =
                 jurisdictionScopeResolver.resolve(request.getRequestInfo());
 
@@ -139,30 +155,37 @@ public class OrganisationUserService {
         }
 
         Map<String, Employee> inScope = resolveUsersInScope(request, urlParams, scope);
-        if (inScope.isEmpty()) {
+        if (inScope.isEmpty() || !narrowToUsers(request, inScope.keySet())) {
             return Collections.emptyList();
         }
-        narrowToUsers(request, inScope.keySet());
 
         return userRepository.getOrgUsers(request, urlParams, inScope, scope);
     }
 
-    public Integer countOrganisationUsers(OrgUserSearchRequest request) {
-        URLParams urlParams = URLParams.builder().build();
+    /**
+     * Counts with the same includeDeleted as the search it accompanies, so the total agrees with
+     * the rows. Only includeDeleted is carried over: limit/offset must not apply to a count.
+     */
+    public Integer countOrganisationUsers(OrgUserSearchRequest request, URLParams searchParams) {
+        URLParams urlParams = URLParams.builder()
+                .includeDeleted(searchParams != null ? searchParams.getIncludeDeleted() : null)
+                .build();
+        if (!narrowToCallerOrg(request) || !narrowByHrmsFilters(request, urlParams)) {
+            return 0;
+        }
         JurisdictionScopeResolver.Scope scope =
                 jurisdictionScopeResolver.resolve(request.getRequestInfo());
 
         if (scope.unscoped()) {
-            return userRepository.getOrganisationsCount(request);
+            return userRepository.getOrganisationsCount(request, urlParams);
         }
 
         Map<String, Employee> inScope = resolveUsersInScope(request, urlParams, scope);
-        if (inScope.isEmpty()) {
+        if (inScope.isEmpty() || !narrowToUsers(request, inScope.keySet())) {
             return 0;
         }
-        narrowToUsers(request, inScope.keySet());
 
-        return userRepository.getOrganisationsCount(request);
+        return userRepository.getOrganisationsCount(request, urlParams);
     }
 
     /**
@@ -198,17 +221,134 @@ public class OrganisationUserService {
                         Function.identity(), (first, second) -> first, LinkedHashMap::new));
     }
 
-    /** Intersects any caller-supplied userIds filter with the set they are allowed to see. */
-    private void narrowToUsers(OrgUserSearchRequest request, java.util.Set<String> allowed) {
+    /**
+     * Restricts an ORG_ADMIN's search to their own organisation.
+     *
+     * Asking for another organisation's id answers nothing - not an error, which would confirm the
+     * organisation exists.
+     *
+     * @return false when nothing can match.
+     */
+    private boolean narrowToCallerOrg(OrgUserSearchRequest request) {
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
+        if (!orgScope.restricted()) {
+            return true;
+        }
+        List<String> narrowed = orgScope.narrow(request.getCriteria().getOrganizationId());
+        request.getCriteria().setOrganizationId(narrowed);
+        return !narrowed.isEmpty();
+    }
+
+    /**
+     * What an ORG_ADMIN may edit or delete: a user row of their own organisation, whose user does
+     * not hold ORG_PLATFORM_ADMIN.
+     *
+     * An unknown row and another organisation's row get the same answer, so the response does not
+     * reveal which it was.
+     *
+     * A platform administrator outranks the org admin, so the whole user is off limits - not just
+     * the role. Editing them would otherwise hand over the account: a new mobile number or email
+     * (OTP login and reset), or the password itself, which user/_update now sets (MH2-06). The check is on the target, not on the fields sent, so a field added to the update
+     * later is covered without revisiting this. Roles are read from HRMS as stored, never from the
+     * payload, which could simply leave the role out. Platform admins stay visible in search.
+     *
+     * Fails closed: a target HRMS cannot return is refused.
+     */
+    private void requireEditableByCaller(org.egov.common.contract.request.RequestInfo requestInfo, String orgUserId) {
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(requestInfo);
+        if (!orgScope.restricted()) {
+            return;
+        }
+        Optional<OrganisationUserRepository.OrgUserLink> link = orgUserId == null
+                ? Optional.empty() : userRepository.getOrgUserLink(orgUserId);
+        if (link.isEmpty() || !orgScope.allows(link.get().organizationId())) {
+            log.error("ORG_ADMIN attempted to act on org user {} outside their organisation", orgUserId);
+            throw new CustomException("Organization", "This org user id do not exist");
+        }
+
+        Employee target = link.get().userId() == null ? null
+                : hrmsUtils.getUserById(org.egov.common.contract.models.RequestInfoWrapper.builder()
+                        .requestInfo(requestInfo).build(), link.get().userId());
+        if (target == null || target.getUser() == null) {
+            log.error("ORG_ADMIN target {} could not be read from HRMS; refusing", orgUserId);
+            throw new CustomException("Organization", "This org user could not be verified");
+        }
+        boolean platformAdmin = target.getUser().getRoles() != null && target.getUser().getRoles().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(Role::getCode)
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(code -> ORG_PLATFORM_ADMIN_ROLE_CODE.equalsIgnoreCase(code.trim()));
+        if (platformAdmin) {
+            log.error("ORG_ADMIN attempted to modify platform admin {}", link.get().userId());
+            throw new CustomException("USER_NOT_EDITABLE",
+                    "Organisation admins cannot modify a user holding " + ORG_PLATFORM_ADMIN_ROLE_CODE);
+        }
+    }
+
+    /**
+     * Applies the name and role filters, which SQL cannot evaluate: eg_org_user holds neither the
+     * name nor the roles - both live on the HRMS user.
+     *
+     * The organisation's matching user uuids are fetched unpaged, HRMS is asked once which of them
+     * hold any requested role, the name is matched on that answer, and the survivors go back in as
+     * a `userIds` filter. SQL then pages and counts over exactly that set, so pages are full and
+     * the total agrees with the rows. Filtering inside the enrichment loop instead - after
+     * LIMIT/OFFSET - would give neither.
+     *
+     * @return false when nothing can match, so the caller can answer empty without querying.
+     */
+    private boolean narrowByHrmsFilters(OrgUserSearchRequest request, URLParams urlParams) {
+        OrgUserSearchCriteria criteria = request.getCriteria();
+        String name = criteria.getName() == null ? null : criteria.getName().trim().toLowerCase();
+        List<String> roles = criteria.getRoles() == null ? Collections.emptyList()
+                : criteria.getRoles().stream().filter(r -> r != null && !r.isBlank()).map(String::trim).distinct().toList();
+        boolean byName = name != null && !name.isEmpty();
+        if (!byName && roles.isEmpty()) {
+            return true;
+        }
+
+        List<String> candidateIds = userRepository.getOrgUserIds(request, urlParams);
+        if (candidateIds.isEmpty()) {
+            return false;
+        }
+
+        java.util.Set<String> matching = hrmsUtils.getUsersByIdsAndRoles(request, candidateIds, roles).stream()
+                .filter(employee -> employee != null && employee.getUser() != null
+                        && employee.getUser().getUuid() != null)
+                .filter(employee -> !byName || (employee.getUser().getName() != null
+                        && employee.getUser().getName().toLowerCase().contains(name)))
+                .map(employee -> employee.getUser().getUuid())
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        log.debug("HRMS name/role filters kept {} of {} candidate users", matching.size(), candidateIds.size());
+        return !matching.isEmpty() && narrowToUsers(request, matching);
+    }
+
+    /**
+     * Intersects any caller-supplied userIds filter with the given set.
+     *
+     * @return false when the intersection is empty. The caller must then answer empty: an empty
+     *         userIds list is read by the query builder as "no filter", which would match everyone.
+     */
+    private boolean narrowToUsers(OrgUserSearchRequest request, java.util.Set<String> allowed) {
         List<String> requested = request.getCriteria().getUserId();
         List<String> narrowed = (requested == null || requested.isEmpty())
                 ? List.copyOf(allowed)
                 : requested.stream().filter(allowed::contains).toList();
         request.getCriteria().setUserId(narrowed);
+        return !narrowed.isEmpty();
     }
 
     public OrgUserRequest updateOrgUser(OrgUserRequest request) {
-        log.info("received request to create org user {} ", request );
+        log.info("received request to update org user {} ", request );
+
+        // The target must be in the caller's organisation, and an ORG_ADMIN cannot move it out.
+        requireEditableByCaller(request.getRequestInfo(), request.getId());
+        OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(request.getRequestInfo());
+        if (orgScope.restricted() && !orgScope.allows(request.getOrganizationId())) {
+            log.error("ORG_ADMIN attempted to move org user {} to organisation {}", request.getId(), request.getOrganizationId());
+            throw new CustomException("Organization", "Organization ID do not exist");
+        }
 
         String newPassword = validator.validateUpdateOrgUserRequest(request);
 //        List<OrgUser> orgUserList = request.getOrgUsers();
@@ -229,7 +369,8 @@ public class OrganisationUserService {
     }
 
     public DeleteOrgUserRequest deleteUserOrg(DeleteOrgUserRequest request) {
-        log.info("received request to delete bulk activity facility staff");
+        log.info("received request to delete org user {}", request.getId());
+        requireEditableByCaller(request.getRequestInfo(), request.getId());
         validator.validateDeleteOrgUserRequest(request);
         try {
             deactivateHrmsUser(request);

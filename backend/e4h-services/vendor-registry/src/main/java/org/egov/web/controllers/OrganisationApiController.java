@@ -138,7 +138,7 @@ public class OrganisationApiController {
                 request,
                 urlParams
         );
-        Integer count = userService.countOrganisationUsers(request);
+        Integer count = userService.countOrganisationUsers(request, urlParams);
         log.debug("Search returned {} organisation users", orgUserList != null ? orgUserList.size() : 0);
         OrgUserResponseSearch response = OrgUserResponseSearch.builder()
                 .orgUsers(orgUserList)

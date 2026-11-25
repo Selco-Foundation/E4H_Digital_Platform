@@ -43,6 +43,10 @@ public class OrgSearchCriteria {
     @JsonProperty("code")
     private String code = null;
 
+    /** One search box: a partial, case-insensitive match on either the name or the code. */
+    @JsonProperty("searchText")
+    private String searchText = null;
+
     @JsonProperty("applicationNumber")
     private String applicationNumber = null;
 

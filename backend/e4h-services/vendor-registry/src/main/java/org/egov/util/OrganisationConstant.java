@@ -31,6 +31,12 @@ public class OrganisationConstant {
     //Role
     public static final String ORG_ADMIN_ROLE_CODE = "ORG_ADMIN";
     public static final String ORG_ADMIN_ROLE_NAME = "Organization admin";
+    /**
+     * The unscoped platform administrator. Note the word order: ORG_ADMIN (one org) and
+     * ORG_PLATFORM_ADMIN (every org) differ only by it, so always compare against these constants.
+     */
+    public static final String ORG_PLATFORM_ADMIN_ROLE_CODE = "ORG_PLATFORM_ADMIN";
+    public static final String PLATFORM_ORG_TYPE = "PLATFORM";
     public static final String ORG_CITIZEN_TYPE = "CITIZEN";
 
     // localization contants

@@ -1,5 +1,7 @@
 package org.egov.validator;
 
+import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.PasswordPolicy;
+import org.egov.util.OrgAdminScopeResolver;
 import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +58,8 @@ public class OrganisationUserServiceValidator {
 
     private final ObjectMapper mapper;
     private final JurisdictionScopeResolver jurisdictionScopeResolver;
+
+    private final OrgAdminScopeResolver orgAdminScopeResolver;
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
@@ -70,7 +75,8 @@ public class OrganisationUserServiceValidator {
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
                                             OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper,
-                                            JurisdictionScopeResolver jurisdictionScopeResolver) {
+                                            JurisdictionScopeResolver jurisdictionScopeResolver,
+                                            OrgAdminScopeResolver orgAdminScopeResolver) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -81,6 +87,7 @@ public class OrganisationUserServiceValidator {
         this.facilityUtil = facilityUtil;
         this.mapper = mapper;
         this.jurisdictionScopeResolver = jurisdictionScopeResolver;
+        this.orgAdminScopeResolver = orgAdminScopeResolver;
 
     }
 
@@ -95,6 +102,8 @@ public class OrganisationUserServiceValidator {
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
+        //The platform administrator role is never created through this API
+        rejectPlatformAdminRole(request.getUser(), null);
         //Verify every jurisdiction being granted is one the caller holds
         validateGrantedJurisdictions(request);
         //Verify if org users request and mandatory fields are present
@@ -140,6 +149,34 @@ public class OrganisationUserServiceValidator {
         log.error("Caller attempted to grant jurisdictions outside their own scope: {}", refused);
         throw new CustomException("JURISDICTION_OUT_OF_SCOPE",
                 "You can only assign jurisdictions you administer. Not allowed: " + refused);
+    }
+
+    /**
+     * Refuses ORG_PLATFORM_ADMIN in a payload, whatever the UI offers.
+     *
+     * Every other role may be assigned - ORG_ADMIN included, so an org admin can create peers in
+     * their own organisation. The platform administrator is unscoped across every organisation and
+     * is not created through this API. On update, `existing` is the user as stored: a user who
+     * already holds the role may keep it, so editing a platform admin still works.
+     */
+    private void rejectPlatformAdminRole(User incoming, User existing) {
+        if (!holdsRole(incoming, ORG_PLATFORM_ADMIN_ROLE_CODE) || holdsRole(existing, ORG_PLATFORM_ADMIN_ROLE_CODE)) {
+            return;
+        }
+        log.error("Attempt to assign {} through the org user API", ORG_PLATFORM_ADMIN_ROLE_CODE);
+        throw new CustomException("INVALID_ROLES",
+                ORG_PLATFORM_ADMIN_ROLE_CODE + " cannot be assigned through this API");
+    }
+
+    private static boolean holdsRole(User user, String roleCode) {
+        if (user == null || user.getRoles() == null) {
+            return false;
+        }
+        return user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .map(Role::getCode)
+                .filter(Objects::nonNull)
+                .anyMatch(code -> roleCode.equalsIgnoreCase(code.trim()));
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
@@ -211,8 +248,12 @@ public class OrganisationUserServiceValidator {
         // fall back to a country-wide grant.
         requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
 
-        // Get existing user with mobile number from hrms service
-        List<Employee> employee = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
+        // A phone match alone does not make this the same person: a deleted user's number can be
+        // given to someone new. Only an employee who also carries the submitted username is reused;
+        // otherwise a new user is created and nothing from the old account is carried over.
+        Employee reusable = findReusableEmployee(
+                hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber()), orgUser.getUserName());
+        List<Employee> employee = reusable == null ? null : List.of(reusable);
         if (employee != null && !employee.isEmpty()) {
             // Creating against an existing account sets its password, so the caller must
             // administer somewhere that user already works - the same rule as editing them.
@@ -360,6 +401,28 @@ public class OrganisationUserServiceValidator {
         return password;
     }
 
+    /**
+     * The employee among those sharing the submitted mobile number whose username is the one
+     * submitted, or null. Several employees can share a number once one has been reused, so the
+     * username - unique in egov-user - is what identifies the person.
+     */
+    static Employee findReusableEmployee(List<Employee> phoneMatches, String submittedUserName) {
+        if (phoneMatches == null || phoneMatches.isEmpty() || StringUtils.isBlank(submittedUserName)) {
+            return null;
+        }
+        String wanted = submittedUserName.trim();
+        Employee match = phoneMatches.stream()
+                .filter(e -> e != null && e.getUser() != null && e.getUser().getUserName() != null)
+                .filter(e -> wanted.equalsIgnoreCase(e.getUser().getUserName().trim()))
+                .findFirst()
+                .orElse(null);
+        if (match == null) {
+            log.info("Mobile number matches {} existing employee(s) but none has the submitted username; creating a new user",
+                    phoneMatches.size());
+        }
+        return match;
+    }
+
     /** Checks the roles a caller asked for against those MDMS allows for this org type. */
     private void validateRequestedRoles(RequestInfo requestInfo, String orgType, List<Role> requestedRoles) {
         List<Role> roles = rolesForOrgType(getOrgRoles(requestInfo), orgType);
@@ -401,6 +464,21 @@ public class OrganisationUserServiceValidator {
     }
 
     private void requireCallerAdministers(RequestInfo requestInfo, Employee employee, String mobileNumber) {
+        // An ORG_ADMIN is not scoped by jurisdiction, so the check below would let them through for
+        // anyone. Their rule is the organisation: the existing account must already belong to their
+        // own org, and must not be a platform admin - otherwise entering that person's mobile number
+        // would set their password and take the account over.
+        if (OrgAdminScopeResolver.isOrgAdmin(requestInfo)) {
+            OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(requestInfo);
+            String uuid = employee.getUser() != null ? employee.getUser().getUuid() : null;
+            boolean inOwnOrg = uuid != null && userRepository.isUserLinkedToOrg(uuid, orgScope.orgId());
+            if (!inOwnOrg || holdsRole(employee.getUser(), ORG_PLATFORM_ADMIN_ROLE_CODE)) {
+                log.error("ORG_ADMIN attempted to create over existing user with phone {} outside their organisation or a platform admin", mobileNumber);
+                throw new CustomException("USER_OUT_OF_SCOPE",
+                        "A user with this mobile number already exists and cannot be added by you");
+            }
+            return;
+        }
         JurisdictionScopeResolver.Scope callerScope = jurisdictionScopeResolver.resolve(requestInfo);
         if (!callerScope.unscoped() && callerScope.within(employee.getJurisdictions()).isEmpty()) {
             log.error("Caller attempted to create over existing user with phone {} who holds no jurisdiction in their scope", mobileNumber);
@@ -522,6 +600,19 @@ public class OrganisationUserServiceValidator {
 
         // Get employee details fetched from HRMS
         Employee employee = employees.get(0);
+
+        // The HRMS user is found by the payload's userName; it must be the user this row links.
+        // Otherwise any row id the caller may touch could carry someone else's userName, and that
+        // other person - in another organisation, or a platform admin - is the one edited.
+        String employeeUuid = employee.getUser() != null ? employee.getUser().getUuid() : null;
+        if (employeeUuid == null || !employeeUuid.equals(existingOrgUser.getUserId())) {
+            log.error("Org user {} links user {}, but userName {} resolves to {}",
+                    existingOrgUser.getId(), existingOrgUser.getUserId(), orgUser.getUserName(), employeeUuid);
+            throw new CustomException("USER_MISMATCH", "The userName does not belong to this org user");
+        }
+
+        // An update may keep ORG_PLATFORM_ADMIN on a user who already holds it, never grant it.
+        rejectPlatformAdminRole(orgUser, employee.getUser());
 
         // The caller must administer somewhere this user actually works. Checked against what is
         // stored rather than what was submitted, since the payload is the thing being validated.
