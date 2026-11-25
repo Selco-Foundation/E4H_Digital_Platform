@@ -1,6 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
-import {Loader, Table} from "@egovernments/digit-ui-react-components";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Loader, Table, Toast } from "@egovernments/digit-ui-react-components";
 import Filter from "../../components/FacilityTable/Filter";
+import Search from "../../components/FacilityTable/Search";
+import CustomDownloadIcon from "../../components/Custom/CustomDownloadIcon";
+import { FacilityService } from "../../services/Facility";
+import CommonUtils from "../../utilities/CommonUtils";
+import {
+  buildFacilitySearchCriteria,
+  facilityCsvColumns,
+  namesByCode,
+  searchTextOf,
+  toCsv,
+  toFacilityRow,
+} from "../../utilities/FacilityList";
 import { useHistory, useLocation } from "react-router-dom";
 import FacilityAdminActions from "../../components/FacilityTable/FacilityAdminActions";
 import useFacility from "../../hooks/useFacility";
@@ -16,6 +28,8 @@ const FacilityTable = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(window.location.search);
   const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
+  const [toast, setToast] = useState(null);
+  const tenantId = Digit.ULBService.getCurrentTenantId();
 
   const [projectQueryFilter, setProjectQueryFilter] = useState(
     (() => {
@@ -38,7 +52,7 @@ const FacilityTable = () => {
         facility: [],
       },
       facilitySearch: {
-        name: "",
+        text: "",
       },
       facilityFilterQuery: {},
       facilitySearchQuery: {},
@@ -70,6 +84,23 @@ const FacilityTable = () => {
 
   const { isLoading, data: facilityData } = useFacility(projectQueryFilter, pageSize, pageOffset);
 
+  const { data: mdmsResponse } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "facility",
+    [{ name: "FacilityCategory" }, { name: "FacilityType" }],
+    { select: (data) => data, enabled: !!tenantId }
+  );
+  const categoryNames = useMemo(() => namesByCode(mdmsResponse?.facility?.FacilityCategory), [mdmsResponse]);
+  const typeNames = useMemo(() => namesByCode(mdmsResponse?.facility?.FacilityType), [mdmsResponse]);
+  const searchText = searchTextOf(projectQueryFilter);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   useEffect(() => {
     if (facilityData) {
       setFetchedData(facilityData.facilities || []);
@@ -96,6 +127,42 @@ const FacilityTable = () => {
     });
   };
 
+  // A new term changes projectQueryFilter, so the offset effect above takes the list back to page 1.
+  const handleSearch = (term) => {
+    setProjectQueryFilter({
+      ...projectQueryFilter,
+      facilitySearch: { text: term },
+      facilitySearchQuery: term ? { searchText: term } : {},
+    });
+  };
+
+  // Every facility the user can see that matches the current search and filters, not just this page.
+  const handleDownload = async () => {
+    setUpdatingWorkflow(true);
+    try {
+      const response = await FacilityService.fetchFacilities({
+        ...buildFacilitySearchCriteria(projectQueryFilter, tenantId),
+        sendNonPaginatedResponse: true,
+      });
+      const rows = (response?.facilities || []).map(toFacilityRow);
+      const csv = toCsv(facilityCsvColumns(t, categoryNames, typeNames), rows);
+      // The BOM makes Excel read the file as UTF-8, so non-Latin names survive.
+      const url = window.URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `facilities_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading facilities", error);
+      setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("FA_FACILITY_DOWNLOAD_FAILED") });
+    } finally {
+      setUpdatingWorkflow(false);
+    }
+  };
+
   const GetCell = (value) => <span className="cell-text" style={{ color: "#000000" }}>{value}</span>;
 
   const revalidateData = () => {
@@ -104,12 +171,6 @@ const FacilityTable = () => {
   }
 
   const columns = [
-    {
-      Header: t("CS_FACILITY_ID"),
-      Cell: ({ row }) => {
-        return GetCell(row.original["id"] ? row.original["id"] : "-");
-      },
-    },
     {
       Header: t("CS_HEALTH_FACILITY"),
       Cell: ({ row }) => {
@@ -135,9 +196,17 @@ const FacilityTable = () => {
       },
     },
     {
-      Header: t("CS_POC_NAME"),
+      Header: t("FACILITY_CATEGORY"),
       Cell: ({ row }) => {
-        return GetCell(row.original["pocName"] ? row.original["pocName"] : "-");
+        const code = row.original["categoryCode"];
+        return GetCell(code ? categoryNames[code] || code : "-");
+      },
+    },
+    {
+      Header: t("FACILITY_TYPE"),
+      Cell: ({ row }) => {
+        const code = row.original["typeCode"];
+        return GetCell(code ? typeNames[code] || code : "-");
       },
     },
   ];
@@ -151,7 +220,7 @@ const FacilityTable = () => {
       return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%" }}>
           <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-            {t("CS_NO_FACILITIES_FOUND")}
+            {searchText ? t("FA_FACILITY_SEARCH_NO_MATCH") : t("CS_NO_FACILITIES_FOUND")}
           </div>
         </div>
       );
@@ -233,8 +302,48 @@ const FacilityTable = () => {
         <div style={{ minWidth: "300px" }}>
           <Filter t={t} type="desktop" projectQueryFilter={projectQueryFilter} onFilterChange={handleFilterChange} />
         </div>
-        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>{renderFacilities()}</div>
+        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", padding: "20px 20px 0" }}>
+            <Search t={t} value={projectQueryFilter?.facilitySearch?.text || ""} onSearch={handleSearch} />
+            <button
+              id={"faDownloadFacilitiesBtn"}
+              type="button"
+              title={t("FA_DOWNLOAD_VISIBLE_FACILITIES_HINT")}
+              onClick={handleDownload}
+              disabled={updatingWorkflow}
+              style={{
+                backgroundColor: "white",
+                border: "1px solid #d35400",
+                color: "#d35400",
+                padding: "8px 20px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "16px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "8px",
+                height: "40px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <CustomDownloadIcon fill={"#d35400"} height="20" width="16" />
+              <span>{t("FA_DOWNLOAD_VISIBLE_FACILITIES")}</span>
+            </button>
+          </div>
+          {renderFacilities()}
+        </div>
       </div>
+      {toast && (
+        <Toast
+          error={toast.key === "error"}
+          warning={toast.key === "warning"}
+          style={{ zIndex: 100000000, ...(toast.key === "error" ? { backgroundColor: "#B91900" } : {}) }}
+          label={toast.label}
+          isDleteBtn={true}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };
