@@ -21,3 +21,13 @@ export const toVendorOptions = (organisations) => {
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 };
+
+/** What saving `selected` changes against `current` (both lists of `{code, name}`). */
+export const vendorChanges = (current, selected) => {
+  const currentCodes = new Set((current || []).map((organisation) => organisation.code));
+  const selectedCodes = new Set((selected || []).map((organisation) => organisation.code));
+  return {
+    added: (selected || []).filter((organisation) => !currentCodes.has(organisation.code)),
+    removed: (current || []).filter((organisation) => !selectedCodes.has(organisation.code)),
+  };
+};

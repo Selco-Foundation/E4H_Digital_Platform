@@ -4,8 +4,8 @@ import { Request } from "@egovernments/digit-ui-libraries";
 export const VENDOR_SEARCH_PAGE_SIZE = 100;
 
 /**
- * Vendor organisations. The Facility Admin works with organisations only; health-facility-registry
- * maps each to its first active Complaint Resolver.
+ * Vendor organisations, and which of them a facility is mapped to. The Facility Admin works with
+ * organisations only; health-facility-registry maps each to its first active Complaint Resolver.
  */
 export const VendorOrganisationService = {
   /** One page of active vendor organisations, from vendor-registry. */
@@ -21,6 +21,33 @@ export const VendorOrganisationService = {
         SearchCriteria: { tenantId, orgType: "VENDOR", orgStatus: "ACTIVE" },
         Pagination: { limit: VENDOR_SEARCH_PAGE_SIZE, offset },
       },
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
+  /** The organisations mapped to a facility: `{facilityId, organisations: [{id, code, name}]}`. */
+  searchFacilityVendors: async (tenantId, facilityId) => {
+    return await Request({
+      url: "/facility-service/v2/facility/vendor-organisations/_search",
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: { tenantId, facilityId },
+      headers: { "Content-Type": "application/json" },
+    });
+  },
+
+  /**
+   * Sets the organisations mapped to a facility. `organisationCodes` is the full desired list; an
+   * empty list unmaps them all. Returns the resulting mapping, in the same shape as the search.
+   */
+  updateFacilityVendors: async (tenantId, facilityId, organisationCodes) => {
+    return await Request({
+      url: "/facility-service/v2/facility/vendor-organisations/_update",
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: { tenantId, facilityId, organisationCodes },
       headers: { "Content-Type": "application/json" },
     });
   },

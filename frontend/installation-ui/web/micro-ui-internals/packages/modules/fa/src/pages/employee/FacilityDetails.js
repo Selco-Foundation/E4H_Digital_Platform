@@ -15,6 +15,7 @@ import AMCTable from "../../components/FacilityDetails/AMCTable";
 import { FacilityService } from "../../services/Facility";
 import CommonUtils from "../../utilities/CommonUtils";
 import ConfirmChangesModal from "../../components/ConfirmChangesModal";
+import VendorDetails from "../../components/FacilityDetails/VendorDetails";
 import { apiErrorText, duplicateIdentifierFields, facilityEditChanges } from "../../utilities/FacilityEdit";
 
 const FacilityDetails = () => {
@@ -311,6 +312,7 @@ const FacilityDetails = () => {
           <InfoItem title={t("CS_DISTRICT")} value={createdFacility?.district?.name} />
           <InfoItem title={t("CS_BLOCK")} value={createdFacility?.block?.name} />
         </Section>
+        <VendorDetails t={t} facilityId={facilityId} setToast={setToast} />
       </div>
       {showEditFacilityModal && (
         <FacilityModal
