@@ -447,6 +447,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                             final invalid = <String>[];
 
                             for (final k in propKeys) {
+                              if (isSkippedByFormEngine(pageSchema, k)) {
+                                continue;
+                              }
                               if (form.contains(k)) {
                                 final c = form.control(k);
                                 c.markAsTouched();

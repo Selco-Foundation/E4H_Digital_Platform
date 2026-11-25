@@ -732,6 +732,15 @@ String labelForKey(DigitPropertySchema.PropertySchema pageSchema, String key) {
   return prettyLabel(raw);
 }
 
+/// Mirrors `JsonForms.getFormControls`: a hidden field gets no form control
+/// unless `includeInForm` is true, so page validation must not treat it as
+/// missing (MDMS can hide a field with `hidden: true, includeInForm: false`).
+bool isSkippedByFormEngine(
+    DigitPropertySchema.PropertySchema pageSchema, String key) {
+  final prop = pageSchema.properties?[key];
+  return prop?.hidden == true && prop?.includeInForm != true;
+}
+
 dynamic coerceForControl(AbstractControl<Object?> control, dynamic v) {
   if (v == null) return null;
 
