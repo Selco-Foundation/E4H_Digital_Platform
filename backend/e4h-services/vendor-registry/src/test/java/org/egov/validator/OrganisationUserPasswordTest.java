@@ -13,6 +13,8 @@ import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.UserUtil;
 import org.egov.web.models.CreateUserRequest;
+import org.egov.web.models.Employee;
+import org.egov.web.models.OrgUser;
 import org.egov.web.models.Organisation;
 import org.egov.web.models.Role;
 import org.egov.web.models.OrgUserRequest;
@@ -30,6 +32,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -48,6 +51,9 @@ class OrganisationUserPasswordTest {
     @Mock private FacilityUtil facilityUtil;
     @Mock private ObjectMapper mapper;
     @Mock private JurisdictionScopeResolver jurisdictionScopeResolver;
+
+    @Mock private org.egov.util.PasswordScopeGuard passwordScopeGuard;
+
 
     @InjectMocks
     private OrganisationUserServiceValidator validator;
@@ -75,19 +81,57 @@ class OrganisationUserPasswordTest {
     @Test
     void settingAPasswordMarksItForChangeAndLeavesTheReturnedUserClean() {
         User settled = User.builder().uuid("uuid-1").userName("u").build();
-        when(userUtil.mapToUserRequest(settled)).thenReturn(UserRequest.builder().uuid("uuid-1").build());
-        when(configuration.getUserHost()).thenReturn("http://user");
-        when(configuration.getUserUpdateEndpoint()).thenReturn("/user/users/_updatenovalidate");
 
         long before = System.currentTimeMillis();
         ReflectionTestUtils.invokeMethod(validator, "setPassword", new RequestInfo(), settled, "abc1@de");
 
-        ArgumentCaptor<Object> sent = ArgumentCaptor.forClass(Object.class);
-        verify(userUtil).updateUserPassword(sent.capture(), any());
-        UserRequest outbound = ((CreateUserRequest) sent.getValue()).getUser();
-        assertEquals("abc1@de", outbound.getPassword());
-        assertTrue(outbound.getPwdExpiryDate().getTime() < before, "pwdExpiryDate must be in the past");
+        ArgumentCaptor<java.util.Date> expiry = ArgumentCaptor.forClass(java.util.Date.class);
+        verify(userUtil).setPasswordPreservingUser(any(), eq("uuid-1"), eq("abc1@de"), expiry.capture());
+        assertTrue(expiry.getValue().getTime() < before, "pwdExpiryDate must be in the past");
         assertNull(settled.getPassword(), "the password must not ride back on the response or Kafka payload");
+    }
+
+    @Test
+    void anOutOfScopeResetIsRefusedBeforeAnythingIsWritten() {
+        Employee stored = Employee.builder().user(User.builder().uuid("u1").userName("ramesh")
+                .roles(List.of(Role.builder().code("EMPLOYEE").build())).build()).build();
+        when(configuration.getGlobalTenantId()).thenReturn("in");
+        when(userRepository.getOrgUsers(any(), any())).thenReturn(List.of(
+                OrgUser.builder().id("row-1").organizationId("vendor-B").userId("u1").build()));
+        when(hrmsUtils.getUserByUsername(any(), eq("ramesh"))).thenReturn(List.of(stored));
+        doThrow(new CustomException("PASSWORD_SET_OUT_OF_SCOPE", "no"))
+                .when(passwordScopeGuard).require(any(), eq("vendor-B"), eq("u1"), any());
+
+        OrgUserRequest request = OrgUserRequest.builder().requestInfo(new RequestInfo()).id("row-1")
+                .organizationId("vendor-B")
+                .user(User.builder().tenantId("in").userName("ramesh").name("Ramesh").password("newpass1!").build())
+                .build();
+
+        CustomException e = assertThrows(CustomException.class,
+                () -> ReflectionTestUtils.invokeMethod(validator, "validateUserOrgUpdate", request));
+        assertEquals("PASSWORD_SET_OUT_OF_SCOPE", e.getCode());
+        verify(hrmsUtils, never()).updateHRMSUser(any());
+        verify(userUtil, never()).setPasswordPreservingUser(any(), any(), any(), any());
+    }
+
+    @Test
+    void anUpdateWithoutAPasswordIsNotAPasswordSet() {
+        Employee stored = Employee.builder().user(User.builder().uuid("u1").userName("ramesh").build()).build();
+        when(configuration.getGlobalTenantId()).thenReturn("in");
+        when(userRepository.getOrgUsers(any(), any())).thenReturn(List.of(
+                OrgUser.builder().id("row-1").organizationId("vendor-B").userId("u1").build()));
+        when(hrmsUtils.getUserByUsername(any(), eq("ramesh"))).thenReturn(List.of(stored));
+        when(jurisdictionScopeResolver.resolve(any())).thenThrow(new CustomException("STOP", "past the password check"));
+
+        OrgUserRequest request = OrgUserRequest.builder().requestInfo(new RequestInfo()).id("row-1")
+                .organizationId("vendor-B")
+                .user(User.builder().tenantId("in").userName("ramesh").name("Ramesh").build())
+                .build();
+
+        CustomException e = assertThrows(CustomException.class,
+                () -> ReflectionTestUtils.invokeMethod(validator, "validateUserOrgUpdate", request));
+        assertEquals("STOP", e.getCode());
+        verifyNoInteractions(passwordScopeGuard);
     }
 
     @Test

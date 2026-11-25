@@ -20,6 +20,7 @@ import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.PasswordPolicy;
 import org.egov.util.OrgAdminScopeResolver;
+import org.egov.util.PasswordScopeGuard;
 import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +61,8 @@ public class OrganisationUserServiceValidator {
     private final JurisdictionScopeResolver jurisdictionScopeResolver;
 
     private final OrgAdminScopeResolver orgAdminScopeResolver;
+
+    private final PasswordScopeGuard passwordScopeGuard;
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
@@ -76,7 +79,8 @@ public class OrganisationUserServiceValidator {
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
                                             OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper,
                                             JurisdictionScopeResolver jurisdictionScopeResolver,
-                                            OrgAdminScopeResolver orgAdminScopeResolver) {
+                                            OrgAdminScopeResolver orgAdminScopeResolver,
+                                            PasswordScopeGuard passwordScopeGuard) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -88,7 +92,7 @@ public class OrganisationUserServiceValidator {
         this.mapper = mapper;
         this.jurisdictionScopeResolver = jurisdictionScopeResolver;
         this.orgAdminScopeResolver = orgAdminScopeResolver;
-
+        this.passwordScopeGuard = passwordScopeGuard;
     }
 
     /**
@@ -244,6 +248,8 @@ public class OrganisationUserServiceValidator {
             PasswordPolicy.validate(orgUser.getPassword());
             password = orgUser.getPassword();
         }
+        // Every create sets a password, so it is a password set as far as scope goes.
+        passwordScopeGuard.require(request.getRequestInfo(), organisation.getId(), null, orgUser.getRoles());
         // A user with no jurisdiction can see nothing, so creation must supply one rather than
         // fall back to a country-wide grant.
         requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
@@ -259,6 +265,10 @@ public class OrganisationUserServiceValidator {
             // administer somewhere that user already works - the same rule as editing them.
             // Without it, entering someone else's mobile number would take over their account.
             requireCallerAdministers(request.getRequestInfo(), employee.get(0), orgUser.getMobileNumber());
+            Employee existing = employee.get(0);
+            passwordScopeGuard.require(request.getRequestInfo(), organisation.getId(),
+                    existing.getUser() != null ? existing.getUser().getUuid() : null,
+                    existing.getUser() != null ? existing.getUser().getRoles() : null);
         }
         if (employee == null || employee.isEmpty()) { //If user doesn't exist
             String orgType = organisation.getOrgType();
@@ -442,7 +452,7 @@ public class OrganisationUserServiceValidator {
     /**
      * Sets the user's password in egov-user and marks it for change at next sign-in.
      *
-     * The password goes only on the outbound {@link UserRequest}, never on `user`: that object is
+     * The password goes only on the outbound egov-user request, never on `user`: that object is
      * the one returned to the caller and pushed to Kafka.
      *
      * The marker is a `pwdExpiryDate` in the past, which the web app reads from `/user/_search`.
@@ -450,16 +460,10 @@ public class OrganisationUserServiceValidator {
      * would lock every field user out of the mobile app, which has no change-password screen.
      */
     public void setPassword(RequestInfo requestInfo, User user, String password) {
-        UserRequest userRequest = userUtil.mapToUserRequest(user);
-        userRequest.setPassword(password);
-        // A day back rather than a moment back, so no clock or timezone skew can land it in the future.
-        userRequest.setPwdExpiryDate(new Date(System.currentTimeMillis() - FIRST_LOGIN_EXPIRY_OFFSET_MS));
-        CreateUserRequest createUserRequest = CreateUserRequest.builder()
-                .requestInfo(requestInfo)
-                .user(userRequest)
-                .build();
-        String url = configuration.getUserHost() + configuration.getUserUpdateEndpoint();
-        userUtil.updateUserPassword(createUserRequest, new StringBuilder(url));
+        // Read-modify-write: only the password and its expiry change. A day back rather than a
+        // moment back, so no clock or timezone skew can land it in the future.
+        userUtil.setPasswordPreservingUser(requestInfo, user.getUuid(), password,
+                new Date(System.currentTimeMillis() - FIRST_LOGIN_EXPIRY_OFFSET_MS));
         log.info("Password set for user {}", user.getUuid());
     }
 
@@ -613,6 +617,12 @@ public class OrganisationUserServiceValidator {
 
         // An update may keep ORG_PLATFORM_ADMIN on a user who already holds it, never grant it.
         rejectPlatformAdminRole(orgUser, employee.getUser());
+
+        // A reset is an update carrying a password: checked against the stored user, before any write.
+        if (newPassword != null) {
+            passwordScopeGuard.require(request.getRequestInfo(), existingOrgUser.getOrganizationId(),
+                    employeeUuid, employee.getUser().getRoles());
+        }
 
         // The caller must administer somewhere this user actually works. Checked against what is
         // stored rather than what was submitted, since the payload is the thing being validated.

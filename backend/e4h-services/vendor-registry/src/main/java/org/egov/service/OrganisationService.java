@@ -177,8 +177,10 @@ public class OrganisationService {
     }
 
     /**
-     * Moves the PoC admin for every organisation whose PoC details changed. Compared field by
-     * field against the stored organisation, so an update that re-sends the same PoC does nothing.
+     * Moves the PoC admin for every organisation whose PoC details changed, and resets the PoC's
+     * password where the PoC is unchanged but `orgPocPassword` was sent. Compared field by field
+     * against the stored organisation, so an update that re-sends the same PoC with no password
+     * does nothing.
      */
     private List<PocAdminService.PocChangeResult> applyPocChanges(OrgRequest orgRequest) {
         List<Organisation> incoming = orgRequest.getOrganisations();
@@ -194,11 +196,17 @@ public class OrganisationService {
         List<PocAdminService.PocChangeResult> changes = new ArrayList<>();
         for (Organisation organisation : incoming) {
             Organisation existing = storedById.get(organisation.getId());
-            if (existing == null || !PocAdminService.pocChanged(organisation, existing)) {
+            if (existing == null) {
                 continue;
             }
-            log.info("PoC of organisation {} changed; moving its admin user", organisation.getId());
-            changes.add(pocAdminService.applyChange(orgRequest.getRequestInfo(), organisation, existing));
+            if (PocAdminService.pocChanged(organisation, existing)) {
+                log.info("PoC of organisation {} changed; moving its admin user", organisation.getId());
+                changes.add(pocAdminService.applyChange(orgRequest.getRequestInfo(), organisation, existing));
+            } else if (StringUtils.isNotEmpty(organisation.getOrgPocPassword())) {
+                // Same PoC, new password: an admin reset of the PoC's password.
+                log.info("PoC password reset requested for organisation {}", organisation.getId());
+                changes.add(pocAdminService.resetPassword(orgRequest.getRequestInfo(), organisation, existing));
+            }
         }
         return changes;
     }

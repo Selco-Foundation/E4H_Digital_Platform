@@ -44,6 +44,9 @@ class OrganisationUserJurisdictionRoleTest {
     @Mock private FacilityUtil facilityUtil;
     @Mock private ObjectMapper mapper;
 
+    @Mock private org.egov.util.PasswordScopeGuard passwordScopeGuard;
+
+
     @InjectMocks
     private OrganisationUserServiceValidator validator;
 

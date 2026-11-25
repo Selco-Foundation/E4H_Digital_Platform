@@ -48,6 +48,9 @@ class OrgAdminExistingAccountTest {
     @Mock private JurisdictionScopeResolver jurisdictionScopeResolver;
     @Mock private OrgAdminScopeResolver orgAdminScopeResolver;
 
+    @Mock private org.egov.util.PasswordScopeGuard passwordScopeGuard;
+
+
     @InjectMocks
     private OrganisationUserServiceValidator validator;
 
