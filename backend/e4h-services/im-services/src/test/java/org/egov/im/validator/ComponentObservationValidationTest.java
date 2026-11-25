@@ -23,7 +23,7 @@ class ComponentObservationValidationTest {
     private static final Document FIR = Document.builder().documentType("FIR").fileStoreId("fs-fir").build();
     private static final Document PHOTO = Document.builder().documentType("PHOTO").fileStoreId("fs-photo").build();
 
-    private final ServiceRequestValidator validator = new ServiceRequestValidator(null, null, null);
+    private final ServiceRequestValidator validator = new ServiceRequestValidator(null, null, null, null, null, null);
 
     private final Map<String, Object> mdmsData = HfServiceDefsFixture.mdmsData();
 
