@@ -8,6 +8,8 @@ from app.schemas.request_info import RequestInfo
 logger = AppLogger().get_logger()
 
 DEFAULT_TENANT_ID = "in"
+# vendor-registry rejects a Pagination.limit above 100 (@DecimalMax on Pagination.limit).
+VENDOR_SEARCH_PAGE_SIZE = 100
 
 class OrganizationServiceClient:
     def __init__(self, org_service_url: str):
@@ -45,15 +47,22 @@ class OrganizationServiceClient:
         if not self.org_service_url:
             raise RuntimeError("VENDOR_SERVICE_URL is not configured")
         url = f"{self.org_service_url}/vendor/organisation/v1/_search"
-        payload = {
-            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "SearchCriteria": {"tenantId": tenant_id, "orgType": "VENDOR", "orgStatus": "ACTIVE",
-                               "createdFrom": 0},
-            "Pagination": {"limit": 10000, "offset": 0},
-        }
-        response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=60)
-        response.raise_for_status()
-        return response.json().get("organisations") or []
+        organisations: List[Dict[str, Any]] = []
+        offset = 0
+        while True:
+            payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "SearchCriteria": {"tenantId": tenant_id, "orgType": "VENDOR", "orgStatus": "ACTIVE",
+                                   "createdFrom": 0},
+                "Pagination": {"limit": VENDOR_SEARCH_PAGE_SIZE, "offset": offset},
+            }
+            response = requests.post(url, headers={"Content-Type": "application/json"}, json=payload, timeout=60)
+            response.raise_for_status()
+            page = response.json().get("organisations") or []
+            organisations.extend(page)
+            if len(page) < VENDOR_SEARCH_PAGE_SIZE:
+                return organisations
+            offset += VENDOR_SEARCH_PAGE_SIZE
 
     def fetch_org_user_ids(self, organisation_id: str, request_info: RequestInfo,
                            tenant_id: str = DEFAULT_TENANT_ID) -> List[str]:
