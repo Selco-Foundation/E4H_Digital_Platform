@@ -7,6 +7,16 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const formAccessors = useRef(null);
+  const formContainerRef = useRef(null);
+
+  useEffect(()=>{
+    const root = formContainerRef.current;
+    if(!root) return;
+    root.querySelectorAll('input[name="orgPocPassword"], input[name="orgPocConfirmPassword"]')
+        .forEach((input) => input.setAttribute("autocomplete", "new-password"));
+    const username = root.querySelector('input[name="orgPocUsername"]');
+    if (username) username.setAttribute("autocomplete", "off");
+  })
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -195,7 +205,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
               name: "orgPocConfirmPassword",
               validation: {
                 customValidation : (value) =>
-                    value === (formAccessors.current?.getValues("orgPocPassword") || "") || "Passwords do not match",
+                    (value||"") === (formAccessors.current?.getValues("orgPocPassword") || "") || t("CORE_COMMON_PROFILE_PASSWORD_MISMATCH"),
               },
             }
           }
@@ -222,6 +232,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
 
   return (
     <div
+      ref={formContainerRef}
       style={{
         position: "relative",
         padding: "15px 15px 30px",
