@@ -37,8 +37,8 @@ const GeographyLevelSelector = ({ props = {} }) => {
     return (boundary?.[level] || [])
       .filter((node) => !parents || parents.has(node.parentCode))
       .map((node) => ({ code: node.code, name: `Boundary_${node.code}`, parentCode: node.parentCode }))
-      .sort((a, b) => a.code.localeCompare(b.code));
-  }, [boundary, level, geography.states, geography.districts]);
+      .sort((a, b) => t(a.name).localeCompare(t(b.name), undefined, { sensitivity: "base" }));
+  }, [boundary, level, geography.states, geography.districts, t]);
 
   const selected = options.filter((option) => geography[level].includes(option.code));
   const parentEmpty =
@@ -52,7 +52,23 @@ const GeographyLevelSelector = ({ props = {} }) => {
   };
 
   return (
-    <div className={"employee-select-wrap"}>
+    <div className={"employee-select-wrap fa-geography-select"}>
+      {/* The app ships digit-ui-components-css 0.2.0, which lacks 0.2.1's rule that shows the
+          search input of an open searchable MultiSelectDropdown, so typed text stays invisible
+          (opacity 0). This is that rule, scoped to these pickers. Delete it once the app is on
+          digit-ui-components-css 0.2.1 or later. */}
+      <style>
+        {`
+      .fa-geography-select .digit-multiselectdropdown-wrap .digit-multiselectdropdown-master-active.searchable input[type=text] {
+        opacity: 1;
+        width: calc(100% - 24px);
+      }
+      .fa-geography-select .digit-multiselectdropdown-wrap .digit-multiselectdropdown-master-active.searchable .digit-multiselectdropdown-label svg {
+        z-index: 1;
+        cursor: pointer;
+      }
+    `}
+      </style>
       <MultiSelectDropdown
         options={options}
         optionsKey={"name"}
