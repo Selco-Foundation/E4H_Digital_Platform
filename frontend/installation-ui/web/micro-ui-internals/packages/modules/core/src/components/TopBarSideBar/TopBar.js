@@ -2,7 +2,6 @@ import { Hamburger, TopBar as TopBarComponent } from "@egovernments/digit-ui-rea
 import { Dropdown } from "@egovernments/digit-ui-components";
 import React, { Fragment } from "react";
 import { useHistory, useLocation } from "react-router-dom";
-import ChangeCity from "../ChangeCity";
 import ChangeLanguage from "../ChangeLanguage";
 import { Header as TopBarComponentMain } from "@egovernments/digit-ui-components";
 import ImageComponent from "../ImageComponent";
@@ -147,7 +146,6 @@ const TopBar = ({
   return (
     <TopBarComponentMain
       actionFields={[
-        <ChangeCity dropdown={true} t={t} />,
         showLanguageChange && <ChangeLanguage dropdown={true} />,
         userDetails?.access_token && (
           <Dropdown
