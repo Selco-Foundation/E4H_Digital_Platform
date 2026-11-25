@@ -77,6 +77,80 @@ public class UserUtil {
 		}
 	}
 
+	/** PII fields egov-user may return masked to a caller without plain access. */
+	private static final List<String> MASKABLE_FIELDS = List.of(
+			"name", "mobileNumber", "emailId", "altContactNumber", "alternatemobilenumber", "pan", "aadhaarNumber",
+			"fatherOrHusbandName", "permanentAddress", "correspondenceAddress");
+	private static final String UPDATE_DATE_TIME_FORMAT = "dd-MM-yyyy HH:mm:ss";
+	private static final String SEARCH_DOB_FORMAT = "yyyy-MM-dd";
+	private static final String UPDATE_DOB_FORMAT = "dd/MM/yyyy";
+
+	/**
+	 * Sets a user's password and password expiry, changing nothing else.
+	 *
+	 * `_updatenovalidate` replaces the user: every field it is not given is written as blank. So
+	 * the user is read from egov-user as stored, only the two fields are overridden, and the whole
+	 * record is sent back - never a partial object built from another service's view of the user.
+	 *
+	 * Refuses rather than writes when the stored record comes back masked: sending a masked value
+	 * back would replace the real one.
+	 */
+	public void setPasswordPreservingUser(Object requestInfo, String userUuid, String password, Date pwdExpiryDate) {
+		Map<String, Object> stored = fetchStoredUser(requestInfo, userUuid);
+		for (String field : MASKABLE_FIELDS) {
+			Object value = stored.get(field);
+			if (value instanceof String text && text.contains("*")) {
+				log.error("egov-user returned field {} of user {} masked; not writing it back", field, userUuid);
+				throw new CustomException("USER_RECORD_MASKED",
+						"The user's record could not be read in full, so their password was not changed");
+			}
+		}
+		// The search and update contracts format dob differently.
+		Object dob = stored.get("dob");
+		if (dob instanceof String text && !text.isBlank()) {
+			stored.put("dob", reformat(text, SEARCH_DOB_FORMAT, UPDATE_DOB_FORMAT));
+		}
+		stored.put("password", password);
+		SimpleDateFormat expiryFormat = new SimpleDateFormat(UPDATE_DATE_TIME_FORMAT);
+		expiryFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+		stored.put("pwdExpiryDate", expiryFormat.format(pwdExpiryDate));
+
+		Map<String, Object> request = new HashMap<>();
+		request.put("RequestInfo", requestInfo);
+		request.put("user", stored);
+		updateUserPassword(request, new StringBuilder(configs.getUserHost() + configs.getUserUpdateEndpoint()));
+	}
+
+	/**
+	 * The user exactly as egov-user returns it. Searched as active first, then inactive: egov-user
+	 * defaults an unspecified `active` to true, which would miss a deactivated user.
+	 */
+	@SuppressWarnings("unchecked")
+	Map<String, Object> fetchStoredUser(Object requestInfo, String userUuid) {
+		for (boolean active : new boolean[]{true, false}) {
+			Map<String, Object> search = new HashMap<>();
+			search.put("RequestInfo", requestInfo);
+			search.put("tenantId", "in");
+			search.put("uuid", List.of(userUuid));
+			search.put("active", active);
+			Object response = serviceRequestRepository.fetchResult(
+					new StringBuilder(configs.getUserHost() + configs.getUserSearchEndpoint()), search);
+			if (response instanceof Map<?, ?> map && map.get("user") instanceof List<?> users && !users.isEmpty()) {
+				return new LinkedHashMap<>((Map<String, Object>) users.get(0));
+			}
+		}
+		throw new CustomException("USER_NOT_FOUND", "User " + userUuid + " was not found in egov-user");
+	}
+
+	private static String reformat(String value, String from, String to) {
+		try {
+			return new SimpleDateFormat(to).format(new SimpleDateFormat(from).parse(value));
+		} catch (ParseException e) {
+			// Already in the update format, or something egov-user will reject on its own.
+			return value;
+		}
+	}
+
 	/**
 	 * Parses date formats to long for all users in responseMap
 	 * 

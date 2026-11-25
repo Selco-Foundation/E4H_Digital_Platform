@@ -40,6 +40,7 @@ class PocAdminServiceTest {
     @Mock private UserUtil userUtil;
     @Mock private OrganisationUtil organisationUtil;
     @Mock private CredentialsNotificationService credentialsNotificationService;
+    @Mock private org.egov.util.PasswordScopeGuard passwordScopeGuard;
 
     @InjectMocks
     private PocAdminService service;
@@ -267,6 +268,49 @@ class PocAdminServiceTest {
         PocAdminService.grantAdminRole(e, PocAdminService.adminRoleFor("VENDOR"));
 
         assertEquals(List.of("KA"), e.getJurisdictions().stream().map(Jurisdiction::getBoundary).toList());
+    }
+
+    @Test
+    void samePocWithAPasswordResetsThePocsPassword() {
+        Organisation stored = org("VENDOR", "Ramesh", "9876543210", "r@x.org", "ramesh");
+        Organisation incoming = org("VENDOR", "Ramesh", "9876543210", "r@x.org", "ramesh");
+        incoming.setOrgPocPassword("newpass1!");
+        Employee poc = employee("u1", "ramesh", role("VENDOR_ADMIN"));
+        when(hrmsUtils.getUserByUsername(any(), eq("ramesh"))).thenReturn(List.of(poc));
+
+        PocAdminService.PocChangeResult reset = service.resetPassword(requestInfo, incoming, stored);
+
+        verify(passwordScopeGuard).require(requestInfo, "org-1", "u1", poc.getUser().getRoles());
+        verify(userValidator).setPassword(requestInfo, poc.getUser(), "newpass1!");
+        assertNull(reset.audit(), "a reset does not change the PoC, so nothing is audited");
+        when(credentialsNotificationService.send(any())).thenReturn(true);
+        PocAdmin result = service.publishChange(requestInfo, reset);
+        ArgumentCaptor<CredentialsNotificationService.Credentials> mail = ArgumentCaptor.forClass(CredentialsNotificationService.Credentials.class);
+        verify(credentialsNotificationService).send(mail.capture());
+        assertTrue(mail.getValue().reset());
+        assertEquals(Boolean.TRUE, result.getCredentialsEmailSent());
+        verify(producer, never()).push(eq("save-org-poc-change-audit"), any());
+    }
+
+    @Test
+    void aPocResetOutOfScopeSetsNothing() {
+        Organisation stored = org("VENDOR", "Ramesh", "9876543210", "r@x.org", "ramesh");
+        Organisation incoming = org("VENDOR", "Ramesh", "9876543210", "r@x.org", "ramesh");
+        incoming.setOrgPocPassword("newpass1!");
+        when(hrmsUtils.getUserByUsername(any(), eq("ramesh"))).thenReturn(List.of(employee("u1", "ramesh")));
+        doThrow(new CustomException("PASSWORD_SET_OUT_OF_SCOPE", "no")).when(passwordScopeGuard).require(any(), any(), any(), any());
+
+        assertThrows(CustomException.class, () -> service.resetPassword(requestInfo, incoming, stored));
+        verify(userValidator, never()).setPassword(any(), any(), any());
+    }
+
+    @Test
+    void aPocResetChecksThePasswordPolicyFirst() {
+        Organisation incoming = org("VENDOR", "Ramesh", "9876543210", "r@x.org", "ramesh");
+        incoming.setOrgPocPassword("password");
+        CustomException e = assertThrows(CustomException.class, () -> service.resetPassword(requestInfo, incoming, incoming));
+        assertEquals("INVALID_PWD_PATTERN", e.getCode());
+        verifyNoInteractions(hrmsUtils);
     }
 
     @Test

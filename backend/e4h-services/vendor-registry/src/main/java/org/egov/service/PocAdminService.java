@@ -13,6 +13,7 @@ import org.egov.util.HRMSUtils;
 import org.egov.util.OrganisationConstant;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.PasswordPolicy;
+import org.egov.util.PasswordScopeGuard;
 import org.egov.util.UserUtil;
 import org.egov.validator.OrganisationServiceValidator;
 import org.egov.validator.OrganisationUserServiceValidator;
@@ -55,12 +56,14 @@ public class PocAdminService {
     private final UserUtil userUtil;
     private final OrganisationUtil organisationUtil;
     private final CredentialsNotificationService credentialsNotificationService;
+    private final PasswordScopeGuard passwordScopeGuard;
 
     @Autowired
     public PocAdminService(OrganisationUserServiceValidator userValidator, OrganisationUserEnrichmentService userEnrichment,
                            OrganisationUserRepository orgUserRepository, OrganizationProducer producer, Configuration config,
                            HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUtil organisationUtil,
-                           CredentialsNotificationService credentialsNotificationService) {
+                           CredentialsNotificationService credentialsNotificationService,
+                           PasswordScopeGuard passwordScopeGuard) {
         this.userValidator = userValidator;
         this.userEnrichment = userEnrichment;
         this.orgUserRepository = orgUserRepository;
@@ -70,6 +73,7 @@ public class PocAdminService {
         this.userUtil = userUtil;
         this.organisationUtil = organisationUtil;
         this.credentialsNotificationService = credentialsNotificationService;
+        this.passwordScopeGuard = passwordScopeGuard;
     }
 
     /**
@@ -299,14 +303,45 @@ public class PocAdminService {
         return new PocChangeResult(pending, audit);
     }
 
-    /** What {@link #applyChange} leaves to publish once the organisation update is pushed. */
+    /**
+     * What {@link #applyChange} or {@link #resetPassword} leaves to publish once the organisation
+     * update is pushed. `audit` is null for a password reset, which does not change the PoC.
+     */
     public record PocChangeResult(Pending pending, PocChangeAudit audit) {
     }
 
-    /** Pushes the audit row, then the org link and email. Call after the organisation update is pushed. */
+    /** Pushes the audit row if any, then the org link and email. Call after the organisation update is pushed. */
     public PocAdmin publishChange(RequestInfo requestInfo, PocChangeResult change) {
-        producer.push(config.getPocChangeAuditTopic(), change.audit());
+        if (change.audit() != null) {
+            producer.push(config.getPocChangeAuditTopic(), change.audit());
+        }
         return publish(requestInfo, List.of(change.pending())).get(0);
+    }
+
+    /**
+     * Resets the PoC admin's password: an org update that keeps the PoC but carries
+     * `orgPocPassword`. The PoC is the user named by the stored PoC username.
+     */
+    public PocChangeResult resetPassword(RequestInfo requestInfo, Organisation incoming, Organisation existing) {
+        String password = incoming.getOrgPocPassword();
+        PasswordPolicy.validate(password);
+        Employee poc = StringUtils.isBlank(existing.getOrgPocUsername()) ? null
+                : first(hrmsUtils.getUserByUsername(wrap(requestInfo), existing.getOrgPocUsername()));
+        if (poc == null || poc.getUser() == null) {
+            throw new CustomException("ORG_POC_USER_NOT_FOUND", "The organisation's PoC has no user account to reset");
+        }
+        User user = poc.getUser();
+        passwordScopeGuard.require(requestInfo, incoming.getId(), user.getUuid(), user.getRoles());
+        userValidator.setPassword(requestInfo, user, password);
+        log.info("PoC admin {} of organisation {} had their password reset", user.getUuid(), incoming.getId());
+        PocAdmin result = PocAdmin.builder()
+                .organisationId(incoming.getId())
+                .userId(user.getUuid())
+                .userName(user.getUserName())
+                .role(adminRoleFor(incoming.getOrgType()).getCode())
+                .created(false)
+                .build();
+        return new PocChangeResult(new Pending(null, password, true, incoming.getName(), result, user), null);
     }
 
     /**
@@ -355,6 +390,7 @@ public class PocAdminService {
         String password = null;
         if (StringUtils.isNotEmpty(poc.password())) {
             password = poc.password();
+            passwordScopeGuard.require(requestInfo, organisation.getId(), settled.getUuid(), settled.getRoles());
             userValidator.setPassword(requestInfo, settled, password);
         }
 
