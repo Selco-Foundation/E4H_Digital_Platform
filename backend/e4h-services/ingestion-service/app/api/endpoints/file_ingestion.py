@@ -41,12 +41,13 @@ import requests
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
+from app.ingest.facility_vendor import ComplaintResolverCheck, VendorResolver, find_vendor_column
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    resolve_mapped_vendor_for_facility_row, build_field_plan_facility_bulk_entry, \
+    build_field_plan_facility_bulk_entry, \
     build_field_plan_facility_additional_details, build_field_plan_facility_additional_fields, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
@@ -184,20 +185,23 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD")
 }
 
-FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
 
 
 def _bulk_create_facilities_for_ingestion(
         df: pd.DataFrame,
         facility_client: FacilityServiceClient,
-        org_client: Optional[OrganizationServiceClient],
+        vendor_resolver: Optional[VendorResolver],
         request_info: RequestInfo,
         facility_schema: List[Dict],
         are_facilities_onm_ready: bool,
-        vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
 ) -> None:
-    """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
+    """Validate rows and bulk-create facilities in chunks.
+
+    Each row's vendor cell is resolved to an organisation code here and sent as the facility's
+    vendor_code; facility-service maps it to the vendor's Complaint Resolver and stamps the label.
+    """
     pending_creates: List[tuple] = []
+    vendor_column = find_vendor_column(df.columns)
 
     rows_to_process = df[df['status'] != 'success']
     # HFR ID / NIN ID / PoC Username duplicates (within the file, among existing facilities and
@@ -214,15 +218,19 @@ def _bulk_create_facilities_for_ingestion(
             row, index, df, facility_schema,
         )
         coordinate_errs = collect_coordinate_errors_for_row(row)
+        vendor_code, vendor_err = (None, None)
+        if vendor_resolver is not None and vendor_column:
+            vendor_code, vendor_err = vendor_resolver.resolve(row.get(vendor_column))
         pre_errs = list(dict.fromkeys([
             *hfr_nin_errs, *anganwadi_poc_errs, *identifier_conflicts.get(index, []), *coordinate_errs,
+            *([vendor_err] if vendor_err else []),
         ]))
         if pre_errs:
             df.at[index, 'status'] = 'failed'
             df.at[index, 'error'] = '; '.join(pre_errs)
             continue
 
-        pending_creates.append((index, row.copy()))
+        pending_creates.append((index, row.copy(), vendor_code or ""))
 
     if not pending_creates:
         return
@@ -238,21 +246,13 @@ def _bulk_create_facilities_for_ingestion(
         }
         creation_meta: List[int] = []
 
-        for index, row_data in chunk:
-            vendor_mapping = resolve_mapped_vendor_for_facility_row(
-                org_client,
-                request_info,
-                row_data,
-                FACILITY_VENDOR_CODE_COLUMN,
-                vendor_mapping_cache,
-            )
+        for index, row_data, vendor_code in chunk:
             single_payload = create_facility_payload(
                 request_info,
                 row_data,
                 are_facilities_onm_ready,
                 facility_schema,
-                mapped_vendor_name=vendor_mapping.get("mappedVendorName"),
-                mapped_vendor_user_name=vendor_mapping.get("mappedVendorUserName"),
+                vendor_code=vendor_code,
             )
             facilities = single_payload.get("facilities", [])
             if facilities:
@@ -310,7 +310,13 @@ FACILITY_SERVICE_DESERIALIZE_ERROR = 'failed to deserialize'
 # facility-service error codes raised during validation, before any facility of the request is
 # persisted, so a rejected chunk can safely be retried row by row. The identifier pre-check above
 # normally catches these; this covers values taken between that check and the create.
-FACILITY_SERVICE_RETRY_ROW_BY_ROW_ERROR_CODES = {'FACILITY_DUPLICATE_IDENTIFIER'}
+FACILITY_SERVICE_RETRY_ROW_BY_ROW_ERROR_CODES = {
+    'FACILITY_DUPLICATE_IDENTIFIER',
+    # The vendor checks run for the whole request before anything is written, so one row's vendor
+    # would otherwise fail every row in its chunk.
+    'VENDOR_ORGANISATION_NOT_FOUND',
+    'VENDOR_ORGANISATION_HAS_NO_COMPLAINT_RESOLVER',
+}
 
 
 def _bulk_create_error_code(create_resp) -> Optional[str]:
@@ -552,13 +558,6 @@ async def validate_facilities_excel_sheet(
         if 'Facility Id' not in df.columns:
             raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
 
-        if FACILITY_VENDOR_CODE_COLUMN not in df.columns:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing mandatory column '{FACILITY_VENDOR_CODE_COLUMN}'. "
-                "Facilities cannot be validated without vendor mapping.",
-            )
-
         # Ensure status/error columns exist
         if 'status' not in df.columns:
             df['status'] = ''
@@ -567,6 +566,7 @@ async def validate_facilities_excel_sheet(
         # Re-uploaded sheets may carry empty status/error columns that pandas reads as float64
         df['status'] = df['status'].astype(object)
         df['error'] = df['error'].astype(object)
+
 
         # Resolve boundary codes from State/District/Block via localization
         df = resolve_boundary_codes_for_dataframe(
@@ -625,24 +625,27 @@ async def validate_facilities_excel_sheet(
             'data-ingestion.FacilityIngestionSchema'
         )
 
-        org_client = OrganizationServiceClient(org_service_url)
-        registered_vendor_codes = org_client.fetch_registered_vendor_codes(request_info_obj)
-        for i in range(len(df)):
-            row = df.iloc[i]
-            fid = row.get("Facility Id")
-            is_new = pd.isna(fid) or str(fid).strip() == ""
-            if not is_new:
-                continue
-            vendor_code = org_client.normalize_facility_vendor_code(row.get(FACILITY_VENDOR_CODE_COLUMN))
-            if not vendor_code:
-                validation_errors[i].append(
-                    f"{FACILITY_VENDOR_CODE_COLUMN} is required; facilities cannot be created without a vendor mapping."
-                )
-            elif registered_vendor_codes is not None and vendor_code not in registered_vendor_codes:
-                validation_errors[i].append(
-                    f"Vendor code '{vendor_code}' is not registered in the vendor service; "
-                    "register the vendor before facility ingestion."
-                )
+        # Vendor: optional. A filled cell must name one active vendor organisation, by its
+        # dropdown label, "Name (CODE)" or bare code, and that organisation must have an active
+        # Complaint Resolver, or facility-service would refuse to map it.
+        vendor_column = find_vendor_column(df.columns)
+        if vendor_column:
+            org_client = OrganizationServiceClient(org_service_url)
+            vendor_resolver = VendorResolver(org_client.fetch_vendor_organisations(request_info_obj))
+            resolver_check = ComplaintResolverCheck(org_client, HRMSServiceClient(hrms_service_url), request_info_obj)
+            for i in range(len(df)):
+                row = df.iloc[i]
+                fid = row.get("Facility Id")
+                is_new = pd.isna(fid) or str(fid).strip() == ""
+                if not is_new:
+                    continue
+                vendor_code, vendor_err = vendor_resolver.resolve(row.get(vendor_column))
+                if vendor_err:
+                    validation_errors[i].append(vendor_err)
+                elif vendor_code:
+                    resolver_err = resolver_check.error_for(vendor_code, vendor_resolver.organisation(vendor_code))
+                    if resolver_err:
+                        validation_errors[i].append(resolver_err)
 
         # Mark rows based on validation results, preserving earlier boundary errors
         error_count = 0
@@ -765,17 +768,18 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
-            org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
-            vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
+            vendor_resolver = None
+            if find_vendor_column(df.columns):
+                vendor_resolver = VendorResolver(
+                    OrganizationServiceClient(org_service_url).fetch_vendor_organisations(request_info))
 
             _bulk_create_facilities_for_ingestion(
                 df=df,
                 facility_client=facility_client,
-                org_client=org_client,
+                vendor_resolver=vendor_resolver,
                 request_info=request_info,
                 facility_schema=facility_schema,
                 are_facilities_onm_ready=are_facilities_onm_ready,
-                vendor_mapping_cache=vendor_mapping_cache,
             )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)

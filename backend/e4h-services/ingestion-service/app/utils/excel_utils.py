@@ -827,3 +827,15 @@ def write_boundary_template(path: str, columns, rows: int = 5000) -> None:
             sheet.add_data_validation(dropdown)
     sheet.freeze_panes = "A2"
     workbook.save(path)
+
+
+def hide_columns_by_header(file_path: str, sheet_name: str, headers: List[str]) -> None:
+    """Hides the columns whose header (ignoring " (Mandatory)" and case) is one of `headers`. The
+    columns stay in the sheet, so anything reading them by header still finds them."""
+    wanted = {_header_base_name(header) for header in headers}
+    wb = load_workbook(file_path)
+    ws = wb[sheet_name]
+    for cell in ws[1]:
+        if _header_base_name(cell.value) in wanted:
+            ws.column_dimensions[cell.column_letter].hidden = True
+    wb.save(file_path)

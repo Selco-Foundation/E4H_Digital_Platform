@@ -18,6 +18,7 @@ from app.schemas.vendor_ingestion_shema_response import (
     MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
     MDMSDataSource, ResponseInfo)
 
+from app.ingest.facility_vendor import cell_text, find_vendor_column
 from app.utils.facility_validator import format_col_name, parse_coordinate
 from app.utils.facility_solar_config_validator import (
     COLUMN_CODE_FACILITY_TYPE,
@@ -743,9 +744,18 @@ def create_facility_payload(
         row: Series,
         are_facilities_onm_ready: bool,
         facility_schema: List[Dict[str, Any]],
-        mapped_vendor_name: Optional[str] = None,
-        mapped_vendor_user_name: Optional[str] = None,
+        vendor_code: Optional[str] = None,
 ):
+    """One facility-service create payload for a sheet row.
+
+    `vendor_code` is the organisation code already resolved from the vendor cell. When it isn't
+    given, the cell is read as a bare code (templates whose vendor column holds codes). It goes on
+    the facility itself; facility-service maps the facility to the vendor's Complaint Resolver and
+    stamps the mapped-vendor label.
+    """
+    if vendor_code is None:
+        vendor_column = find_vendor_column(row.index)
+        vendor_code = cell_text(row.get(vendor_column)) if vendor_column else ""
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
@@ -785,8 +795,8 @@ def create_facility_payload(
         'hfr_id': safe_get(row, 'HFR ID'),
         'nin_id': safe_get(row, 'NIN ID'),
         'isOnmReady': are_facilities_onm_ready,
+        'vendor_code': vendor_code or None,
         'facility_details': {
-            'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
             'solar_solution_design_type': solar_solution_design_type_code,
             'pocDesignation': safe_get(row, 'HC PoC Designation')
         }
@@ -794,41 +804,11 @@ def create_facility_payload(
     if poc_username_hdr:
         facility_record['facility_poc_username'] = safe_get(row, poc_username_hdr)
 
-    if mapped_vendor_name or mapped_vendor_user_name:
-        additional_details: Dict[str, Any] = {}
-        if mapped_vendor_name:
-            facility_record['mappedVendorName'] = mapped_vendor_name
-            additional_details['mappedVendorName'] = mapped_vendor_name
-        if mapped_vendor_user_name:
-            facility_record['mappedVendorUserName'] = mapped_vendor_user_name
-            additional_details['mappedVendorUserName'] = mapped_vendor_user_name
-        facility_record['additionalDetails'] = additional_details
-
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
         'facilities': [facility_record]
     }
 
-
-def resolve_mapped_vendor_for_facility_row(
-        org_client,
-        request_info: RequestInfo,
-        row: Series,
-        vendor_code_column: str,
-        cache: Optional[Dict[str, Dict[str, Optional[str]]]] = None,
-) -> Dict[str, Optional[str]]:
-    """Resolve mapped vendor fields for a facility row, with optional per-vendor-code cache."""
-    empty = {"mappedVendorName": None, "mappedVendorUserName": None}
-    if org_client is None:
-        return empty
-    vendor_code = org_client.normalize_facility_vendor_code(row.get(vendor_code_column))
-    if not vendor_code:
-        return empty
-    if cache is not None:
-        if vendor_code not in cache:
-            cache[vendor_code] = org_client.resolve_mapped_vendor_fields(vendor_code, request_info)
-        return cache[vendor_code]
-    return org_client.resolve_mapped_vendor_fields(vendor_code, request_info)
 
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {

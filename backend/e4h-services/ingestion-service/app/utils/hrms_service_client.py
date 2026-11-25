@@ -65,6 +65,36 @@ class HRMSServiceClient:
             logger.error("HRMS get employee by uuid failed for %s: %s", hrms_uuid, req_err)
             raise req_err
 
+    def find_active_complaint_resolvers(
+            self,
+            uuids: List[str],
+            request_info: Union[RequestInfo, Dict[str, Any]],
+            tenant_id: str = DEFAULT_TENANT_ID,
+    ) -> List[Dict[str, Any]]:
+        """The active COMPLAINT_RESOLVERs among the given employee uuids. Raises when HRMS can't
+        be reached, so a caller never mistakes an outage for "no resolver"."""
+        if not uuids:
+            return []
+        url = f"{self.hrms_service_url}/egov-hrms/employees/_search"
+        params = {
+            "tenantId": tenant_id,
+            "uuids": ",".join(uuids),
+            "roles": "COMPLAINT_RESOLVER",
+            "isActive": "true",
+        }
+        payload = {"RequestInfo": self._request_info_payload(request_info)}
+        response = requests.post(url, headers={"Content-Type": "application/json"}, params=params,
+                                 json=payload, timeout=120)
+        response.raise_for_status()
+        employees = response.json().get("Employees") or []
+        # Re-checked locally rather than trusting the query filters alone.
+        return [
+            employee for employee in employees
+            if employee.get("isActive") is not False
+            and any((role or {}).get("code") == "COMPLAINT_RESOLVER"
+                    for role in ((employee.get("user") or {}).get("roles") or []))
+        ]
+
     def update_employee(
             self,
             employee: Dict[str, Any],

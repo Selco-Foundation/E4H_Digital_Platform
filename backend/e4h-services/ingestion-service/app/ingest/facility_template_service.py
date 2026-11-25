@@ -12,9 +12,11 @@ from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
 from app.utils.convertor import convert_json_to_boundary, format_facility_data_for_template
 from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns, add_validations_to_excel, \
     lock_prefilled_rows_in_excel, add_non_blank_validations_to_file, autofit_columns, \
-    add_facility_category_conditional_validations, add_dependent_boundary_dropdowns
+    add_facility_category_conditional_validations, add_dependent_boundary_dropdowns, hide_columns_by_header
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer, remove_default_empty_sheet
 from app.utils.localization_service_client import LocalizationServiceClient
+from app.utils.organization_service_client import OrganizationServiceClient
+from app.ingest.facility_vendor import find_vendor_column, vendor_options
 
 logger = AppLogger().get_logger()
 from dotenv import load_dotenv
@@ -24,6 +26,8 @@ boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 vendor_service_url = os.getenv("VENDOR_SERVICE_URL")
 localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
+VENDOR_SHEET_NAME = "Vendor Name"
+FACILITY_ID_HEADER = "Facility Id"
 # Main-sheet columns whose dropdowns come from the boundary hierarchy, not MDMS.
 BOUNDARY_COLUMNS = {"state", "district", "block"}
 # Codes per localization _search: a country-wide template carries ~10k, too many for one body.
@@ -347,6 +351,7 @@ class FacilityTemplateService:
                                boundary_data: List[Boundary],
                                vendor_data: List[Dict]
                                ) -> None:
+        """`vendor_data` is the active vendor organisations (see `get_vendor_organisations`)."""
         try:
             create_empty_excel_file(output_path)
 
@@ -374,6 +379,13 @@ class FacilityTemplateService:
                     dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
                     if dropdown_options:
                         dropdowns_map[header_name] = dropdown_options
+
+            # The vendor column offers organisation names; a name shared by two organisations
+            # carries its code. Found by name, whatever the MDMS master currently calls it.
+            options = vendor_options(vendor_data)
+            vendor_column = find_vendor_column(output_list)
+            if vendor_column and options:
+                dropdowns_map[vendor_column] = [label for label, _, _ in options]
 
             df_facility = pd.DataFrame(columns=output_list)
             facility_writer = create_excel_data_writer(
@@ -411,12 +423,18 @@ class FacilityTemplateService:
                 boundary_records=boundary_records,
             )
 
-            df_vendor = pd.DataFrame(vendor_data)
+            df_vendor = pd.DataFrame(
+                [{"Vendor Code": code, "Vendor Name": name} for _, code, name in options],
+                columns=["Vendor Code", "Vendor Name"],
+            )
             vendor_writer = create_excel_data_writer(
                 output_path,
-                "VendorCodes"
+                VENDOR_SHEET_NAME
             )
             vendor_writer.write_data(df_vendor)
+
+            # Kept in the sheet (uploads read it, and existing rows carry it), but out of sight.
+            hide_columns_by_header(output_path, "FacilityIngestionTemplate", [FACILITY_ID_HEADER])
 
             remove_default_empty_sheet(output_path)
             logger.info(f"Successfully created template file at {output_path}")
@@ -553,53 +571,7 @@ class FacilityTemplateService:
             logger.error(f"Error generating template file: {e}")
             raise
 
-    def get_all_vendor_codes(self, request_info : RequestInfo) -> List[Dict]:
-        """
-        Fetch all vendor codes from vendor service using the specified API format
-        Returns list of vendor records with code and name
-        """
-        url = f"{vendor_service_url}/vendor/organisation/v1/_search"
-
-        request_info_dict = request_info.model_dump(by_alias=True, exclude_none=True)
-
-        payload = {
-            "RequestInfo": request_info_dict,
-            "SearchCriteria": {
-                "tenantId": "in",
-                "createdFrom": 0
-            },
-            "Pagination": {
-                "limit": 10000,
-                "offset": 0
-            }
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return self._parse_vendor_response(response.json())
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching vendor codes: {str(e)}")
-            if hasattr(e, 'response') and e.response:
-                logger.error(f"Vendor service response: {e.response.text}")
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error fetching vendor codes: {str(e)}")
-            return []
-
-    def _parse_vendor_response(self, response_json: Dict) -> List[Dict]:
-        """Parse vendor API response into list of vendor records"""
-        vendors = []
-        if response_json and 'organisations' in response_json:
-            for vendor in response_json['organisations']:
-                vendors.append({
-                    "Vendor Id": vendor.get('id', ''),
-                    "Vendor Code": vendor.get('code', ''),
-                    "Vendor Name": vendor.get('name', ''),
-                    "Vendor Application Number": vendor.get('applicationNumber', ''),
-                })
-        return vendors
+    def get_vendor_organisations(self, request_info: RequestInfo) -> List[Dict]:
+        """The active vendor organisations for the template's vendor dropdown. Raises when the
+        vendor service can't be reached: a template with an empty dropdown is worse than none."""
+        return OrganizationServiceClient(vendor_service_url).fetch_vendor_organisations(request_info)

@@ -713,7 +713,7 @@ async def get_facility_ingestion_template(
                 template_boundaries = facility_service.get_all_boundaries(request_info)
                 if selected_codes is not None:
                     template_boundaries = select_boundaries_by_codes(template_boundaries, selected_codes)
-            vendor_data = facility_service.get_all_vendor_codes(request_info)
+            vendor_data = facility_service.get_vendor_organisations(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
             cleanup_temp_file(output_file_path)
