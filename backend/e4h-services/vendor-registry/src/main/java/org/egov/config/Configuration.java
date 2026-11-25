@@ -12,6 +12,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
+import java.util.List;
 import java.util.TimeZone;
 
 @Component
@@ -99,9 +100,6 @@ public class Configuration {
 
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;
-
-    @Value("${user.default.password}")
-    private String defaultUserPassword;
 
     @Value("${egov.fieldplan.activity.assignment.search.url}")
     private String fieldPlanActivitySearchUrl;
@@ -199,12 +197,35 @@ public class Configuration {
     @Value("${egov.location.hierarchy.type}")
     private String locationHierarchyType;
 
+    //Jurisdiction scope
+
+    /**
+     * Roles that administer org users without a jurisdiction restriction.
+     *
+     * Configuration rather than a constant because the set is a policy decision that an
+     * environment may need to change without a release - and because getting it wrong in either
+     * direction is visible immediately (a locked-out admin, or an unscoped one).
+     */
+    @Value("${vendor.jurisdiction.unscoped.roles:ORG_PLATFORM_ADMIN}")
+    private List<String> jurisdictionUnscopedRoles;
+
     //Notification
     @Value("${notification.sms.enabled}")
     private Boolean isSMSEnabled;
 
     @Value("${kafka.topics.notification.sms}")
     private String smsNotifTopic;
+
+    /** Login-details emails; im-services-analytics renders and sends them from this topic. */
+    @Value("${notification.credentials.enabled:true}")
+    private Boolean isCredentialsNotificationEnabled;
+
+    @Value("${kafka.topics.user.credentials.notification:user-credentials-notification}")
+    private String credentialsNotificationTopic;
+
+    //PoC change audit
+    @Value("${org.kafka.poc.change.audit.topic:save-org-poc-change-audit}")
+    private String pocChangeAuditTopic;
 
     //CBO url for message tenplate
     @Value("${works.cbo.url.host}")

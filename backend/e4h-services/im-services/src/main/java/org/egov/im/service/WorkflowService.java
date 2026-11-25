@@ -592,7 +592,7 @@ public class WorkflowService {
      */
     private boolean isPooledState(State state) {
         List<String> humanRoles = currentOwnerService.resolveOwningSystemRoles(state).stream()
-                .filter(role -> MACHINE_ROLES.stream().noneMatch(role::equalsIgnoreCase))
+                .filter(role -> imConfiguration.getMachineRoles().stream().noneMatch(role::equalsIgnoreCase))
                 .collect(Collectors.toList());
         return !humanRoles.isEmpty()
                 && humanRoles.stream().allMatch(role -> POOLED_ROLES.stream().anyMatch(role::equalsIgnoreCase));

@@ -58,6 +58,51 @@ public class ActivityFacilityRepository extends GenericRepository<ActivityFacili
         return activityFacilities;
     }
 
+    /**
+     * The same search, without the assigned-user scope.
+     *
+     * For internal re-reads only: fetching a row the service is about to update, or checking one
+     * exists. Those were never permission checks - workflow-v2 authorises the transition - so
+     * scoping them would turn a missing assignment row into "not found" on an action the caller
+     * is entitled to perform.
+     */
+    public List<ActivityFacility> getActivitiesFacilityUnscoped(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        List<Object> preparedStmtList = new ArrayList<>();
+        request.getCriteria().setCountQuery(false);
+        URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId)
+                .includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
+
+        String query = queryBuilder.getActivityFacilitySearchQuery(request, urlParams, preparedStmtList, false);
+        return jdbcTemplate.query(query, activityRowMapper, preparedStmtList.toArray());
+    }
+
+    /** Just enough of an activity facility to maintain its assigned-user rows. */
+    public record ActivityFacilityRef(String id, String tenantId) {
+    }
+
+    /**
+     * Activity facilities of one plan activity, unscoped and unenriched.
+     *
+     * Deliberately not {@code getActivitiesFacility}: that enriches every row and carries two
+     * jsonb blobs per facility, all of which the fan-out discards. And it is scoped, which for
+     * this caller would be actively wrong - the fan-out runs on behalf of the system, not the
+     * project manager who happened to trigger it.
+     */
+    public List<ActivityFacilityRef> findActivityFacilityRefsForFanout(String fieldPlanId, String activityId, String tenantId) {
+        StringBuilder query = new StringBuilder(
+                "SELECT id, tenant_id FROM facility_activities WHERE isdeleted = false AND field_plan_id = ? AND activity_id = ?");
+        List<Object> params = new ArrayList<>();
+        params.add(fieldPlanId);
+        params.add(activityId);
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND tenant_id like ?");
+            params.add(tenantId + "%");
+        }
+        return jdbcTemplate.query(query.toString(),
+                (rs, rowNum) -> new ActivityFacilityRef(rs.getString("id"), rs.getString("tenant_id")),
+                params.toArray());
+    }
+
     public Activity getActivityObject(ActivitySearchCriteria criteria) {
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getActivityDataList(criteria, preparedStmtList);

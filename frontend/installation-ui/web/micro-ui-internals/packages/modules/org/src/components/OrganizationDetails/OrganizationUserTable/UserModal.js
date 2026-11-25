@@ -12,7 +12,9 @@ const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType,
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "700px",
+          // The assignments table needs five columns, and "Applies To" holds role chips.
+          // At 700px the Actions cell fell outside the card and the pencil was unreachable.
+          width: "900px",
           maxWidth: "95%",
           borderRadius: "5px",
         }}

@@ -36,14 +36,16 @@ public class EscalationController {
      * API to auto escalate applications for given businessService which have breached SLA
      * @param requestInfoWrapper
      * @param businessService
+     * @param tenantId
      * @return
      */
     @RequestMapping(value="/auto/{businessService}/_escalate", method = RequestMethod.POST)
     public ResponseEntity<ResponseInfo> processTransition(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
-                                                                     @PathVariable(required = true) String businessService) {
-        log.info("Received escalation request for businessService: {}", businessService);
+                                                                     @PathVariable(required = true) String businessService,
+                                                                     @RequestParam(required = true) String tenantId) {
+        log.info("Received escalation request for businessService: {}, tenantId: {}", businessService, tenantId);
         try {
-            escalationService.escalateApplications(requestInfoWrapper.getRequestInfo(), businessService);
+            escalationService.escalateApplications(requestInfoWrapper.getRequestInfo(), businessService, tenantId);
             ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(requestInfoWrapper.getRequestInfo(), true);
             log.info("Successfully processed escalation request for businessService: {}", businessService);
             return new ResponseEntity<>(responseInfo, HttpStatus.OK);
@@ -57,14 +59,16 @@ public class EscalationController {
      * Temporary for testing
      * @param requestInfoWrapper
      * @param businessService
+     * @param tenantId
      * @return
      */
     @RequestMapping(value="/auto/{businessService}/_test", method = RequestMethod.POST)
     public ResponseEntity<List> processTransitionTest(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
-                                                          @PathVariable(required = true) String businessService) {
-        log.info("Received escalation test request for businessService: {}", businessService);
+                                                          @PathVariable(required = true) String businessService,
+                                                          @RequestParam(required = true) String tenantId) {
+        log.info("Received escalation test request for businessService: {}, tenantId: {}", businessService, tenantId);
         try {
-            List<String> ids = escalationService.escalateApplicationsTest(requestInfoWrapper.getRequestInfo(), businessService);
+            List<String> ids = escalationService.escalateApplicationsTest(requestInfoWrapper.getRequestInfo(), businessService, tenantId);
             ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(requestInfoWrapper.getRequestInfo(), true);
             log.info("Escalation test completed for businessService: {}, returning {} business ID(s)", businessService, ids != null ? ids.size() : 0);
             return new ResponseEntity<>(ids, HttpStatus.OK);

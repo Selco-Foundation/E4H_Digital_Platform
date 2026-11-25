@@ -92,6 +92,10 @@ import { usePrivacyContext } from "./usePrivacyContext";
 import useStaticData from "./useStaticData";
 import useBoundary from "./im/useBoundary";
 import useFacility from "./im/useFacility";
+import useJurisdictions from "./im/useJurisdictions";
+import useScopedBoundaries from "./im/useScopedBoundaries";
+import useMobileChangeRequests from "./im/useMobileChangeRequests";
+import useMobileChangeRequestActions from "./im/useMobileChangeRequestActions";
 import useMappedVendors from "./im/useMappedVendors";
 import useRMSPausedFacility from "./im/useRMSFacility";
 
@@ -165,6 +169,10 @@ const survey = {
 const im = {
   useBoundary,
   useFacility,
+  useJurisdictions,
+  useScopedBoundaries,
+  useMobileChangeRequests,
+  useMobileChangeRequestActions,
   useMappedVendors,
   useRMSPausedFacility,
 };

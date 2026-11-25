@@ -160,7 +160,9 @@ export const WorkflowService = {
 
   getByBusinessId: (stateCode, businessIds, params = {}, history = true) => {
     return Request({
-      url: Urls.WorkFlowProcessSearch,
+      // im-services, not workflow: it prunes the actions the caller cannot take where this ticket
+      // is. Same shapes either way - see Urls.IMProcessSearch.
+      url: Urls.IMProcessSearch,
       useCache: false,
       method: "POST",
       params: { tenantId: stateCode, isStateLevelCall: window.location.href.includes("complaint/details")?false :Digit.SessionStorage.get("Employee.tenantId") == "pg"?true :false,businessIds: businessIds, ...params, history },

@@ -57,7 +57,8 @@ public class OrganisationApiController {
                 orgRequest.getOrganisations() != null ? orgRequest.getOrganisations().size() : 0);
 
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
-        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations()).build();
+        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations())
+                .pocAdmins(orgRequest.getPocAdmins()).build();
 
         log.info("Create organisation request completed successfully");
         return new ResponseEntity<OrgResponse>(orgResponse, HttpStatus.OK);
@@ -67,10 +68,13 @@ public class OrganisationApiController {
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<OrgServiceResponse> orgServicesOrganisationV1SearchPOST(
             @ApiParam(value = "", allowableValues = "application/json") @RequestHeader(value = "Content-Type", required = false) String contentType,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "offset", required = false) Integer offset,
             @ApiParam(value = "") @Valid @RequestBody OrgSearchRequest body) {
         log.trace("OrganisationApiController::orgServicesOrganisationV1SearchPOST entry");
         log.info("Received search organisation request for tenant: {}",
                 body.getSearchCriteria() != null ? body.getSearchCriteria().getTenantId() : "unknown");
+        organisationService.applyUrlPagination(body, limit, offset);
 
         List<Organisation> organisations = organisationService.searchOrganisation(body);
         log.debug("Search returned {} organisations", organisations != null ? organisations.size() : 0);
@@ -98,7 +102,8 @@ public class OrganisationApiController {
                 orgRequest.getOrganisations() != null ? orgRequest.getOrganisations().size() : 0);
 
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
-        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations()).build();
+        OrgResponse orgResponse = OrgResponse.builder().responseInfo(responseInfo).organisations(orgRequest.getOrganisations())
+                .pocAdmins(orgRequest.getPocAdmins()).build();
 
         log.info("Update organisation request completed successfully");
         return new ResponseEntity<OrgResponse>(orgResponse, HttpStatus.OK);
@@ -115,6 +120,7 @@ public class OrganisationApiController {
                 .id(orgUserList.getId())
                 .organizationId(orgUserList.getOrganizationId())
                 .auditDetails(orgUserList.getAuditDetails())
+                .credentialsEmailSent(orgUserList.getCredentialsEmailSent())
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .build();
         log.info("Create organisation user request completed successfully");
@@ -132,7 +138,7 @@ public class OrganisationApiController {
                 request,
                 urlParams
         );
-        Integer count = userService.countOrganisationUsers(request);
+        Integer count = userService.countOrganisationUsers(request, urlParams);
         log.debug("Search returned {} organisation users", orgUserList != null ? orgUserList.size() : 0);
         OrgUserResponseSearch response = OrgUserResponseSearch.builder()
                 .orgUsers(orgUserList)
@@ -153,6 +159,7 @@ public class OrganisationApiController {
                 .id(orgUserList.getId())
                 .organizationId(orgUserList.getOrganizationId())
                 .auditDetails(orgUserList.getAuditDetails())
+                .credentialsEmailSent(orgUserList.getCredentialsEmailSent())
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);

@@ -43,6 +43,9 @@ import static org.egov.im.util.IMConstants.*;
 @Slf4j
 public class NotificationService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.egov.im.util.JurisdictionAuthorizer jurisdictionAuthorizer;
+
     private IMConfiguration config;
     private NotificationUtil notificationUtil;
     private WorkflowService workflowService;
@@ -789,16 +792,16 @@ public class NotificationService {
      */
     private StringBuilder buildHRMSSearchUrl(IncidentRequest request, String role, String boundaryCode) {
         String tenantId = request.getIncident().getTenantId();
-        boolean isStateJurisdictionRole = ROLE_COMPLAINT_FACILITATOR_1.equals(role) || ROLE_COMPLAINT_FACILITATOR_2.equals(role);
-        if (isStateJurisdictionRole && tenantId != null && tenantId.contains(".")) {
-            tenantId = tenantId.split("\\.")[0];
-        }
-        if (isStateJurisdictionRole) {
-            // State SPOC and Tech POC are registered at state jurisdiction "India_<State>"; scope the search to it.
-            boundaryCode = IMUtils.extractStateBoundaryCode(boundaryCode);
-        } else if (STATE_LEVEL_ROLES.contains(role)) {
-            // CRM is registered at state level; search across the whole tenant.
-            boundaryCode = null;
+        // Search the ticket's boundary and every boundary above it, for every role alike.
+        //
+        // This replaces two hacks that tried to guess where a role is registered: CRM searched the
+        // whole tenant (matching holders off to the side, not just above this ticket), and State
+        // SPOC / Tech POC had their boundary truncated to "India_<State>" by splitting the code on
+        // underscores. Both were wrong in each direction - any role may be held at any level, so a
+        // role not on the list silently found nobody, while a listed one found everybody.
+        String chain = jurisdictionAuthorizer.ancestorChainCsv(request.getRequestInfo(), boundaryCode, tenantId);
+        if (!chain.isEmpty()) {
+            boundaryCode = chain;
         }
         if (request.getWorkflow() != null && request.getWorkflow().getAssignes() != null)
             return hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, boundaryCode);

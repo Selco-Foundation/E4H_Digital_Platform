@@ -6,6 +6,28 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+SYSTEM_USER_ROLE = "SYSTEM_USER"
+
+
+def _as_system_request_info(request_info: Dict[str, Any]) -> Dict[str, Any]:
+    """Present the caller as this service rather than as the person who uploaded the sheet.
+
+    Facility search filters by the caller's HRMS jurisdiction. Ingestion looks facilities up by id
+    to build and validate templates, and reads a missing row as "not found" - so a scoped lookup
+    would report real facilities as missing. Identifying as a service keeps those lookups unscoped
+    and preserves today's behaviour exactly.
+    """
+    enriched = dict(request_info or {})
+    user_info = dict(enriched.get("userInfo") or {})
+    roles = list(user_info.get("roles") or [])
+    if not any((role or {}).get("code") == SYSTEM_USER_ROLE for role in roles):
+        roles.append({"code": SYSTEM_USER_ROLE, "name": "System User"})
+    user_info["roles"] = roles
+    user_info["type"] = "SYSTEM"
+    enriched["userInfo"] = user_info
+    return enriched
+
+
 class FacilityServiceClient:
     def __init__(self, facility_service_url: str):
         self.facility_service_url = facility_service_url
@@ -129,7 +151,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -148,7 +170,7 @@ class FacilityServiceClient:
           "Facility": {
             "tenantIds": [...],
             "facilityIds": [...],
-            "boundaryCodes": [...],
+            "block": [...],
             ...
           }
         }
@@ -158,7 +180,7 @@ class FacilityServiceClient:
             request_info=request_info,
             tenant_ids=tenant_ids,
             facility_ids=facility_ids,
-            boundary_codes=boundary_codes,
+            block_codes=block_codes,
             hfr_ids=hfr_ids,
             nin_ids=nin_ids,
             limit=limit,
@@ -173,7 +195,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -191,7 +213,7 @@ class FacilityServiceClient:
             request_info=request_info,
             tenant_ids=tenant_ids,
             facility_ids=facility_ids,
-            boundary_codes=boundary_codes,
+            block_codes=block_codes,
             hfr_ids=hfr_ids,
             nin_ids=nin_ids,
             limit=limit,
@@ -207,7 +229,7 @@ class FacilityServiceClient:
         request_info: Union[Dict[str, Any], Any],
         tenant_ids: Sequence[str],
         facility_ids: Optional[Sequence[str]] = None,
-        boundary_codes: Optional[Sequence[str]] = None,
+        block_codes: Optional[Sequence[str]] = None,
         hfr_ids: Optional[Sequence[str]] = None,
         nin_ids: Optional[Sequence[str]] = None,
         limit: int = 10000,
@@ -226,7 +248,11 @@ class FacilityServiceClient:
             request_info_payload = request_info or {}
 
         payload: Dict[str, Any] = {
-            "RequestInfo": request_info_payload,
+            # Known gap, recorded in docs/jurisdiction/NEXT_STEPS.md: because this is a service
+            # call, an uploader can still build a template covering facilities outside their own
+            # area. Closing that needs ingestion to decide which role the uploader is acting as,
+            # which is a product question rather than a technical one.
+            "RequestInfo": _as_system_request_info(request_info_payload),
             "Facility": {
                 "tenantIds": list(tenant_ids),
                 "facilityIds": list(facility_ids) if facility_ids else [],
@@ -238,10 +264,14 @@ class FacilityServiceClient:
                 "facilityPocEmails": [],
                 "facilityStatus": [],
                 "userIds": [],
-                "boundaryCodes": list(boundary_codes) if boundary_codes else [],
+                "boundaryCodes": [],
                 "state": [],
                 "district": [],
-                "block": [],
+                # These are block codes - flatten_boundaries only ever emits block nodes - so they
+                # go in `block`, which facility-service resolves through the hierarchy into the
+                # facilities beneath them. `boundaryCodes` is matched against facility.boundary_code
+                # directly, so a block code sent there would match nothing.
+                "block": list(block_codes) if block_codes else [],
                 "sendNonPaginatedResponse": send_non_paginated_response,
                 "limit": limit,
                 "offset": offset,
