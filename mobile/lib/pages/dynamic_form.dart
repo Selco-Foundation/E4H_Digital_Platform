@@ -496,6 +496,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                           final invalid = <String>[];
 
                           for (final k in propKeys) {
+                            if (isSkippedByFormEngine(pageSchema, k)) continue;
                             if (form.contains(k)) {
                               final c = form.control(k);
                               c.markAsTouched();
