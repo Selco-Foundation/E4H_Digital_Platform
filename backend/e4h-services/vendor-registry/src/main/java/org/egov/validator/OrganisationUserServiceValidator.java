@@ -248,8 +248,12 @@ public class OrganisationUserServiceValidator {
         // fall back to a country-wide grant.
         requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
 
-        // Get existing user with mobile number from hrms service
-        List<Employee> employee = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
+        // A phone match alone does not make this the same person: a deleted user's number can be
+        // given to someone new. Only an employee who also carries the submitted username is reused;
+        // otherwise a new user is created and nothing from the old account is carried over.
+        Employee reusable = findReusableEmployee(
+                hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber()), orgUser.getUserName());
+        List<Employee> employee = reusable == null ? null : List.of(reusable);
         if (employee != null && !employee.isEmpty()) {
             // Creating against an existing account sets its password, so the caller must
             // administer somewhere that user already works - the same rule as editing them.
@@ -395,6 +399,28 @@ public class OrganisationUserServiceValidator {
 
         facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
         return password;
+    }
+
+    /**
+     * The employee among those sharing the submitted mobile number whose username is the one
+     * submitted, or null. Several employees can share a number once one has been reused, so the
+     * username - unique in egov-user - is what identifies the person.
+     */
+    static Employee findReusableEmployee(List<Employee> phoneMatches, String submittedUserName) {
+        if (phoneMatches == null || phoneMatches.isEmpty() || StringUtils.isBlank(submittedUserName)) {
+            return null;
+        }
+        String wanted = submittedUserName.trim();
+        Employee match = phoneMatches.stream()
+                .filter(e -> e != null && e.getUser() != null && e.getUser().getUserName() != null)
+                .filter(e -> wanted.equalsIgnoreCase(e.getUser().getUserName().trim()))
+                .findFirst()
+                .orElse(null);
+        if (match == null) {
+            log.info("Mobile number matches {} existing employee(s) but none has the submitted username; creating a new user",
+                    phoneMatches.size());
+        }
+        return match;
     }
 
     /** Checks the roles a caller asked for against those MDMS allows for this org type. */
