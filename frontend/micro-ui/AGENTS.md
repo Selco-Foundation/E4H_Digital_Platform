@@ -89,9 +89,6 @@ src/
 - **Only the employee side is in use** (`defaultLanding="employee"`,
   `allowedUserTypes={["employee"]}`). `pages/citizen/` is **not used**.
   Don't change it, extend it, or copy patterns from it.
-- Watch out for very large files: `pages/employee/ComplaintDetails.js` is
-  about 1,300 lines and `components/inbox/Filter.js` about 650. Make
-  targeted edits; don't restructure them as part of an unrelated change.
 - Inbox, ticket and RMS views each have desktop and mobile versions
   (`DesktopInbox`/`MobileInbox`, `RMSPausedDesktop`/`RMSPausedMobile`). A
   change to one usually needs the same change in the other.
