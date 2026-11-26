@@ -118,20 +118,8 @@ remove later. Don't build an abstraction around it.
   payload and let the developer apply it through their normal process
   (workbench-ui). Ask which environment (dev/staging/prod) to look ids up
   against, because each has its own data.
-- **Adding a sidebar entry:** the sidebar is built from MDMS, not code.
-  - It needs one `ACCESSCONTROL-ACTIONS-TEST.actions-test` record for the
-    entry itself.
-  - It needs one `ACCESSCONTROL-ROLEACTIONS.roleactions` record per role that
-    should see it.
-  - The two masters have **independent id sequences**. Fetch each master once
-    with the public `POST <host>/egov-mdms-service/v1/_search`, take the max
-    `id`, and count up from there locally.
-  - Look role codes up in `Organisation.OrgRoles` and show the developer
-    code, name and description. Don't ask them to remember codes.
-  - For `leftIcon`, check the name is an export of the installed
-    `@egovernments/digit-ui-svg-components`. An unknown name renders a blank
-    icon and only logs a console warning.
-  - Rendering logic: `core/.../TopBarSideBar/SideBar/EmployeeSideBar.js`.
+- **Adding a sidebar entry:** the sidebar is built from MDMS, not code. Use
+  the `mdms-sidebar-entry` skill (`.claude/skills/mdms-sidebar-entry/`).
 
 ## Localization
 
@@ -189,38 +177,15 @@ Branches: `develop` (integration) → `staging` (UAT) → `main` (production).
 
 - **New work:** branch off `develop` as `feature/<short-desc>` or
   `fix/<short-desc>`, and open the PR against `develop`.
-  - Pass an explicit `--title` to `gh pr create`. Without one, the title is
-    the raw branch name.
   - Title: short, prefixed with the module or area, for example
     `QC: show rectification badge on worklist`.
   - Body: a `## Summary` section of plain bullet points. No test-plan
     section.
-- **Promoting to `staging`, then `main`:** after the PR is merged into
-  `develop`:
-  1. `git fetch origin`.
-  2. Check how it merged: `git show --no-patch --format="%H %P" <sha>`. One
-     parent means a squash merge (pick one commit). More than one means pick
-     the underlying commits.
-  3. `git checkout <target> && git pull origin <target>`. Always pick onto a
-     fresh pull, never a stale local branch.
-  4. Branch off the target, not `develop`, as `cherry-pick/<short-desc>`.
-  5. Run `GIT_EDITOR=true git cherry-pick <sha>...`. If a related PR (for
-     example a backend companion fix) is needed for the change to work, pick
-     it onto the same branch too. Ask if it's unclear which commits belong.
-  6. Build-check again, because a clean pick doesn't guarantee it builds on
-     the target.
-  7. Push, and open a PR against the target branch, never `develop`.
-  - Never retarget the original PR's branch at `staging` or `main`.
-  - Reuse the original PR's title and `## Summary` word for word, minus any
-    bot-appended sections (for example CodeRabbit's "Summary by
-    CodeRabbit"). If extra commits were picked, add a line saying what else
-    is included.
-- **Reviewer comments you won't apply:** reply in that comment's thread
-  (`gh api repos/<o>/<r>/pulls/<n>/comments/<id>/replies -X POST -f body=...`),
-  not with a new top-level comment.
-- If `gh pr edit` fails with the "Projects (classic) deprecation" GraphQL
-  error, use `gh api repos/<o>/<r>/pulls/<n> -X PATCH -f title=... -f body=...`
-  instead.
+- **Promoting to `staging`, then `main`:** cherry-pick onto a fresh branch off
+  the target, never retarget the original PR. Use the `promote-pr` skill
+  (`.claude/skills/promote-pr/`).
+- `gh` usage (reading PRs and CI, replying to review comments, the
+  `gh pr edit` workaround) is in the repo-wide `github` skill.
 
 ## Dependencies
 
