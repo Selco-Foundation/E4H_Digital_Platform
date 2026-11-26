@@ -51,7 +51,9 @@ async def append_documents(payload: DocumentAppendRequest):
             )
 
     try:
-        merged_pdf_bytes = append_documents_to_pdf(parent_bytes, document_bytes_list)
+        merged_pdf_bytes = append_documents_to_pdf(
+            parent_bytes, document_bytes_list, headings=[document.heading for document in payload.documents]
+        )
     except ValueError as e:
         logger.error(f"Invalid document content while merging: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))

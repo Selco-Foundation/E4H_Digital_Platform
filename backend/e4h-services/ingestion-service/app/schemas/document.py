@@ -20,6 +20,8 @@ class Document(BaseModel):
     additionalDetails: Optional[Any] = None
     status: Optional[str] = None
     auditDetails: Optional[AuditDetails] = None
+    # Optional title drawn at the top of this document's first appended page (e.g. "Warranty Card").
+    heading: Optional[str] = None
 
 
 class DocumentAppendRequest(BaseModel):

@@ -75,7 +75,7 @@ public class BomPdfService {
      * as BomService.APPENDABLE_DOCUMENT_TYPES, which matches on documentType with equals().
      */
     private static final List<String> APPENDABLE_DOCUMENT_TYPES = List.of(
-            "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
+            "ASSET_HANDOVER_DOCUMENT", "WARRANTY_CARD", "INSTALLATION_COMPLETION_CERTIFICATE"
     );
 
     /** facility_category value of Anganwadi facilities (any other category is a health facility). */
