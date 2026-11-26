@@ -115,6 +115,18 @@ export const BoundaryUtil = {
     }
 
     return boundaryTypes;
+  },
+
+  /**
+   * Whether the boundaries are exactly one facility - the only case in which a geography picker
+   * has a single right answer and should lock to it.
+   *
+   * This replaced comparing the selection with the user's state codes, which read "not the whole
+   * state" as "one facility": a district or block grant locked every picker and pre-filled nothing.
+   */
+  isSingleFacility: (boundaries) => {
+    const types = Object.keys(boundaries || {}).filter((key) => (boundaries[key] || []).length);
+    return types.length === 1 && types[0] === "facility" && boundaries.facility.length === 1;
   }
 
 }

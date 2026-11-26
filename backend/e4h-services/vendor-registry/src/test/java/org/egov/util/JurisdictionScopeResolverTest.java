@@ -264,4 +264,10 @@ class JurisdictionScopeResolverTest {
         org.mockito.Mockito.verify(hrmsUtils, org.mockito.Mockito.times(1)).getUserById(any(), anyString());
         org.mockito.Mockito.verifyNoMoreInteractions(hrmsUtils);
     }
+
+    @Test
+    void orgAdminIsScopedByOrganisationNotJurisdiction() {
+        // Left on this axis an ORG_ADMIN, who holds no VENDOR_ADMIN grants, would reach nobody.
+        assertTrue(resolver.resolve(caller("ORG_ADMIN")).unscoped());
+    }
 }

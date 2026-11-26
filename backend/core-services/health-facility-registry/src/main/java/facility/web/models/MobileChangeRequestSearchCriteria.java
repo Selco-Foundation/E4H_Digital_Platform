@@ -1,5 +1,6 @@
 package facility.web.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Filters for {@code _search}. A caller without the CRM role always gets only their own
@@ -39,4 +41,11 @@ public class MobileChangeRequestSearchCriteria {
 
     @JsonProperty("offset")
     private Integer offset;
+
+    /**
+     * Facility boundary codes the caller's CRM jurisdiction covers; null means no limit. Set by the
+     * service, never read from the request - a client must not be able to name its own scope.
+     */
+    @JsonIgnore
+    private Set<String> boundaryCodeCeiling;
 }

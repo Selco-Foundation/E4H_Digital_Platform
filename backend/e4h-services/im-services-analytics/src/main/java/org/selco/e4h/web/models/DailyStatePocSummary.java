@@ -15,7 +15,8 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class DailyStatePocSummary {
-    private String stateName;
+    /** What the recipient answers for: a state, or the districts and blocks they are posted to. */
+    private String jurisdictionName;
     private String asOfDate;
     private String recipientName;
     private String dashboardUrl;

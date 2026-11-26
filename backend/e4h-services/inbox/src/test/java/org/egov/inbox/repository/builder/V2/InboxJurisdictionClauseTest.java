@@ -401,4 +401,77 @@ class InboxJurisdictionClauseTest {
         Map<String, Object> bool = (Map<String, Object>) clauses.get(0).get("bool");
         assertTrue(bool.containsKey("must_not"), "expected a clause that matches nothing");
     }
+
+    @Test
+    void districtGrantIsMatchedOnTheTicketsDistrictCode() {
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(singleScope("COMPLAINT_ASSESSOR", at("district", "D1", "D2")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(), actsOnAnything("COMPLAINT_ASSESSOR"), false);
+
+        assertEquals(1, clauses.size());
+        Map<String, List<String>> terms = termsIn(clauses.get(0), new HashMap<>());
+        assertEquals(new HashSet<>(Arrays.asList("D1", "D2")),
+                new HashSet<>(terms.get("Data.incident.boundary.districtCode.keyword")));
+        assertFalse(terms.containsKey("Data.incident.boundary.stateCode.keyword"),
+                "a district holder must not be widened to the state");
+    }
+
+    @Test
+    void blockGrantIsMatchedOnTheTicketsBlockCode() {
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(singleScope("COMPLAINT_FACILITATOR_2", at("block", "B1")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>());
+
+        Map<String, List<String>> terms = termsIn(clauses.get(0), new HashMap<>());
+        assertEquals(Arrays.asList("B1"), terms.get("Data.incident.boundary.blockCode.keyword"));
+    }
+
+    @Test
+    void districtAndBlockGrantsOfOneRoleAreEitherOr() {
+        // One SPOC holding a district and a block in another district: a ticket in either is theirs.
+        Map<String, Set<String>> byLevel = at("district", "D1");
+        byLevel.put("block", new HashSet<>(Arrays.asList("B9")));
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(singleScope("COMPLAINT_FACILITATOR_1", byLevel));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>());
+
+        Map<String, List<String>> terms = termsIn(clauses.get(0), new HashMap<>());
+        assertEquals(Arrays.asList("D1"), terms.get("Data.incident.boundary.districtCode.keyword"));
+        assertEquals(Arrays.asList("B9"), terms.get("Data.incident.boundary.blockCode.keyword"));
+        // Levels sit under a should, so they union rather than intersect.
+        assertTrue(clauses.get(0).toString().contains("should"), "levels must be OR-ed, not AND-ed");
+    }
+
+    @Test
+    void stateCrmAndDistrictSpocKeepTheirOwnLevels() {
+        Map<String, Map<String, Set<String>>> scope = new LinkedHashMap<>();
+        scope.put("COMPLAINT_ASSESSOR", at("state", "S1"));
+        scope.put("COMPLAINT_FACILITATOR_1", at("district", "D1"));
+        when(roleJurisdictionScope.resolve(org.mockito.ArgumentMatchers.any())).thenReturn(scope);
+
+        Map<String, Set<String>> statuses = new LinkedHashMap<>();
+        statuses.put("COMPLAINT_ASSESSOR", new HashSet<>(Arrays.asList("PENDINGFORASSIGNMENT")));
+        statuses.put("COMPLAINT_FACILITATOR_1", new HashSet<>(Arrays.asList("PENDING_AT_SPOC")));
+
+        List<Map<String, Object>> clauses = build(new HashMap<>(), statuses, true,
+                "COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1");
+
+        List<Object> perRole = (List<Object>) ((Map<String, Object>) clauses.get(0).get("bool")).get("should");
+        assertEquals(2, perRole.size());
+        for (Object role : perRole) {
+            Map<String, List<String>> terms = termsIn(role, new HashMap<>());
+            List<String> statusesForRole = terms.get(STATUS_PATH);
+            if (statusesForRole.contains("PENDINGFORASSIGNMENT")) {
+                assertEquals(Arrays.asList("S1"), terms.get("Data.incident.boundary.stateCode.keyword"));
+                assertFalse(terms.containsKey("Data.incident.boundary.districtCode.keyword"));
+            } else {
+                assertEquals(Arrays.asList("PENDING_AT_SPOC"), statusesForRole);
+                assertEquals(Arrays.asList("D1"), terms.get("Data.incident.boundary.districtCode.keyword"));
+                assertFalse(terms.containsKey("Data.incident.boundary.stateCode.keyword"));
+            }
+        }
+    }
 }

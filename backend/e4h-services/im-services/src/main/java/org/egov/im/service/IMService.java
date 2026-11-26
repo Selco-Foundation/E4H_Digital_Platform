@@ -306,6 +306,17 @@ public class IMService {
         }
         log.trace("Enriching update request");
         enrichmentService.enrichUpdateRequest(request);
+        // Resolved before the transition, not after it: the indexer replaces the whole ticket document,
+        // so indexing without the boundary would strip Data.incident.boundary and drop the ticket out of
+        // every jurisdiction-scoped inbox. Better to refuse the update, as create does, than to commit a
+        // transition whose index write we already know is wrong.
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
+                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
+        );
+        if (boundary == null) {
+            log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
+            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
+        }
         String startingStatus = request.getIncident().getApplicationStatus();
         log.info("Updating workflow status for incident update");
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
@@ -363,10 +374,6 @@ public class IMService {
         log.trace("Publishing incident to update topic");
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
-        log.trace("Fetching boundary for indexing");
-        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
-                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
-        );
         log.trace("Enriching fields for indexing");
         enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
         log.trace("Updating business service");
@@ -584,6 +591,12 @@ public class IMService {
 		workflowService.enrichTotalSlaForResync(wrapper, currentProcessInstance);
 
 		Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(requestInfo, incident.getBoundaryCode(), tenantId);
+		if (boundary == null) {
+			// Publishing anyway would replace the indexed ticket with one that has no boundary - the
+			// opposite of what a reindex is for. Leave the current document in place.
+			log.error("Reindex skipped for incidentId={}: boundary data not found for code {}", incidentId, incident.getBoundaryCode());
+			throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + incident.getBoundaryCode());
+		}
 		log.trace("Enriching fields for indexing (reindex)");
 		enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
 

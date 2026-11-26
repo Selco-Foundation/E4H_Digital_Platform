@@ -99,7 +99,7 @@ public class NotificationService {
             Map<String, List<String>> finalMessage = getFinalMessage(request, topic, applicationStatus);
             String employeeMobileNumber = null;
             String citizenMobileNumber = null;
-            String crmMobileNumber = null;
+            List<String> crmMobileNumbers = Collections.emptyList();
             Boolean crmUser = false;
 
             if (isTicketCreationNotification(applicationStatus, action)) {
@@ -118,7 +118,7 @@ public class NotificationService {
                 ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
                 citizenMobileNumber = getAssignerMobile(processInstance);
 
-                crmMobileNumber = resolveCrmMobileForResolve(request, incidentWrapper);
+                crmMobileNumbers = resolveCrmMobilesForResolve(request, incidentWrapper);
             } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(IM_WF_REOPEN)) {
                 ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
                 if (processInstance.getAssigner() == null) {
@@ -179,7 +179,9 @@ public class NotificationService {
 
                             for (String msg : entry.getValue()) {
                                 List<SMSRequest> smsRequests = new ArrayList<>();
-                                smsRequests = enrichSmsRequest(crmMobileNumber, msg);
+                                for (String crmMobileNumber : crmMobileNumbers) {
+                                    smsRequests.addAll(enrichSmsRequest(crmMobileNumber, msg));
+                                }
                                 if (!CollectionUtils.isEmpty(smsRequests)) {
                                     notificationUtil.sendSMS(tenantId, smsRequests);
                                 }
@@ -737,7 +739,15 @@ public class NotificationService {
         return vendorDetails != null ? vendorDetails.get("employeeMobile") : null;
     }
 
-    private String resolveCrmMobileForResolve(IncidentRequest request, IncidentWrapper incidentWrapper) {
+    /**
+     * Who to tell, as CRM, that a ticket was resolved.
+     *
+     * <p>The CRM who assigned the ticket, when the history names one. Otherwise - an RMS ticket the
+     * system raised and assigned itself - every CRM with jurisdiction over the ticket: CRM is a pooled
+     * role, so no one of them owns it, and picking the first HRMS match would tell a CRM from any level
+     * above the ticket while the others never hear of it.
+     */
+    private List<String> resolveCrmMobilesForResolve(IncidentRequest request, IncidentWrapper incidentWrapper) {
         String tenantId = incidentWrapper.getIncident().getTenantId();
         String incidentId = incidentWrapper.getIncident().getIncidentId();
         RequestInfo requestInfo = request.getRequestInfo();
@@ -746,17 +756,16 @@ public class NotificationService {
             ProcessInstance crmAssign = getProcessInstanceByActionAndTargetStatus(
                     tenantId, incidentId, requestInfo, ASSIGN, RMS_DEVICE_PENDING_TECH_POC);
             if (crmAssign.getAssigner() != null && StringUtils.hasText(crmAssign.getAssigner().getMobileNumber())) {
-                return crmAssign.getAssigner().getMobileNumber();
+                return Collections.singletonList(crmAssign.getAssigner().getMobileNumber());
             }
-            Map<String, String> crmDetails = getHRMSEmployee(request, ROLE_COMPLAINT_ASSESSOR);
-            return crmDetails != null ? crmDetails.get("employeeMobile") : null;
+            return getHRMSEmployeeMobiles(request, ROLE_COMPLAINT_ASSESSOR);
         }
 
         ProcessInstance assignInstance = getEmployeeName(tenantId, incidentId, requestInfo, ASSIGN);
-        if (assignInstance.getAssigner() != null) {
-            return assignInstance.getAssigner().getMobileNumber();
+        if (assignInstance.getAssigner() != null && StringUtils.hasText(assignInstance.getAssigner().getMobileNumber())) {
+            return Collections.singletonList(assignInstance.getAssigner().getMobileNumber());
         }
-        return null;
+        return Collections.emptyList();
     }
 
     public String getDepartment(IncidentRequest request) {

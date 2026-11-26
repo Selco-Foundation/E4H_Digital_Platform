@@ -1,0 +1,280 @@
+# Agent instructions — E4H frontend
+
+Read this before changing anything under `frontend/`. It records conventions
+that aren't obvious from the code, so every agent (Claude or otherwise) and
+every developer stays consistent with what's already there.
+
+This file covers practices **shared by both apps**. Each app has its own file
+with app-specific details — read it as well:
+
+- `installation-ui/AGENTS.md` — Management Hub (`/e4hhub`): QC, PM, AMC, FA, ORG.
+- `micro-ui/AGENTS.md` — Incident Management (`im`) app.
+
+Where an app file contradicts this one, the app file wins for that app.
+
+## Stack (both apps)
+
+DIGIT/eGov micro-frontend monorepos: React 17, react-router-dom 5,
+react-query 3, react-hook-form 6, react-i18next, Redux (per-module reducers),
+Create React App (react-scripts 4), yarn workspaces. Feature code lives in
+`web/micro-ui-internals/packages/modules/<module>/src/`. Each module is its
+own package, built with `microbundle-crl` into `dist/`.
+
+There are **no unit tests and no working ESLint** in either app today. The
+only automated check is a successful module build — see
+[Verifying a change](#verifying-a-change).
+
+## Module boundaries
+
+- **Never import from another module's package.** `pm` must not import from
+  `qc`, and so on. The DIGIT convention here is that each module carries its
+  own copy of shared helpers (`CustomRequest.js`, `CommonUtils.js`,
+  `installationImages.js`, the Filestore/Boundary services). Follow it.
+- When the same new component or helper is needed in several modules, put an
+  **identical copy** in each, at the same path, with a first-line comment
+  naming the other copies ("Identical copies live in pm, qc and fa … keep them
+  in sync"). Check they are byte-identical (`md5sum`) before committing.
+- Before creating a component in a module, check whether that module already
+  has an identical one, and reuse it.
+- Shared runtime services come from the `Digit` global (`Digit.UserService`,
+  `Digit.ULBService`, `Digit.Hooks.useCustomMDMS`, `Digit.SessionStorage`,
+  `Digit.ComponentRegistryService`), not from imports between modules.
+
+## Data layer: services, hooks, utilities
+
+The current code is mixed: some services reshape responses and others return
+them raw. **New code** follows this split. Don't refactor existing code to
+match unless asked.
+
+- **`services/X.js`** exports one `XService` object with one async method per
+  endpoint. A method takes the criteria, makes one call through `Request`
+  (`@egovernments/digit-ui-libraries`), and returns the response as the
+  backend sent it. Don't call another service from inside a service.
+  `Request` injects `RequestInfo` itself, so don't build it by hand.
+- **`hooks/useX.js`** wraps `useQuery`. It builds the criteria, calls the
+  service, and maps the raw response into the shape the UI renders, using
+  mapper functions from `utilities/`. It returns
+  `{ isLoading, isFetching, isError, error, data, revalidate }`.
+  - Query key: `["CACHE_KEY", ...every param that should trigger a refetch]`.
+  - Two hooks that return different shapes get different cache keys, even if
+    they call the same endpoint.
+  - Gate a query with `enabled: !!requiredParam`, not with a check inside the
+    query function.
+- **`utilities/*.js`** holds pure functions only: no React, no network.
+  Response mappers, business rules (eligibility, status transitions), and
+  formatters belong here.
+- Upload, download and multipart (ingestion-service) calls go through the
+  module's `CustomRequest`, not `Request`. For `responseType: "blob"`, a
+  failed call's error body is also a Blob: read it with
+  `CommonUtils.getBlobApiErrorMessage` (where the module has it), not
+  `getApiErrorMessage`.
+- **Response envelopes differ between services** (`{FieldPlans: [...]}`,
+  `{plan: {...}}`, `{facility: [...], TotalCount}`, …). Confirm the real key
+  from a sample response or the API spec before writing the extraction. Don't
+  write a fallback chain like `res?.plan || res?.Plan || res?.assessmentPlan`.
+  If the shape really is unknown yet, read one key and leave a
+  `// TODO: confirm response envelope` comment.
+- Dates go to the backend as epoch millis (`new Date(v).getTime()`) and are
+  formatted for display with a local `formatDate` helper.
+
+## Backend not ready yet
+
+Make the change in one place, mark it as temporary, and make it easy to
+remove later. Don't build an abstraction around it.
+
+- **A whole endpoint is missing:** the service method returns static data
+  instead of calling `Request`, with a comment marking where the real call
+  goes. Switching to the real endpoint should be a change inside that one
+  method.
+- **A field is missing from a real response** (for example, a flag the
+  backend will add later): add a mock module, `utilities/<feature>Mock.js`,
+  and apply it to the response inside the one service method that returns
+  it. The mock must:
+  - have a header saying it is TEMPORARY and what to delete when the backend
+    is ready;
+  - be switchable off with one constant (`MOCK_<FEATURE> = true`);
+  - never overwrite a value the backend actually sent;
+  - be deterministic (derive the value from an id, not `Math.random()`), so
+    the same record looks the same on every screen.
+- **An MDMS master doesn't exist yet:** hardcode the options in
+  `constants/<name>.js`, not in a service. Once the master exists, switch to
+  the MDMS hook pattern below and delete the constant.
+
+## MDMS
+
+- **Reading a master:** use `Digit.Hooks.useCustomMDMS(tenantId, moduleName,
+  [{ name: masterName }], { select, enabled: !!tenantId })` in the component,
+  or the module's `useMDMS` hook where one exists. Map raw rows into the
+  shape you need in `select` or in a `utilities/` mapper.
+- **Rendering from an MDMS schema** (form schemas, BOM schemas, image
+  criteria): don't hardcode the field list. Match the record to its schema by
+  an explicit discriminator (for example `formType`), walk the schema
+  (`pages` → `properties`, sorted by `order`), and show only fields that
+  actually have data. Put the walking logic in `utilities/`.
+- **Resolve enum values** (`enums: [{code, name}]`) from code to name when
+  you read the data, not when you render it.
+- **Writing MDMS data** (new masters, sidebar entries, role actions): never
+  call `_create` or `_update` yourself. Generate a ready-to-paste `data`
+  payload and let the developer apply it through their normal process
+  (workbench-ui). Ask which environment (dev/staging/prod) to look ids up
+  against, because each has its own data.
+- **Adding a sidebar entry:** the sidebar is built from MDMS, not code.
+  - It needs one `ACCESSCONTROL-ACTIONS-TEST.actions-test` record for the
+    entry itself.
+  - It needs one `ACCESSCONTROL-ROLEACTIONS.roleactions` record per role that
+    should see it.
+  - The two masters have **independent id sequences**. Fetch each master once
+    with the public `POST <host>/egov-mdms-service/v1/_search`, take the max
+    `id`, and count up from there locally.
+  - Look role codes up in `Organisation.OrgRoles` and show the developer
+    code, name and description. Don't ask them to remember codes.
+  - For `leftIcon`, check the name is an export of the installed
+    `@egovernments/digit-ui-svg-components`. An unknown name renders a blank
+    icon and only logs a console warning.
+  - Rendering logic: `core/.../TopBarSideBar/SideBar/EmployeeSideBar.js`.
+
+## Localization
+
+Labels come from the localization service, in modules per app
+(`rainmaker-common`, `rainmaker-<module>`, `rainmaker-<tenant>`, …).
+
+- **Wrap every user-facing string in `t("KEY")`**, with one exception: bare
+  `label`, `heading` and `description` strings inside a `FormComposerV2` step
+  config. `FormComposerV2` translates those itself.
+- **Never pass raw data through `t()`**: dates, times, free text, numbers,
+  names. i18next's namespace separator is `:`, so `t("19:02")` returns
+  `"02"`. This has broken production rendering before.
+- **MDMS enum option names** (a finite, curated vocabulary) may go through
+  `t()`, but mark them at the point they're resolved (for example
+  `translateValue: true`) and branch on that flag when rendering. Free-text,
+  date and numeric MDMS fields never go through `t()`.
+- **Where a key lives:**
+  - A key used by more than one module goes in `rainmaker-common`. A module
+    loads only its own `rainmaker-<module>` bundle plus `rainmaker-common`,
+    so a shared key registered under one module won't resolve in another.
+  - Before adding a key, check whether an existing one already has the same
+    text, and reuse it if so.
+- **The code must match exactly.** A stray character in the localization
+  service (for example a trailing `.`) makes the UI show the raw key.
+  - If a key shows raw after it was "added", check the cached bundle first.
+    In the browser it is `localStorage["Digit.Locale.<locale>.<module>"]`;
+    search it for the code.
+  - Translations are cached in `localStorage` under `Digit.Locale.*`. After a
+    localization change, remove those keys (or clear site storage, which
+    logs the user out) and reload.
+
+### Personal localization tracking repo
+
+New keys are recorded in a small personal git repo outside this codebase. It
+is a staging record the developer later uploads from; it is not the
+localization service.
+
+- **Location:** read the path from `E4H_LOCALIZATION_REPO` (conventionally
+  `~/Selco/Localizations/E4H`). Check it is set and points at a git repo.
+  - If not, **stop and ask**. Don't create one silently.
+  - The agent's shell is non-interactive, so a variable exported in
+    `~/.bashrc` usually isn't visible to it. Use
+    `REPO="${E4H_LOCALIZATION_REPO:-<path confirmed with the developer>}"`.
+- **Layout:** `<repo>/<module>/<locale>.json` (for example
+  `rainmaker-common/en_IN.json`). Each file holds one JSON array of
+  `{code, message, module, locale}`, which is the localization service's
+  upload shape.
+- **Adding a key:**
+  - Search the **whole file** for the code first.
+  - If it exists with a different message, flag the conflict instead of
+    overwriting it.
+  - New entries go at the **top** of the array (newest first).
+- **Removing a key:** when a key becomes unused, remove its entry.
+- **Committing:** commit to the repo once per feature or session. It has no
+  remote.
+- **Never** write translations into files inside this project, and never
+  call the localization service API.
+
+## Git
+
+- Commit message: `type: short description`, using `feature:`, `fix:`,
+  `refactor:`, `simplify:`, `docs:` or `chore:` (lowercase, colon, space).
+- One logical change per commit. Split bundled fixes into separate commits,
+  even when they ship in one PR.
+- **No `Co-Authored-By` trailer** unless the developer asks for one.
+- Amend or force-push only when asked, and say first that a force-push will
+  be needed.
+- Before finalizing a feature, remove dead code **the feature itself
+  introduced** (superseded helpers, placeholder data, exports nothing calls).
+  Grep the whole repo for references before deleting. Don't clean up
+  unrelated existing code in the same diff.
+- Never commit `.idea/`, `.vscode/`, build output (`dist/`), or local notes.
+- Stage paths explicitly rather than `git add -A`. The working tree carries
+  untracked notes and IDE directories on purpose.
+
+## Pull requests and promotion
+
+Branches: `develop` (integration) → `staging` (UAT) → `main` (production).
+
+- **New work:** branch off `develop` as `feature/<short-desc>` or
+  `fix/<short-desc>`, and open the PR against `develop`.
+  - Pass an explicit `--title` to `gh pr create`. Without one, the title is
+    the raw branch name.
+  - Title: short, prefixed with the module or area, for example
+    `QC: show rectification badge on worklist`.
+  - Body: a `## Summary` section of plain bullet points. No test-plan
+    section and no attribution footer.
+- **Promoting to `staging`, then `main`:** after the PR is merged into
+  `develop`:
+  1. `git fetch origin`.
+  2. Check how it merged: `git show --no-patch --format="%H %P" <sha>`. One
+     parent means a squash merge (pick one commit). More than one means pick
+     the underlying commits.
+  3. `git checkout <target> && git pull origin <target>`. Always pick onto a
+     fresh pull, never a stale local branch.
+  4. Branch off the target, not `develop`, as `cherry-pick/<short-desc>`.
+  5. Run `GIT_EDITOR=true git cherry-pick <sha>...`. If a related PR (for
+     example a backend companion fix) is needed for the change to work, pick
+     it onto the same branch too. Ask if it's unclear which commits belong.
+  6. Build-check again, because a clean pick doesn't guarantee it builds on
+     the target.
+  7. Push, and open a PR against the target branch, never `develop`.
+  - Never retarget the original PR's branch at `staging` or `main`.
+  - Reuse the original PR's title and `## Summary` word for word, minus any
+    bot-appended sections (for example CodeRabbit's "Summary by
+    CodeRabbit"). If extra commits were picked, add a line saying what else
+    is included.
+- **Reviewer comments you won't apply:** reply in that comment's thread
+  (`gh api repos/<o>/<r>/pulls/<n>/comments/<id>/replies -X POST -f body=...`),
+  not with a new top-level comment.
+- If `gh pr edit` fails with the "Projects (classic) deprecation" GraphQL
+  error, use `gh api repos/<o>/<r>/pulls/<n> -X PATCH -f title=... -f body=...`
+  instead.
+
+## Dependencies
+
+- **Never add a third-party dependency without asking first**, npm or
+  otherwise. This holds even when another module already uses the package, and
+  even when it is small or dev-only.
+- Say what it is, what it buys, and what the alternative costs without it —
+  then wait. "Another module already has it" is not approval.
+- Prefer something already in the workspace. Each module is its own package, so
+  a new dependency tends to spread to the others that copy the same helper.
+
+## Verifying a change
+
+- **Build every module you touched** and fix any errors before reporting the
+  change as done. The build (Babel async transforms under `microbundle`) has
+  caught real bugs that review missed.
+- For UI changes, **run the app and look at the screen** you changed. A
+  successful build doesn't show layout problems. App-specific run steps are
+  in each app's `AGENTS.md`.
+- Say what you verified and what you didn't. For example: "built pm/qc/fa;
+  checked the QC worklist in the browser; PM screens not viewed".
+- Prefer checking a claim against something real — the actual file, the
+  running app, a real API response — over reasoning about what the code
+  should do.
+
+## Safety with shared systems
+
+- Never write to shared environments yourself: MDMS, localization,
+  workflow configs, or the dev/UAT databases. Prepare the payload and hand
+  it to the developer.
+- Never type credentials into login forms, and never accept Terms or
+  Privacy checkboxes on the developer's behalf. Ask the developer to sign
+  in.

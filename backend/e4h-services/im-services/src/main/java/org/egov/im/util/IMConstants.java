@@ -316,12 +316,14 @@ public class IMConstants {
 
     /**
      * Roles whose work is pooled rather than owned: a ticket waiting on one of them is left with no
-     * assignee, exactly as a freshly raised ticket waiting on CRM is, so that every holder of the role
-     * with jurisdiction over the ticket's boundary sees it and can act on it.
+     * assignee, so that every holder of the role with jurisdiction over the ticket's boundary sees it
+     * and can act on it, and every one of them is sent the SMS for it. A holder may be posted at state,
+     * district or block level, so several of them can cover the same ticket.
      *
      * @see org.egov.im.service.WorkflowService#clearAssigneesForPooledState
      */
     public static final List<String> POOLED_ROLES = Collections.unmodifiableList(Arrays.asList(
+            ROLE_COMPLAINT_ASSESSOR,        // CRM - kept in step with the inbox's POOLED_ROLES
             ROLE_COMPLAINT_FACILITATOR_1,   // State SPOC
             ROLE_COMPLAINT_FACILITATOR_2)); // Tech POC
 

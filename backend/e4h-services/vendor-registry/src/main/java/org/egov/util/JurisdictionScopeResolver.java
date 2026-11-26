@@ -152,6 +152,14 @@ public class JurisdictionScopeResolver {
             return Scope.everything();
         }
 
+        // ORG_ADMIN is bound to one organisation, not to jurisdictions, and holds no VENDOR_ADMIN
+        // grants - left here it would resolve to "nobody". Its restriction is the organisation,
+        // enforced by OrgAdminScopeResolver in the services; this axis does not apply to it.
+        if (OrgAdminScopeResolver.isOrgAdmin(requestInfo)) {
+            log.debug("Caller is an ORG_ADMIN; scoped by organisation rather than jurisdiction");
+            return Scope.everything();
+        }
+
         String callerUuid = requestInfo.getUserInfo().getUuid();
         if (StringUtils.isBlank(callerUuid)) {
             throw new CustomException("INVALID_USER", "User UUID is required to administer organisation users");

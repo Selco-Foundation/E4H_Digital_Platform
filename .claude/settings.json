@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh label list:*)"
+    ],
+    "ask": [
+      "Bash(gh issue create:*)",
+      "Bash(gh issue comment:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(gh issue close:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh api:*)"
+    ],
+    "deny": [
+      "Bash(gh pr merge:*)",
+      "Bash(gh issue delete:*)",
+      "Bash(gh repo delete:*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.g.dart)",
+      "Read(**/*.freezed.dart)",
+      "Read(**/*.gr.dart)",
+      "Read(**/*.mapper.dart)",
+      "Read(**/node_modules/**)",
+      "Read(**/dist/**)",
+      "Read(**/target/**)",
+      "Read(**/yarn.lock)",
+      "Read(**/pubspec.lock)"
+    ]
+  }
+}
