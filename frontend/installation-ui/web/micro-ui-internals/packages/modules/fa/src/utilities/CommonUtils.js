@@ -42,7 +42,25 @@ const getApiErrorMessage = (e) => {
     : (e?.message ? e.message : "");
 };
 
+// Requests made with `responseType: "blob"` (ingestion-service downloads) get their error body
+// back as a Blob too, so it has to be read out first. ingestion-service answers in FastAPI's
+// `{detail}` shape; the services behind it in eGov's `{Errors: [{message}]}`.
+const getBlobApiErrorMessage = async (e) => {
+  const data = e?.response?.data;
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      if (typeof parsed?.detail === "string" && parsed.detail) return parsed.detail;
+      return getApiErrorMessage({ ...e, response: { ...e.response, data: parsed } });
+    } catch (parseError) {
+      console.error("Error parsing blob error response", parseError);
+    }
+  }
+  return getApiErrorMessage(e);
+};
+
 export default {
   isNotEqual,
   getApiErrorMessage,
+  getBlobApiErrorMessage,
 }

@@ -3,16 +3,9 @@ import { Loader, Table, Toast } from "@egovernments/digit-ui-react-components";
 import Filter from "../../components/FacilityTable/Filter";
 import Search from "../../components/FacilityTable/Search";
 import CustomDownloadIcon from "../../components/Custom/CustomDownloadIcon";
-import { FacilityService } from "../../services/Facility";
+import { IngestionService } from "../../services/Ingestion";
 import CommonUtils from "../../utilities/CommonUtils";
-import {
-  buildFacilitySearchCriteria,
-  facilityCsvColumns,
-  namesByCode,
-  searchTextOf,
-  toCsv,
-  toFacilityRow,
-} from "../../utilities/FacilityList";
+import { facilityExportFilters, namesByCode, searchTextOf } from "../../utilities/FacilityList";
 import { useHistory, useLocation } from "react-router-dom";
 import FacilityAdminActions from "../../components/FacilityTable/FacilityAdminActions";
 import useFacility from "../../hooks/useFacility";
@@ -136,28 +129,15 @@ const FacilityTable = () => {
     });
   };
 
-  // Every facility the user can see that matches the current search and filters, not just this page.
+  // Every facility the user can see that matches the current search and filters, not just this
+  // page, as an .xlsx built by the ingestion service.
   const handleDownload = async () => {
     setUpdatingWorkflow(true);
     try {
-      const response = await FacilityService.fetchFacilities({
-        ...buildFacilitySearchCriteria(projectQueryFilter, tenantId),
-        sendNonPaginatedResponse: true,
-      });
-      const rows = (response?.facilities || []).map(toFacilityRow);
-      const csv = toCsv(facilityCsvColumns(t, categoryNames, typeNames), rows);
-      // The BOM makes Excel read the file as UTF-8, so non-Latin names survive.
-      const url = window.URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `facilities_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      await IngestionService.exportFacilities(facilityExportFilters(projectQueryFilter, tenantId));
     } catch (error) {
       console.error("Error downloading facilities", error);
-      setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("FA_FACILITY_DOWNLOAD_FAILED") });
+      setToast({ key: "error", label: (await CommonUtils.getBlobApiErrorMessage(error)) || t("FA_FACILITY_DOWNLOAD_FAILED") });
     } finally {
       setUpdatingWorkflow(false);
     }

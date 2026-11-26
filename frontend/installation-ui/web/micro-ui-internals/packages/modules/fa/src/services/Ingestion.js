@@ -1,4 +1,5 @@
 import { CustomRequest } from "../components/Custom/CustomRequest";
+import { MODULE_ROLE } from "../constants/Roles";
 
 const getHeader = (headers, key) => {
   if (!headers) return "";
@@ -239,6 +240,31 @@ export const IngestionService = {
         data.append("request_info", JSON.stringify(RequestInfo));
       },
       defaultFilename: "download.xlsx",
+    });
+  },
+
+  /** View Facilities' Download: every facility the user can see that matches `filters`
+   *  (`searchText`, `state`, `district`, `block`, `boundaryCodes`), saved as an .xlsx. The
+   *  ingestion service searches as this user and this role, so the file holds what the list does. */
+  exportFacilities: async (filters) => {
+    const endpoint = "/ingestion-service/export/facilities";
+    const data = new FormData();
+    data.append("filters", JSON.stringify(filters || {}));
+
+    await CustomRequest({
+      url: endpoint,
+      userService: true,
+      data,
+      method: "POST",
+      auth: true,
+      attachAuthHeaders: true,
+      headers: { "x-acting-role": MODULE_ROLE },
+      fileDownload: true,
+      responseType: "blob",
+      attachRequestInfo: (data, RequestInfo) => {
+        data.append("request_info", JSON.stringify(RequestInfo));
+      },
+      defaultFilename: "facilities.xlsx",
     });
   },
 
