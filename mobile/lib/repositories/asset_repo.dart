@@ -12,6 +12,7 @@ import '../data/nosql/cache_asset_handover_document.dart';
 import '../data/nosql/cache_installation_completion_certificate.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
+import '../data/nosql/cache_warranty_card.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
@@ -376,9 +377,17 @@ class AssetRepository {
         for (var document in oldAssetHandoverDocuments) {
           await isar.cacheAssetHandoverDocuments.delete(document.id);
         }
+        final oldWarrantyCards = await isar.cacheWarrantyCards
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .findAll();
+        for (var document in oldWarrantyCards) {
+          await isar.cacheWarrantyCards.delete(document.id);
+        }
 
         var installationCompletionCertificateIndex = 0;
         var assetHandoverDocumentIndex = 0;
+        var warrantyCardIndex = 0;
         for (var doc in activityFacility.workflow?.documents ?? []) {
           final docType = doc.documentType ?? '';
           if (docType.contains('INSTALLATION_IMAGE')) {
@@ -429,6 +438,23 @@ class AssetRepository {
                 latitude: doc.geoLocation?.latitude?.toString() ?? '',
                 longitude: doc.geoLocation?.longitude?.toString() ?? '',
                 index: assetHandoverDocumentIndex++,
+              ),
+            );
+          } else if (docType == warrantyCardDocumentType) {
+            final fileStore = doc.fileStore ?? '';
+            if (fileStore.isEmpty) continue;
+            final fileType = warrantyCardFileTypeFromDocument(doc);
+            await isar.cacheWarrantyCards.put(
+              CacheWarrantyCard(
+                activityFacilityId: activityFacilityId,
+                userType: userType,
+                entryId: '$activityFacilityId::$fileStore',
+                filePath: fileStore,
+                fileName: fileStore,
+                fileType: fileType,
+                latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                index: warrantyCardIndex++,
               ),
             );
           } else if (docType != 'ASSET' &&

@@ -225,6 +225,21 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
         const SizedBox(height: spacer4),
         if (visible.isNotEmpty)
           DigitButton(
+            label: context.translate(i18.bomButtons.warrantyCard),
+            onPressed: () => context.router.push(
+              WarrantyCardRoute(
+                origin: widget.origin,
+                activityFacilityId: widget.projectId,
+              ),
+            ),
+            capitalizeLetters: false,
+            mainAxisSize: MainAxisSize.max,
+            type: DigitButtonType.secondary,
+            size: DigitButtonSize.large,
+          ),
+        const SizedBox(height: spacer4),
+        if (visible.isNotEmpty)
+          DigitButton(
             label: "Installation Images",
             onPressed: () => context.router.push(
               InstallationImagesRoute(

@@ -18,6 +18,7 @@ import '../pages/amc_report_home.dart';
 import '../pages/amc_select_facility.dart';
 import '../pages/asset_count.dart';
 import '../pages/asset_handover_document.dart';
+import '../pages/warranty_card.dart';
 import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
 import '../pages/assessment_draft.dart';
@@ -164,7 +165,8 @@ class AppRouter extends _$AppRouter {
               path: Routes.installationCompletionCertificate),
           AutoRoute(
               page: AssetHandoverDocumentRoute.page,
-              path: Routes.assetHandoverDocument)
+              path: Routes.assetHandoverDocument),
+          AutoRoute(page: WarrantyCardRoute.page, path: Routes.warrantyCard)
         ])
       ];
 }

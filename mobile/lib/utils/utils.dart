@@ -823,6 +823,8 @@ String inferFileTypeFromName(String name) {
 const String installationCompletionCertificateDocumentUidPrefix =
     'INSTALLATION-COMPLETION-CERTIFICATE-';
 const String assetHandoverDocumentUidPrefix = 'ASSET-HANDOVER-DOCUMENT-';
+const String warrantyCardDocumentType = 'WARRANTY_CARD';
+const String warrantyCardUidPrefix = 'WARRANTY-CARD-';
 
 String extensionOfFileName(String value) {
   final idx = value.lastIndexOf('.');
@@ -840,6 +842,9 @@ String normalizeCertificateFileType(String value) {
 }
 
 String normalizeHandoverDocumentFileType(String value) =>
+    normalizeCertificateFileType(value);
+
+String normalizeWarrantyCardFileType(String value) =>
     normalizeCertificateFileType(value);
 
 String fileTypeFromDocumentUid(
@@ -876,6 +881,13 @@ String assetHandoverDocumentFileTypeFromDocument(Document doc) {
   return fileTypeFromDocumentUid(
     doc,
     documentUidPrefix: assetHandoverDocumentUidPrefix,
+  );
+}
+
+String warrantyCardFileTypeFromDocument(Document doc) {
+  return fileTypeFromDocumentUid(
+    doc,
+    documentUidPrefix: warrantyCardUidPrefix,
   );
 }
 

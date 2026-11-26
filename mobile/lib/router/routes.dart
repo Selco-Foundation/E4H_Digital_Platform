@@ -47,4 +47,5 @@ class Routes {
   static const installationCompletionCertificate =
       'installation-completion-certificate';
   static const assetHandoverDocument = 'asset-handover-document';
+  static const warrantyCard = 'warranty-card';
 }

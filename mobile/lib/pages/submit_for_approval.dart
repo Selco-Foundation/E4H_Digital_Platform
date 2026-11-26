@@ -31,6 +31,7 @@ import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/asset_handover_document_repo.dart';
 import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
+import '../repositories/warranty_card_repo.dart';
 import '../router/app_router.dart';
 import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
@@ -314,6 +315,17 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     );
   }
 
+  Future<bool> _hasWarrantyCard() async {
+    if (activityFacilityId.isEmpty) return false;
+
+    final repo = WarrantyCardRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
   void _showInstallationImagesRequiredPopup() {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
@@ -575,6 +587,19 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               if (missingDocumentMessage != null) {
                                 _showRequiredDocumentPopup(
                                   missingDocumentMessage,
+                                );
+                                return;
+                              }
+                              if (!_isRectification &&
+                                  !await _hasWarrantyCard()) {
+                                if (!mounted) return;
+                                _showRequiredDocumentPopup(
+                                  MissingRequiredDocumentMessage(
+                                    titleKey: i18
+                                        .submitForApproval.requiredWarrantyCard,
+                                    messageKey: i18.submitForApproval
+                                        .uploadRequiredWarrantyCard,
+                                  ),
                                 );
                                 return;
                               }
