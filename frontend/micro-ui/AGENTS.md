@@ -107,14 +107,6 @@ src/
   are hardcoded in several places. When adding a role- or status-dependent
   behaviour, find every one of them.
 
-## Localization (app specifics)
-
-- `im` loads `rainmaker-im` (from `moduleCode "IM"`), plus `rainmaker-common`
-  and `rainmaker-<state>`. Keys used only in `im` go in `rainmaker-im`.
-- Existing key prefixes: `CS_` (most UI copy), `ES_`, `RMS_`, `WF_`
-  (workflow actions/states), `INCIDENT_`, `SERVICEDEFS_`. Match the prefix
-  of neighbouring keys.
-
 ## Running locally
 
 Follow the shared steps in `../AGENTS.md`. Specific to this app (not yet run

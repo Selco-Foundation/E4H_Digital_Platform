@@ -136,24 +136,9 @@ Labels come from the localization service, in modules per app
   `t()`, but mark them at the point they're resolved (for example
   `translateValue: true`) and branch on that flag when rendering. Free-text,
   date and numeric MDMS fields never go through `t()`.
-- **Where a key lives:**
-  - A key used by more than one module goes in `rainmaker-common`. A module
-    loads only its own `rainmaker-<module>` bundle plus `rainmaker-common`,
-    so a shared key registered under one module won't resolve in another.
-  - Before adding a key, check whether an existing one already has the same
-    text, and reuse it if so.
-- **The code must match exactly.** A stray character in the localization
-  service (for example a trailing `.`) makes the UI show the raw key.
-  - If a key shows raw after it was "added", check the cached bundle first.
-    In the browser it is `localStorage["Digit.Locale.<locale>.<module>"]`;
-    search it for the code.
-  - Translations are cached in `localStorage` under `Digit.Locale.*`. After a
-    localization change, remove those keys (or clear site storage, which
-    logs the user out) and reload.
-
-- **New keys:** list every new key with its English message in your summary.
-  Never write translations into files inside this project, and never call the
-  localization service API.
+- **Adding, reusing or debugging keys** (which bundle, key prefixes, a key
+  showing raw): use the `localization-keys` skill
+  (`.claude/skills/localization-keys/`).
 
 ## Git
 
