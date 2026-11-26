@@ -166,9 +166,6 @@ Add error handling only at real boundaries: API calls and user input.
   that read a flag should accept both shapes.
 - **QC actions:** the action bar renders only at `SUBMITTED_BY_SUPERVISOR`.
   Approve sends `APPROVE`; Reject sends `REJECT_AND_ASSIGN_FOR_FIELD_QC`.
-- **Background docs:** repo-root `INSTALLATION_FLOW.md` and
-  `INSTALLATION_FLOW_REFERENCE.md` (when present) describe the whole flow:
-  tables, endpoints, state machine and MDMS masters.
 
 ## Running locally
 
