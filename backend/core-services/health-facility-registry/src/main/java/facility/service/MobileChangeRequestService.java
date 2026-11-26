@@ -3,9 +3,11 @@ package facility.service;
 import facility.repository.MobileChangeRequestRepository;
 import facility.util.HRMSUtils;
 import facility.util.PocPhoneCipher;
+import facility.util.RoleScopeResolver;
 import facility.web.models.AuditDetails;
 import facility.web.models.Employee;
 import facility.web.models.EmployeeRequest;
+import facility.web.models.FacilityScope;
 import facility.web.models.Jurisdiction;
 import facility.web.models.MobileChangeRequest;
 import facility.web.models.MobileChangeRequestActionRequest;
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -35,8 +38,9 @@ import static facility.config.ServiceConstants.ROLE_COMPLAINT_ASSESSOR;
  * Registered-mobile-number change requests raised by facility POC users and decided by the CRM.
  *
  * <p>The POC user is the HRMS employee holding a {@code Facility} jurisdiction on the facility's
- * boundary code. The CRM is any {@code COMPLAINT_ASSESSOR}: the role is state level with no
- * facility mapping, so every CRM in the tenant sees the whole queue.
+ * boundary code. The CRM is a {@code COMPLAINT_ASSESSOR}, who may be posted at country, state,
+ * district or block level, and sees and decides only the requests for facilities beneath their own
+ * CRM jurisdictions.
  *
  * <p>Nothing changes for the user until approval. Approval then writes the new number to that
  * user's HRMS/egov-user record and to the POC phone of that one facility. The facility copy has to
@@ -59,6 +63,7 @@ public class MobileChangeRequestService {
     private final MobileChangeRequestRepository repository;
     private final HRMSUtils hrmsUtils;
     private final PocPhoneCipher pocPhoneCipher;
+    private final RoleScopeResolver roleScopeResolver;
 
     public MobileChangeRequest create(MobileChangeRequestCreateRequest request) {
         RequestInfo requestInfo = request.getRequestInfo();
@@ -128,6 +133,7 @@ public class MobileChangeRequestService {
     public MobileChangeRequest reject(MobileChangeRequestActionRequest request) {
         String crmUuid = requireCrm(request.getRequestInfo());
         MobileChangeRequest existing = requirePending(request.getId());
+        requireWithinCrmJurisdiction(request.getRequestInfo(), existing);
         return close(existing, MobileChangeRequestStatus.REJECTED, request.getComment(), crmUuid);
     }
 
@@ -141,6 +147,7 @@ public class MobileChangeRequestService {
         RequestInfo requestInfo = request.getRequestInfo();
         String crmUuid = requireCrm(requestInfo);
         MobileChangeRequest existing = requirePending(request.getId());
+        requireWithinCrmJurisdiction(requestInfo, existing);
         MobileChangeRequest approved = close(existing, MobileChangeRequestStatus.APPROVED, request.getComment(), crmUuid);
 
         long now = approved.getActionTime();
@@ -169,16 +176,20 @@ public class MobileChangeRequestService {
     }
 
     /**
-     * The CRM sees every request (the approval queue is {@code status=[PENDING]}); anyone else sees
-     * only their own, which is how the profile page shows the current or last request's status.
+     * The CRM sees the requests for facilities within their CRM jurisdiction (the approval queue is
+     * {@code status=[PENDING]}); anyone else sees only their own, which is how the profile page shows
+     * the current or last request's status.
      */
     public MobileChangeRequestResponse search(MobileChangeRequestSearchRequest request) {
         RequestInfo requestInfo = request.getRequestInfo();
         String userUuid = requireUserUuid(requestInfo);
         MobileChangeRequestSearchCriteria criteria = request.getCriteria() != null
                 ? request.getCriteria() : new MobileChangeRequestSearchCriteria();
-        if (!hasRole(requestInfo, ROLE_COMPLAINT_ASSESSOR)) {
+        if (hasRole(requestInfo, ROLE_COMPLAINT_ASSESSOR)) {
+            criteria.setBoundaryCodeCeiling(crmCeiling(requestInfo));
+        } else {
             criteria.setUserUuid(userUuid);
+            criteria.setBoundaryCodeCeiling(null);
         }
 
         int limit = criteria.getLimit() == null || criteria.getLimit() <= 0 ? DEFAULT_LIMIT : Math.min(criteria.getLimit(), MAX_LIMIT);
@@ -262,6 +273,32 @@ public class MobileChangeRequestService {
             throw new CustomException("NOT_AUTHORIZED", "Only a CRM can approve or reject a mobile number change request");
         }
         return uuid;
+    }
+
+    /**
+     * The facility boundary codes beneath the caller's CRM jurisdictions, or null for no limit (a
+     * system caller). A grant scoped to other roles does not count. Fails closed: if HRMS or the
+     * boundary service cannot answer, the CRM covers nothing rather than everything.
+     */
+    private Set<String> crmCeiling(RequestInfo requestInfo) {
+        FacilityScope scope = roleScopeResolver.resolveEnforced(requestInfo, ROLE_COMPLAINT_ASSESSOR);
+        if (scope.isApplied()) {
+            return scope.ceiling();
+        }
+        if (scope.isDeny()) {
+            log.warn("CRM jurisdiction could not be resolved ({}); the CRM sees no mobile change requests",
+                    scope.decision());
+            return Set.of();
+        }
+        return null;
+    }
+
+    private void requireWithinCrmJurisdiction(RequestInfo requestInfo, MobileChangeRequest existing) {
+        Set<String> ceiling = crmCeiling(requestInfo);
+        if (ceiling != null && !ceiling.contains(existing.getBoundaryCode())) {
+            throw new CustomException("NOT_AUTHORIZED",
+                    "This mobile number change request is for a facility outside your jurisdiction");
+        }
     }
 
     private static String requireUserUuid(RequestInfo requestInfo) {

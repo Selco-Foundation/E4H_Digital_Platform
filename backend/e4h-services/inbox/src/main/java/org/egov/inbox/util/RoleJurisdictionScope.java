@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,15 +47,25 @@ public class RoleJurisdictionScope {
     @Autowired
     private HRMSUtil hrmsUtil;
 
-    /** Boundary type as HRMS stores it, to the criteria name the inbox config uses. */
+    /**
+     * Boundary type, lower-cased, to the criteria name the inbox config uses.
+     *
+     * Matched without case: HRMS stores whatever the client sent, and a grant written as "district"
+     * instead of "District" was silently dropped - which for a holder with only that grant is an
+     * empty inbox, with nothing but a warning in the log to say why.
+     */
     private static final Map<String, String> BOUNDARY_TYPE_TO_CRITERIA = new HashMap<>();
 
     static {
-        BOUNDARY_TYPE_TO_CRITERIA.put("Country", "country");
-        BOUNDARY_TYPE_TO_CRITERIA.put("State", "state");
-        BOUNDARY_TYPE_TO_CRITERIA.put("District", "district");
-        BOUNDARY_TYPE_TO_CRITERIA.put("Block", "block");
-        BOUNDARY_TYPE_TO_CRITERIA.put("Facility", "facility");
+        BOUNDARY_TYPE_TO_CRITERIA.put("country", "country");
+        BOUNDARY_TYPE_TO_CRITERIA.put("state", "state");
+        BOUNDARY_TYPE_TO_CRITERIA.put("district", "district");
+        BOUNDARY_TYPE_TO_CRITERIA.put("block", "block");
+        BOUNDARY_TYPE_TO_CRITERIA.put("facility", "facility");
+    }
+
+    static String criteriaLevelOf(String boundaryType) {
+        return boundaryType == null ? null : BOUNDARY_TYPE_TO_CRITERIA.get(boundaryType.trim().toLowerCase(Locale.ROOT));
     }
 
     /**
@@ -81,7 +92,7 @@ public class RoleJurisdictionScope {
 
         Map<String, Map<String, Set<String>>> scopeByRole = new LinkedHashMap<>();
         for (HRMSUtil.JurisdictionGrant grant : grants) {
-            String level = BOUNDARY_TYPE_TO_CRITERIA.get(grant.getBoundaryType());
+            String level = criteriaLevelOf(grant.getBoundaryType());
             if (level == null) {
                 log.warn("Jurisdiction at {} has an unmapped boundaryType {}; ignoring it",
                         grant.getBoundary(), grant.getBoundaryType());

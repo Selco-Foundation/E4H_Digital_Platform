@@ -26,6 +26,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.util.EscalationTemplateType;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.util.EscalationScope;
 import org.selco.e4h.util.EscalationTicketUtil;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
@@ -245,6 +246,16 @@ public class EscalationController {
 
     /**
      * Process daily State SPOC escalation using the new template (new vs previously open sections).
+     *
+     * <p>Runs state by state, as before, and each state's breaches are fetched once. What changed is
+     * who is emailed and with what: a SPOC may be posted at state, district or block level, so the
+     * recipients are every holder of the role whose own jurisdictions fall in the state, and each one
+     * gets only the tickets inside those jurisdictions. A state-level SPOC sees what they always saw.
+     *
+     * <p>The breaches are marked as escalated once per state, after every email for it has gone out,
+     * and only those that at least one recipient was sent. Marking before the emails let the first
+     * recipient's run move a ticket out of "new" for everyone after it; marking a ticket nobody covers
+     * would report it as "previously open" to a SPOC who never saw it new.
      */
     private void processDailyStatePocEscalation(RequestInfo requestInfo,
                                                 EscalationRecipient escalationRecipient,
@@ -258,14 +269,28 @@ public class EscalationController {
             return;
         }
 
+        // "state" here is the granularity of the run - one pass, one breach query per state - not
+        // the level recipients must be posted at; that now comes from each recipient's jurisdictions.
         if (!"state".equals(escalationRecipient.getBoundaryLevel())) {
-            log.warn("Daily State SPOC template is only supported at state boundary level, recipient: {}", escalationId);
+            log.warn("Daily State SPOC template runs per state and needs boundaryLevel=state, recipient: {}", escalationId);
             return;
         }
 
         items.sort((a, b) -> levelOrder(a.getEscalationLevel()) - levelOrder(b.getEscalationLevel()));
         EscalationRoleEscalationItem escalationItem = items.get(0);
         Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
+
+        // Once for the whole run: every holder of the role, with the jurisdictions they hold it in.
+        Map<Employee, List<EscalationScope>> scopesByRecipient = new LinkedHashMap<>();
+        for (Employee employee : userService.searchEmployeesByRole(requestInfo, List.of(recipientRoleName))) {
+            List<EscalationScope> scopes = EscalationScope.forRole(employee, recipientRoleName);
+            if (scopes.isEmpty()) {
+                log.warn("{} holder {} has no active area-level jurisdiction for the role; not emailed",
+                        recipientRoleName, employee.getUser().getName());
+                continue;
+            }
+            scopesByRecipient.put(employee, scopes);
+        }
 
         for (String tenantId : activeTenantIds) {
             String state = activeTenantIdsName.get(tenantId);
@@ -274,11 +299,16 @@ public class EscalationController {
             }
 
             try {
-                List<String> roleCodes = List.of(recipientRoleName);
-                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
+                Map<Employee, List<EscalationScope>> recipientsInState = new LinkedHashMap<>();
+                scopesByRecipient.forEach((employee, scopes) -> {
+                    List<EscalationScope> inState = scopes.stream().filter(scope -> scope.liesIn(state)).toList();
+                    if (!inState.isEmpty()) {
+                        recipientsInState.put(employee, inState);
+                    }
+                });
 
-                if (users.isEmpty()) {
-                    log.warn("No State SPOC users found for state: {} tenant: {}", state, tenantId);
+                if (recipientsInState.isEmpty()) {
+                    log.warn("No SPOC users found for state: {} tenant: {}", state, tenantId);
                     escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
                     continue;
                 }
@@ -289,54 +319,96 @@ public class EscalationController {
                         escalationId,
                         escalationItem.getEscalationLevel(),
                         requestInfo);
-
-                List<EscalationTicket> allTicketsForCsv = new ArrayList<>(newBreaches);
                 List<EscalationTicket> previouslyOpen = slaBreachService.findPreviouslyEscalatedStillOpenTickets(
                         state,
                         escalationItem.getWorkflowStates(),
                         escalationId,
                         escalationItem.getEscalationLevel(),
                         requestInfo);
-                allTicketsForCsv.addAll(previouslyOpen);
 
-                byte[] csvContent = csvGenerationService.generateEscalationWorkbook(allTicketsForCsv);
-                String stateName = commonUtility.getStateDisplayName(state);
-                String csvFileName = csvGenerationService.generateCsvFileName(
-                        "daily", escalationItem.getEscalationLevel(), stateName);
-                String csvFileStoreId = uploadWorkbookToFileStore(csvContent, csvFileName, "in", requestInfo);
+                // Recipients with the same scopes share one workbook.
+                Map<Set<EscalationScope>, String[]> workbookByScopes = new HashMap<>();
+                Map<String, EscalationTicket> sentAsNew = new LinkedHashMap<>();
 
-                String downloadUrl = buildDownloadUrl(csvFileStoreId);
-
-                if (!newBreaches.isEmpty()) {
-                    elasticsearchEscalationService.updateEscalationsForTickets(
-                            newBreaches, escalationId, escalationItem.getEscalationLevel());
-                }
-
-                for (User user : users) {
+                for (Map.Entry<Employee, List<EscalationScope>> entry : recipientsInState.entrySet()) {
+                    User user = entry.getKey().getUser();
+                    List<EscalationScope> scopes = entry.getValue();
                     if (user.getEmailId() == null || user.getEmailId().isBlank()) {
-                        log.warn("State SPOC user {} has no email, skipping", user.getName());
+                        log.warn("SPOC user {} has no email, skipping", user.getName());
                         continue;
                     }
 
+                    List<EscalationTicket> recipientNew = newBreaches.stream()
+                            .filter(ticket -> EscalationScope.anyCovers(scopes, ticket)).toList();
+                    List<EscalationTicket> recipientPrevious = previouslyOpen.stream()
+                            .filter(ticket -> EscalationScope.anyCovers(scopes, ticket)).toList();
+                    String jurisdictionName = jurisdictionName(state, scopes, newBreaches, previouslyOpen);
+
+                    String[] workbook = workbookByScopes.get(new LinkedHashSet<>(scopes));
+                    if (workbook == null) {
+                        List<EscalationTicket> allTicketsForCsv = new ArrayList<>(recipientNew);
+                        allTicketsForCsv.addAll(recipientPrevious);
+                        byte[] csvContent = csvGenerationService.generateEscalationWorkbook(allTicketsForCsv);
+                        String csvFileName = csvGenerationService.generateCsvFileName(
+                                "daily", escalationItem.getEscalationLevel(), jurisdictionName);
+                        String csvFileStoreId = uploadWorkbookToFileStore(csvContent, csvFileName, "in", requestInfo);
+                        workbook = new String[]{csvFileStoreId, csvFileName};
+                        workbookByScopes.put(new LinkedHashSet<>(scopes), workbook);
+                    }
+                    String csvFileStoreId = workbook[0];
+                    String csvFileName = workbook[1];
+
                     DailyStatePocSummary summary = dailyStatePocSummaryBuilder.buildSummary(
-                            state, user.getName(), escalationItem, escalationId, requestInfo);
+                            jurisdictionName, user.getName(), recipientNew, recipientPrevious);
                     String emailSubject = dailyStatePocEmailService.generateEmailSubject(summary);
-                    String emailBody = dailyStatePocEmailService.generateEmailHtml(summary, downloadUrl);
+                    String emailBody = dailyStatePocEmailService.generateEmailHtml(summary, buildDownloadUrl(csvFileStoreId));
 
                     List<String> csvFileStoreIds = csvFileStoreId != null ? List.of(csvFileStoreId) : new ArrayList<>();
                     List<String> csvFileNames = csvFileStoreId != null ? List.of(csvFileName) : new ArrayList<>();
                     sendEmailViaKafka(user, emailSubject, emailBody, csvFileStoreIds, csvFileNames, tenantId);
+                    recipientNew.forEach(ticket -> sentAsNew.putIfAbsent(ticket.getId(), ticket));
+                }
+
+                if (!sentAsNew.isEmpty()) {
+                    elasticsearchEscalationService.updateEscalationsForTickets(
+                            new ArrayList<>(sentAsNew.values()), escalationId, escalationItem.getEscalationLevel());
                 }
 
                 escalationStatusService.publishSuccessStatus("daily", escalationId, tenantId, recipientRoleName);
-                log.info("Completed daily State SPOC escalation for state: {} with {} new and {} previously open tickets",
-                        state, newBreaches.size(), previouslyOpen.size());
+                log.info("Completed daily SPOC escalation for state: {} with {} recipient(s), {} new ({} marked) and {} previously open tickets",
+                        state, recipientsInState.size(), newBreaches.size(), sentAsNew.size(), previouslyOpen.size());
 
             } catch (Exception e) {
                 log.error("Error processing daily State SPOC escalation for tenant: {}", tenantId, e);
                 escalationStatusService.publishFailureStatus("daily", escalationId, tenantId, recipientRoleName, e.getMessage());
             }
         }
+    }
+
+    /**
+     * What a recipient answers for within {@code state}, for the subject, body and file name: the state
+     * name for a state- or country-level holder, otherwise the names of their districts and blocks.
+     * Names come from the tickets, which carry them localised; a scope with no ticket today falls back
+     * to the last part of its code.
+     */
+    private String jurisdictionName(String state, List<EscalationScope> scopes,
+                                    List<EscalationTicket> newBreaches, List<EscalationTicket> previouslyOpen) {
+        if (scopes.stream().anyMatch(scope -> scope.getLevel() == EscalationScope.Level.COUNTRY
+                || scope.getLevel() == EscalationScope.Level.STATE)) {
+            return commonUtility.getStateDisplayName(state);
+        }
+        List<String> names = new ArrayList<>();
+        for (EscalationScope scope : scopes) {
+            boolean district = scope.getLevel() == EscalationScope.Level.DISTRICT;
+            String name = java.util.stream.Stream.concat(newBreaches.stream(), previouslyOpen.stream())
+                    .filter(scope::covers)
+                    .map(ticket -> district ? ticket.getDistrict() : ticket.getBlock())
+                    .filter(value -> value != null && !value.isBlank())
+                    .findFirst()
+                    .orElseGet(() -> EscalationTicketUtil.resolveBoundaryNameOrFlag(scope.getCode()));
+            names.add(name + (district ? " District" : " Block"));
+        }
+        return String.join(", ", names) + ", " + commonUtility.getStateDisplayName(state);
     }
 
     /**

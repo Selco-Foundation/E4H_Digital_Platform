@@ -238,7 +238,7 @@ public class QueryBuilderUtil {
      * An empty collection gives {@code {}}, which matches nothing - which is the correct reading of
      * a ceiling that resolved to nothing, and needs no special case at the call site.
      */
-    static String toPgTextArrayLiteral(Collection<String> values) {
+    public static String toPgTextArrayLiteral(Collection<String> values) {
         StringBuilder literal = new StringBuilder("{");
         boolean first = true;
         if (values != null) {

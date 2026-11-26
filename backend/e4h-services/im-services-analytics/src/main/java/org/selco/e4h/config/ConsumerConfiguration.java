@@ -71,6 +71,9 @@ public class ConsumerConfiguration {
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
 
+    @Value("${egov.hrms.v2.search.url:/egov-hrms/v2/employees/_search}")
+    private String hrmsV2SearchUrl;
+
     @Value("${egov.filestore.host}")
     private String fileStoreHost;
 

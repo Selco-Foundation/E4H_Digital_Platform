@@ -68,6 +68,8 @@ export const CreateComplaint = ({ parentUrl }) => {
    */
   const complainantBoundaries = Digit.Hooks.im.useScopedBoundaries(jurisdictionCurrentBoundary, ["COMPLAINANT"]);
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(complainantBoundaries);
+  // Lock the geography pickers only when there is exactly one facility to lock them to.
+  const isLockedToFacility = Digit.Utils.BoundaryUtil.isSingleFacility(complainantBoundaries);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [isInstallationTicket, setIsInstallationTicket] = useState(false);
@@ -249,7 +251,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(async () => {
     if (
-      selectBoundaryCode && stateBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode)
+      isLockedToFacility
       && districtMenu?.length && blockOptions?.length && facilityOptions?.length
     ) {
       const selectedHealthCentre = facilityOptions.find((facility) => facility?.code === selectBoundaryCode)
@@ -276,7 +278,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         }
       }
     }
-  }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
+  }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, isLockedToFacility]);
 
   useEffect(() => {
     if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
@@ -658,7 +660,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
+              disable={isLockedToFacility}
               required={true}
             />
           ),
@@ -676,7 +678,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
+              disable={isLockedToFacility}
               required={true}
             />
           ),
@@ -694,7 +696,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={!!(selectBoundaryCode && !Digit.Utils.BoundaryUtil.sameBoundarySelection(selectBoundaryCode, stateBoundaryCode))}
+              disable={isLockedToFacility}
               required={true}
             />
           ),

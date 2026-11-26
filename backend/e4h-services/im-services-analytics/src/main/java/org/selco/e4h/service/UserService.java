@@ -69,6 +69,40 @@ public class UserService {
         }
     }
 
+    /**
+     * Active holders of the role anywhere, with their jurisdictions and the roles on each.
+     * <p>
+     * For a recipient whose scope is their own jurisdiction rather than a fixed state: a boundary
+     * search cannot find them, because HRMS widens {@code boundaryCodes} to ancestors only, so asking
+     * for a state never returns someone posted to a district or block inside it.
+     *
+     * @return empty when HRMS returns nobody or cannot be reached
+     */
+    public List<Employee> searchEmployeesByRole(RequestInfo requestInfo, List<String> roleCodes) {
+        log.info("Searching employees with jurisdictions for roles: {}", roleCodes);
+        try {
+            SLARequest request = SLARequest.builder()
+                    .requestInfo(requestInfo)
+                    .build();
+            String url = consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsV2SearchUrl()
+                    + "?tenantId=in&limit=1000&offset=0&isActive=true&roles=" + String.join(",", roleCodes);
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+            EmployeeResponse employeeResponse = objectMapper.convertValue(response, EmployeeResponse.class);
+            if (employeeResponse == null || employeeResponse.getEmployees() == null) {
+                log.warn("No employees found with roles: {}", roleCodes);
+                return new ArrayList<>();
+            }
+            List<Employee> employees = employeeResponse.getEmployees().stream()
+                    .filter(employee -> employee.getUser() != null)
+                    .toList();
+            log.info("Found {} employees with roles: {}", employees.size(), roleCodes);
+            return employees;
+        } catch (Exception e) {
+            log.error("Error searching employees with roles: {}", roleCodes, e);
+            return new ArrayList<>();
+        }
+    }
+
     public List<User> searchUsersByRoleAndBoundaryCode(RequestInfo requestInfo, String boundaryCode, List<String> roleCodes) {
         try {
             SLARequest request = SLARequest.builder()

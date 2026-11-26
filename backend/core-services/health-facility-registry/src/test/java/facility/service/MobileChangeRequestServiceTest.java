@@ -3,9 +3,11 @@ package facility.service;
 import facility.repository.MobileChangeRequestRepository;
 import facility.util.HRMSUtils;
 import facility.util.PocPhoneCipher;
+import facility.util.RoleScopeResolver;
 import facility.web.models.AuditDetails;
 import facility.web.models.Employee;
 import facility.web.models.EmployeeRequest;
+import facility.web.models.FacilityScope;
 import facility.web.models.Jurisdiction;
 import facility.web.models.MobileChangeRequest;
 import facility.web.models.MobileChangeRequestActionRequest;
@@ -29,6 +31,7 @@ import org.springframework.dao.DuplicateKeyException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -56,6 +59,8 @@ class MobileChangeRequestServiceTest {
     private HRMSUtils hrmsUtils;
     @Mock
     private PocPhoneCipher pocPhoneCipher;
+    @Mock
+    private RoleScopeResolver roleScopeResolver;
 
     @InjectMocks
     private MobileChangeRequestService service;
@@ -65,6 +70,9 @@ class MobileChangeRequestServiceTest {
         // Identity "cipher" with a marker so tests can tell stored values from plaintext.
         lenient().when(pocPhoneCipher.encrypt(anyString())).thenAnswer(i -> "enc:" + i.getArgument(0));
         lenient().when(pocPhoneCipher.decrypt(anyString())).thenAnswer(i -> ((String) i.getArgument(0)).replace("enc:", ""));
+        // The CRM covers the facility the pending request is for.
+        lenient().when(roleScopeResolver.resolveEnforced(any(), eq("COMPLAINT_ASSESSOR")))
+                .thenReturn(FacilityScope.scoped("COMPLAINT_ASSESSOR", Set.of("BLK_F1"), "District:D1(1)"));
     }
 
     @Test
@@ -236,8 +244,50 @@ class MobileChangeRequestServiceTest {
                 .requestInfo(requestInfo(CRM_UUID, "COMPLAINT_ASSESSOR")).criteria(criteria).build());
 
         assertEquals(null, criteria.getUserUuid());
+        assertEquals(Set.of("BLK_F1"), criteria.getBoundaryCodeCeiling());
         assertEquals(1, response.getTotalCount());
         assertEquals(NEW, response.getMobileChangeRequests().get(0).getNewMobileNumber());
+    }
+
+    @Test
+    void decisionOutsideCrmJurisdictionIsRefused() {
+        when(roleScopeResolver.resolveEnforced(any(), eq("COMPLAINT_ASSESSOR")))
+                .thenReturn(FacilityScope.scoped("COMPLAINT_ASSESSOR", Set.of("OTHER_F9"), "Block:B9(1)"));
+        when(repository.findById("r1")).thenReturn(pending());
+
+        CustomException e = assertThrows(CustomException.class,
+                () -> service.approve(action(requestInfo(CRM_UUID, "COMPLAINT_ASSESSOR"), "r1")));
+        assertEquals("NOT_AUTHORIZED", e.getCode());
+        e = assertThrows(CustomException.class,
+                () -> service.reject(action(requestInfo(CRM_UUID, "COMPLAINT_ASSESSOR"), "r1")));
+        assertEquals("NOT_AUTHORIZED", e.getCode());
+        verify(repository, never()).closePending(anyString(), any(), any(), anyString(), anyLong());
+    }
+
+    @Test
+    void searchByCrmWhoseJurisdictionCannotBeResolvedSeesNothing() {
+        when(roleScopeResolver.resolveEnforced(any(), eq("COMPLAINT_ASSESSOR")))
+                .thenReturn(FacilityScope.deny(FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE, "COMPLAINT_ASSESSOR"));
+        MobileChangeRequestSearchCriteria criteria = new MobileChangeRequestSearchCriteria();
+        when(repository.search(any(), anyInt(), anyInt())).thenReturn(new ArrayList<>());
+
+        service.search(MobileChangeRequestSearchRequest.builder()
+                .requestInfo(requestInfo(CRM_UUID, "COMPLAINT_ASSESSOR")).criteria(criteria).build());
+
+        assertEquals(Set.of(), criteria.getBoundaryCodeCeiling());
+    }
+
+    @Test
+    void searchByNonCrmIgnoresAnyCeiling() {
+        MobileChangeRequestSearchCriteria criteria = new MobileChangeRequestSearchCriteria();
+        criteria.setBoundaryCodeCeiling(Set.of("X"));
+        when(repository.search(any(), anyInt(), anyInt())).thenReturn(new ArrayList<>());
+
+        service.search(MobileChangeRequestSearchRequest.builder()
+                .requestInfo(requestInfo(USER_UUID, "COMPLAINANT")).criteria(criteria).build());
+
+        assertEquals(null, criteria.getBoundaryCodeCeiling());
+        verify(roleScopeResolver, never()).resolveEnforced(any(), anyString());
     }
 
     private static MobileChangeRequestCreateRequest createRequest(String newMobile) {
@@ -273,7 +323,7 @@ class MobileChangeRequestServiceTest {
 
     private static MobileChangeRequest pending() {
         return MobileChangeRequest.builder()
-                .id("r1").tenantId("in").userUuid(USER_UUID).facilityId("F1")
+                .id("r1").tenantId("in").userUuid(USER_UUID).facilityId("F1").boundaryCode("BLK_F1")
                 .currentMobileNumber("enc:" + CURRENT).newMobileNumber("enc:" + NEW)
                 .status(MobileChangeRequestStatus.PENDING)
                 .auditDetails(AuditDetails.builder().createdBy(USER_UUID).createdDate(1L).build())

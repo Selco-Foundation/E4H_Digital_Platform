@@ -24,7 +24,7 @@ public class DailyStatePocEmailService {
 
     public String generateEmailSubject(DailyStatePocSummary summary) {
         return String.format("[Action Required] SLA Breach Alert - %s | %s",
-                summary.getStateName(), summary.getAsOfDate());
+                summary.getJurisdictionName(), summary.getAsOfDate());
     }
 
     public String generateEmailHtml(DailyStatePocSummary summary, String downloadUrl) {
@@ -32,7 +32,7 @@ public class DailyStatePocEmailService {
             String template = loadTemplate();
             Map<String, String> variables = new HashMap<>();
             variables.put("NAME", commonUtility.escapeHtml(summary.getRecipientName()));
-            variables.put("STATE_NAME", commonUtility.escapeHtml(summary.getStateName()));
+            variables.put("JURISDICTION_NAME", commonUtility.escapeHtml(summary.getJurisdictionName()));
             variables.put("AS_OF_DATE", commonUtility.escapeHtml(summary.getAsOfDate()));
             variables.put("NEW_CRM_SECTION", EscalationEmailTemplateHelper.renderActorTable(commonUtility,
                     summary.getNewCrmBreaches(), false, "#b83227", "#f97316", "CRM Name", "Count of Tickets Breached"));
@@ -48,8 +48,8 @@ public class DailyStatePocEmailService {
             variables.put("SAURA_LOGO", commonUtility.getSauraLogoUrl());
             return replaceTemplateVariables(template, variables);
         } catch (Exception e) {
-            log.error("Failed to generate daily State SPOC email HTML", e);
-            return "<html><body><p>Daily State SPOC escalation email could not be generated.</p></body></html>";
+            log.error("Failed to generate daily SPOC email HTML", e);
+            return "<html><body><p>Daily SPOC escalation email could not be generated.</p></body></html>";
         }
     }
 
