@@ -146,6 +146,21 @@ class FacilityServiceClient:
             logger.error(f"An error occurred: {req_err}")
             raise req_err
 
+    def search_as_caller(self, request_info_payload: Dict[str, Any], acting_role: Optional[str],
+                         criteria: Dict[str, Any], timeout: int = 300) -> requests.Response:
+        """POST /_bulk-search as the person asking, not as this service.
+
+        Sends their RequestInfo unchanged and their `x-acting-role`, so facility-service scopes the
+        result to that role's jurisdiction - the same rows they see on View Facilities. Returns
+        the raw response, so the caller can pass facility-service's own error back.
+        """
+        url = f"{self.facility_service_url}/facility-service/v2/facility/_bulk-search"
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if acting_role:
+            headers["x-acting-role"] = acting_role
+        payload = {"RequestInfo": request_info_payload or {}, "Facility": criteria}
+        return requests.post(url, headers=headers, json=payload, timeout=timeout)
+
     def bulk_search_facility(
         self,
         request_info: Union[Dict[str, Any], Any],
