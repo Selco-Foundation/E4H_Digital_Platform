@@ -95,19 +95,6 @@ src/
   are hardcoded in several places. When adding a role- or status-dependent
   behaviour, find every one of them.
 
-## Running locally
-
-Follow the shared steps in `../AGENTS.md`. Specific to this app (not yet run
-in an agent session; check them the first time):
-
-- `REACT_APP_GLOBAL` points at a global config file that is currently shared
-  across environments. It may be split per environment later, so read the
-  context path and tenant from it rather than hardcoding them. The context
-  path is `digit-ui` in the UAT config.
-- Packages to rebuild: `libraries`, `react-components`, `modules/im` and/or
-  `modules/core`. Watch scripts: `yarn dev:libraries`, `dev:components`,
-  `dev:im`, `dev:core`.
-
 ## PWA
 
 The deployed app (`web/`) registers `public/pwa-assets/service-worker.js`

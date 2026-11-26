@@ -146,14 +146,3 @@ Add error handling only at real boundaries: API calls and user input.
   that read a flag should accept both shapes.
 - **QC actions:** the action bar renders only at `SUBMITTED_BY_SUPERVISOR`.
   Approve sends `APPROVE`; Reject sends `REJECT_AND_ASSIGN_FOR_FIELD_QC`.
-
-## Running locally
-
-Follow the shared steps in `../AGENTS.md`. Specific to this app:
-
-- Packages to rebuild are the modules under `packages/modules/`. The root
-  `yarn start` builds them all, then watches them in both formats.
-- A login crash with "Element type is invalid … check the render method of
-  `FieldV1`" means `core`'s modern bundle is stale.
-- Open `http://localhost:3000/e4hhub/employee`. `/` redirects to
-  `/digit-ui`, which redirects to the login page.
