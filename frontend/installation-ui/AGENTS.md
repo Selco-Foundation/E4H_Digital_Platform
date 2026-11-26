@@ -101,21 +101,11 @@ Use existing DIGIT components before writing your own:
 
 ## Mutation shape
 
-```js
-const handleAction = async () => {
-  setActionLoading(true);
-  try {
-    await SomeService.doThing(...);
-    await revalidate();
-    setToast({ key: "success", label: t("…") });
-  } catch (error) {
-    console.error("Error doing thing", error);
-    setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("…") });
-  } finally {
-    setActionLoading(false);
-  }
-};
-```
+An action handler sets `actionLoading`, then in `try` calls the service,
+awaits `revalidate()` and shows a success `Toast`. In `catch` it logs with
+`console.error` and shows an error `Toast` with
+`CommonUtils.getApiErrorMessage(error) || t("…")`. In `finally` it clears
+`actionLoading`.
 
 Add error handling only at real boundaries: API calls and user input.
 
@@ -166,46 +156,14 @@ Add error handling only at real boundaries: API calls and user input.
   that read a flag should accept both shapes.
 - **QC actions:** the action bar renders only at `SUBMITTED_BY_SUPERVISOR`.
   Approve sends `APPROVE`; Reject sends `REJECT_AND_ASSIGN_FOR_FIELD_QC`.
-- **Background docs:** repo-root `INSTALLATION_FLOW.md` and
-  `INSTALLATION_FLOW_REFERENCE.md` (when present) describe the whole flow:
-  tables, endpoints, state machine and MDMS masters.
 
 ## Running locally
 
-Run commands from `web/micro-ui-internals`.
+Follow the shared steps in `../AGENTS.md`. Specific to this app:
 
-1. `yarn install` (first time only).
-2. Set up `example/.env`: `REACT_APP_PROXY_API`, `REACT_APP_GLOBAL`,
-   `REACT_APP_PROXY_ASSETS`, `REACT_APP_USER_TYPE`. The dev backend is
-   `https://e4h-dev.selcofoundation.org`.
-3. Build the modules. **This is a common trap.**
-   - CRA loads each module through `package.json`'s `module` field, which
-     points at `dist/index.modern.js`.
-   - A module's `yarn build` writes only the CJS `dist/index.js`. After a
-     `yarn build`, the app keeps running the old modern bundle, and nothing
-     tells you.
-   - Fix it by running `npx microbundle-crl --no-compress --format modern,cjs`
-     in each module you changed, or by using the root `yarn start` (watch
-     mode, both formats).
-   - A login crash with "Element type is invalid … check the render method
-     of `FieldV1`" means `core`'s modern bundle is stale.
-4. Start the dev server: `cd example && DISABLE_ESLINT_PLUGIN=true BROWSER=none yarn start`.
-   Without the flag the dev server fails with
-   `Failed to load config "react-app"`.
-5. Open `http://localhost:3000/e4hhub/employee`. `/` redirects to
-   `/digit-ui`, which redirects to the login page.
-   - The developer signs in. The agent never enters credentials.
-   - API calls are proxied by `example/src/setupProxy.js`. A new backend
-     path prefix must be added there, or local calls 404.
-
-### Driving it in a browser (agents)
-
-- The browser must be on the **same machine as the dev server** for
-  `localhost` to work.
-- If the developer works over remote desktop, a browser extension can be
-  connected on their own computer as well as on the host.
-  - Use `list_connected_browsers` and pick the host's Chrome.
-  - If only the other computer's browser is available, `http://<host-LAN-IP>:3000`
-    works, but it needs its own login (sessions are per origin).
-- Never submit the login form or tick the Terms/Privacy checkboxes. Ask
-  the developer to sign in.
+- Packages to rebuild are the modules under `packages/modules/`. The root
+  `yarn start` builds them all, then watches them in both formats.
+- A login crash with "Element type is invalid … check the render method of
+  `FieldV1`" means `core`'s modern bundle is stale.
+- Open `http://localhost:3000/e4hhub/employee`. `/` redirects to
+  `/digit-ui`, which redirects to the login page.

@@ -76,29 +76,9 @@ match unless asked.
   `// TODO: confirm response envelope` comment.
 - Dates go to the backend as epoch millis (`new Date(v).getTime()`) and are
   formatted for display with a local `formatDate` helper.
-
-## Backend not ready yet
-
-Make the change in one place, mark it as temporary, and make it easy to
-remove later. Don't build an abstraction around it.
-
-- **A whole endpoint is missing:** the service method returns static data
-  instead of calling `Request`, with a comment marking where the real call
-  goes. Switching to the real endpoint should be a change inside that one
-  method.
-- **A field is missing from a real response** (for example, a flag the
-  backend will add later): add a mock module, `utilities/<feature>Mock.js`,
-  and apply it to the response inside the one service method that returns
-  it. The mock must:
-  - have a header saying it is TEMPORARY and what to delete when the backend
-    is ready;
-  - be switchable off with one constant (`MOCK_<FEATURE> = true`);
-  - never overwrite a value the backend actually sent;
-  - be deterministic (derive the value from an id, not `Math.random()`), so
-    the same record looks the same on every screen.
-- **An MDMS master doesn't exist yet:** hardcode the options in
-  `constants/<name>.js`, not in a service. Once the master exists, switch to
-  the MDMS hook pattern below and delete the constant.
+- **Backend not ready yet** (an endpoint, response field or MDMS master is
+  missing): use the `backend-not-ready` skill
+  (`.claude/skills/backend-not-ready/`).
 
 ## MDMS
 
@@ -118,20 +98,8 @@ remove later. Don't build an abstraction around it.
   payload and let the developer apply it through their normal process
   (workbench-ui). Ask which environment (dev/staging/prod) to look ids up
   against, because each has its own data.
-- **Adding a sidebar entry:** the sidebar is built from MDMS, not code.
-  - It needs one `ACCESSCONTROL-ACTIONS-TEST.actions-test` record for the
-    entry itself.
-  - It needs one `ACCESSCONTROL-ROLEACTIONS.roleactions` record per role that
-    should see it.
-  - The two masters have **independent id sequences**. Fetch each master once
-    with the public `POST <host>/egov-mdms-service/v1/_search`, take the max
-    `id`, and count up from there locally.
-  - Look role codes up in `Organisation.OrgRoles` and show the developer
-    code, name and description. Don't ask them to remember codes.
-  - For `leftIcon`, check the name is an export of the installed
-    `@egovernments/digit-ui-svg-components`. An unknown name renders a blank
-    icon and only logs a console warning.
-  - Rendering logic: `core/.../TopBarSideBar/SideBar/EmployeeSideBar.js`.
+- **Adding a sidebar entry:** the sidebar is built from MDMS, not code. Use
+  the `mdms-sidebar-entry` skill (`.claude/skills/mdms-sidebar-entry/`).
 
 ## Localization
 
@@ -148,47 +116,9 @@ Labels come from the localization service, in modules per app
   `t()`, but mark them at the point they're resolved (for example
   `translateValue: true`) and branch on that flag when rendering. Free-text,
   date and numeric MDMS fields never go through `t()`.
-- **Where a key lives:**
-  - A key used by more than one module goes in `rainmaker-common`. A module
-    loads only its own `rainmaker-<module>` bundle plus `rainmaker-common`,
-    so a shared key registered under one module won't resolve in another.
-  - Before adding a key, check whether an existing one already has the same
-    text, and reuse it if so.
-- **The code must match exactly.** A stray character in the localization
-  service (for example a trailing `.`) makes the UI show the raw key.
-  - If a key shows raw after it was "added", check the cached bundle first.
-    In the browser it is `localStorage["Digit.Locale.<locale>.<module>"]`;
-    search it for the code.
-  - Translations are cached in `localStorage` under `Digit.Locale.*`. After a
-    localization change, remove those keys (or clear site storage, which
-    logs the user out) and reload.
-
-### Personal localization tracking repo
-
-New keys are recorded in a small personal git repo outside this codebase. It
-is a staging record the developer later uploads from; it is not the
-localization service.
-
-- **Location:** read the path from `E4H_LOCALIZATION_REPO` (conventionally
-  `~/Selco/Localizations/E4H`). Check it is set and points at a git repo.
-  - If not, **stop and ask**. Don't create one silently.
-  - The agent's shell is non-interactive, so a variable exported in
-    `~/.bashrc` usually isn't visible to it. Use
-    `REPO="${E4H_LOCALIZATION_REPO:-<path confirmed with the developer>}"`.
-- **Layout:** `<repo>/<module>/<locale>.json` (for example
-  `rainmaker-common/en_IN.json`). Each file holds one JSON array of
-  `{code, message, module, locale}`, which is the localization service's
-  upload shape.
-- **Adding a key:**
-  - Search the **whole file** for the code first.
-  - If it exists with a different message, flag the conflict instead of
-    overwriting it.
-  - New entries go at the **top** of the array (newest first).
-- **Removing a key:** when a key becomes unused, remove its entry.
-- **Committing:** commit to the repo once per feature or session. It has no
-  remote.
-- **Never** write translations into files inside this project, and never
-  call the localization service API.
+- **Adding, reusing or debugging keys** (which bundle, key prefixes, a key
+  showing raw): use the `localization-keys` skill
+  (`.claude/skills/localization-keys/`).
 
 ## Git
 
@@ -196,7 +126,6 @@ localization service.
   `refactor:`, `simplify:`, `docs:` or `chore:` (lowercase, colon, space).
 - One logical change per commit. Split bundled fixes into separate commits,
   even when they ship in one PR.
-- **No `Co-Authored-By` trailer** unless the developer asks for one.
 - Amend or force-push only when asked, and say first that a force-push will
   be needed.
 - Before finalizing a feature, remove dead code **the feature itself
@@ -213,38 +142,15 @@ Branches: `develop` (integration) → `staging` (UAT) → `main` (production).
 
 - **New work:** branch off `develop` as `feature/<short-desc>` or
   `fix/<short-desc>`, and open the PR against `develop`.
-  - Pass an explicit `--title` to `gh pr create`. Without one, the title is
-    the raw branch name.
   - Title: short, prefixed with the module or area, for example
     `QC: show rectification badge on worklist`.
   - Body: a `## Summary` section of plain bullet points. No test-plan
-    section and no attribution footer.
-- **Promoting to `staging`, then `main`:** after the PR is merged into
-  `develop`:
-  1. `git fetch origin`.
-  2. Check how it merged: `git show --no-patch --format="%H %P" <sha>`. One
-     parent means a squash merge (pick one commit). More than one means pick
-     the underlying commits.
-  3. `git checkout <target> && git pull origin <target>`. Always pick onto a
-     fresh pull, never a stale local branch.
-  4. Branch off the target, not `develop`, as `cherry-pick/<short-desc>`.
-  5. Run `GIT_EDITOR=true git cherry-pick <sha>...`. If a related PR (for
-     example a backend companion fix) is needed for the change to work, pick
-     it onto the same branch too. Ask if it's unclear which commits belong.
-  6. Build-check again, because a clean pick doesn't guarantee it builds on
-     the target.
-  7. Push, and open a PR against the target branch, never `develop`.
-  - Never retarget the original PR's branch at `staging` or `main`.
-  - Reuse the original PR's title and `## Summary` word for word, minus any
-    bot-appended sections (for example CodeRabbit's "Summary by
-    CodeRabbit"). If extra commits were picked, add a line saying what else
-    is included.
-- **Reviewer comments you won't apply:** reply in that comment's thread
-  (`gh api repos/<o>/<r>/pulls/<n>/comments/<id>/replies -X POST -f body=...`),
-  not with a new top-level comment.
-- If `gh pr edit` fails with the "Projects (classic) deprecation" GraphQL
-  error, use `gh api repos/<o>/<r>/pulls/<n> -X PATCH -f title=... -f body=...`
-  instead.
+    section.
+- **Promoting to `staging`, then `main`:** cherry-pick onto a fresh branch off
+  the target, never retarget the original PR. Use the `promote-pr` skill
+  (`.claude/skills/promote-pr/`).
+- `gh` usage (reading PRs and CI, replying to review comments, the
+  `gh pr edit` workaround) is in the repo-wide `github` skill.
 
 ## Dependencies
 
@@ -269,6 +175,31 @@ Branches: `develop` (integration) → `staging` (UAT) → `main` (production).
 - Prefer checking a claim against something real — the actual file, the
   running app, a real API response — over reasoning about what the code
   should do.
+
+## Running locally (both apps)
+
+Run commands from the app's `web/micro-ui-internals`. Each app's `AGENTS.md`
+gives its `.env` values, context path and the packages to rebuild.
+
+1. `yarn install` (first time only), then set up `example/.env`
+   (`REACT_APP_PROXY_API`, `REACT_APP_GLOBAL`, `REACT_APP_PROXY_ASSETS`,
+   `REACT_APP_USER_TYPE`). The dev backend is
+   `https://e4h-dev.selcofoundation.org`.
+2. Rebuild what you changed in **both** formats. **This is a common trap.**
+   - CRA loads each package through `package.json`'s `module` field, which
+     points at `dist/index.modern.js`.
+   - A package's `yarn build` writes only the CJS `dist/index.js`, so the app
+     keeps running the old modern bundle and nothing tells you.
+   - Run `npx microbundle-crl --no-compress --format modern,cjs` in each
+     changed package, or the root `dev:<package>` watch scripts (both
+     formats).
+3. Start the dev server: `cd example && DISABLE_ESLINT_PLUGIN=true BROWSER=none yarn start`.
+   Without the flag it fails with `Failed to load config "react-app"`.
+4. API calls are proxied by `example/src/setupProxy.js`. A new backend path
+   prefix must be added there, or local calls 404.
+5. Use a browser on the same machine as the dev server, so `localhost`
+   works. The developer signs in (see
+   [Safety with shared systems](#safety-with-shared-systems)).
 
 ## Safety with shared systems
 
