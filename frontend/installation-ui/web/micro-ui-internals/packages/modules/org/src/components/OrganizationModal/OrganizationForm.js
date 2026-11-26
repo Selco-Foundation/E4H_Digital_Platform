@@ -189,8 +189,8 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             populators: {
               name: "orgPocPassword",
               validation: {
-                minLength: {value :7,message:"Password has to be at least 7 characters long"},
-                maxLength: {value:15,message:"Password has to be at most 15 characters long"},
+                minLength: {value :7,message:t("ORG_POC_PASSWORD_MIN_LENGTH"),},
+                maxLength: {value:15,message:t("ORG_POC_PASSWORD_MAX_LENGTH"),},
                 pattern: {value: /^(?=.*\d)(?=.*[^A-Za-z0-9\s])(?=\S+$).*$/, message: t("ORG_POC_PASSWORD_PATTERN")},
               }
             }
