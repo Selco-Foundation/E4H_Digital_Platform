@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -105,15 +106,17 @@ public class TheftNotificationService {
                     .incident(incident)
                     .requestInfo(request.getRequestInfo())
                     .build();
-            Map<String, String> crmDetails = notificationService.getHRMSEmployee(incidentRequest, ROLE_COMPLAINT_ASSESSOR);
-            String crmMobile = crmDetails != null ? crmDetails.get("employeeMobile") : null;
-            if (!StringUtils.hasText(crmMobile)) {
+            // Every CRM with jurisdiction over the ticket, not the first HRMS match: CRM is pooled,
+            // so a state CRM and a district CRM above the same ticket are equally responsible for it.
+            List<String> crmMobiles = notificationService.getHRMSEmployeeMobiles(incidentRequest, ROLE_COMPLAINT_ASSESSOR);
+            if (crmMobiles.isEmpty()) {
                 log.warn("Skipping theft SLA SMS for incident {}: no CRM mobile", incident.getIncidentId());
                 continue;
             }
             String message = buildTheftSlaReminderMessage(incident, trackUrl);
-            List<SMSRequest> smsRequests = Collections.singletonList(
-                    SMSRequest.builder().mobileNumber(crmMobile).message(message).build());
+            List<SMSRequest> smsRequests = crmMobiles.stream()
+                    .map(mobile -> SMSRequest.builder().mobileNumber(mobile).message(message).build())
+                    .collect(Collectors.toList());
             notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
             sent++;
         }

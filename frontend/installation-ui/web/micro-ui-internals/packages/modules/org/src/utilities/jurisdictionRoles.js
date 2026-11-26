@@ -73,3 +73,19 @@ export const pruneAssignmentGroups = (assignment, heldGroups) => {
 /** `State SPOC + Tech POC` — what an `All roles` chip actually resolves to right now. */
 export const describeAllRoles = (heldGroups) =>
   (heldGroups || []).map((group) => group?.name).filter(Boolean).join(" + ");
+
+/**
+ * Roles that cover an area and never a single facility: CRM, State SPOC and Tech POC. They may be
+ * granted at country, state, district or block level, but a facility-level grant for them is a
+ * mistake - nobody is CRM for one health centre.
+ */
+export const AREA_ONLY_ROLE_CODES = ["COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"];
+
+/**
+ * The area-only role codes a jurisdiction applies to. A jurisdiction with no roles applies to every
+ * role the user holds, so it is checked against `userRoles` instead.
+ */
+export const areaOnlyRolesOf = (jurisdiction, userRoles) => {
+  const applied = jurisdiction?.roles?.length ? jurisdiction.roles : userRoles;
+  return [...new Set((applied || []).map((role) => role?.code || role).filter((code) => AREA_ONLY_ROLE_CODES.includes(code)))];
+};

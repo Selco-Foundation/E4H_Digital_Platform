@@ -8,6 +8,7 @@ import CustomEditIcon from "../../Custom/CustomEditIcon";
 import AppliesToSelector from "./AppliesToSelector";
 import {
   appliesToAllRoles,
+  areaOnlyRolesOf,
   buildRolesFromGroups,
   collapseRoleCodesToGroups,
   pruneAssignmentGroups,
@@ -425,6 +426,17 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       // user, and the backend refuses it too (ORG_USER_JURISDICTION_REQUIRED).
       if (!jurisdictions.some((jurisdiction) => jurisdiction.isActive)) {
         setFormToast({ key: "error", label: t("ORG_USER_AT_LEAST_ONE_ASSIGNMENT") });
+        return;
+      }
+
+      // CRM, State SPOC and Tech POC cover an area, so they may not be granted at a single
+      // facility. Checked on every active row, saved ones included, so a stored facility grant
+      // for these roles has to be moved up or scoped to other roles before the user can be saved.
+      const facilityGrantForAreaRole = jurisdictions.find((jurisdiction) =>
+        jurisdiction.isActive && jurisdiction.boundaryType === "Facility" && areaOnlyRolesOf(jurisdiction, userRoles).length
+      );
+      if (facilityGrantForAreaRole) {
+        setFormToast({ key: "error", label: t("ORG_FACILITY_JURISDICTION_NOT_ALLOWED_FOR_ROLE") });
         return;
       }
 

@@ -107,7 +107,19 @@ public class RoleScopeResolver {
         if (mode == ScopeMode.OFF) {
             return FacilityScope.unscoped(FacilityScope.Decision.UNSCOPED_FLAG_OFF);
         }
+        return decide(requestInfo, actingRoleHeader, mode);
+    }
 
+    /**
+     * The same decision, always enforced, for a check that does not belong to the facility-search
+     * rollout and so must not be switched off or reduced to logging by
+     * {@code facility.jurisdiction.scope.mode} - the CRM's mobile-change queue, for one.
+     */
+    public FacilityScope resolveEnforced(RequestInfo requestInfo, String actingRole) {
+        return decide(requestInfo, actingRole, ScopeMode.ENFORCE);
+    }
+
+    private FacilityScope decide(RequestInfo requestInfo, String actingRoleHeader, ScopeMode mode) {
         // Identity first, before the header is read: a service is unscoped whatever it claims.
         if (isSystemCaller(requestInfo)) {
             return FacilityScope.unscoped(FacilityScope.Decision.UNSCOPED_SYSTEM);
@@ -115,24 +127,24 @@ public class RoleScopeResolver {
 
         String uuid = callerUuid(requestInfo);
         if (uuid == null) {
-            return settle(FacilityScope.Decision.DENY_MISSING_ACTING_ROLE, null, null, "no caller identity");
+            return settle(mode, FacilityScope.Decision.DENY_MISSING_ACTING_ROLE, null, null, "no caller identity");
         }
 
         Set<String> actingRoles = parseActingRoles(actingRoleHeader);
         if (actingRoles.isEmpty()) {
-            return settle(FacilityScope.Decision.DENY_MISSING_ACTING_ROLE, null, null, "no " + X_ACTING_ROLE);
+            return settle(mode, FacilityScope.Decision.DENY_MISSING_ACTING_ROLE, null, null, "no " + X_ACTING_ROLE);
         }
         String actingRole = String.join(",", actingRoles);
         // Every named role must be held, not just one of them. Dropping the unheld ones instead
         // would turn a typo into a quietly narrower result that still looks like it worked.
         Set<String> held = heldRoleCodes(requestInfo);
         if (!held.containsAll(actingRoles)) {
-            return settle(FacilityScope.Decision.DENY_INVALID_ACTING_ROLE, actingRole, null, "role not held");
+            return settle(mode, FacilityScope.Decision.DENY_INVALID_ACTING_ROLE, actingRole, null, "role not held");
         }
 
         JurisdictionGrants grants = hrmsUtils.getActiveJurisdictionsForCaller(requestInfo);
         if (!grants.isOk()) {
-            return settle(FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE, actingRole, null,
+            return settle(mode, FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE, actingRole, null,
                     "hrms=" + grants.status());
         }
 
@@ -147,7 +159,7 @@ public class RoleScopeResolver {
                 beneath = expand(grant);
             } catch (Exception e) {
                 log.error("Could not expand jurisdiction {} for caller {}", grant.getBoundary(), uuid, e);
-                return settle(FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE, actingRole, null, "boundary expansion failed");
+                return settle(mode, FacilityScope.Decision.DENY_SCOPE_UNAVAILABLE, actingRole, null, "boundary expansion failed");
             }
             ceiling.addAll(beneath);
             summary.append(summary.length() == 0 ? "" : ",")
@@ -156,16 +168,16 @@ public class RoleScopeResolver {
         }
 
         if (ceiling.isEmpty()) {
-            return settle(FacilityScope.Decision.DENY_NO_JURISDICTION, actingRole, ceiling, summary.toString());
+            return settle(mode, FacilityScope.Decision.DENY_NO_JURISDICTION, actingRole, ceiling, summary.toString());
         }
-        return settle(FacilityScope.Decision.SCOPED, actingRole, ceiling, summary.toString());
+        return settle(mode, FacilityScope.Decision.SCOPED, actingRole, ceiling, summary.toString());
     }
 
     /**
      * In warn mode every outcome is computed and logged but none is applied, so real traffic can be
      * classified before the control is switched on.
      */
-    private FacilityScope settle(FacilityScope.Decision decision, String actingRole, Set<String> ceiling, String summary) {
+    private FacilityScope settle(ScopeMode mode, FacilityScope.Decision decision, String actingRole, Set<String> ceiling, String summary) {
         Set<String> resolved = ceiling == null ? java.util.Collections.emptySet() : ceiling;
         if (mode == ScopeMode.WARN) {
             AUDIT.info("would_be_decision={} acting_role={} ceiling_size={} grants={}",

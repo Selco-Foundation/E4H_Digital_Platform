@@ -44,6 +44,7 @@ import lombok.*;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.Valid;
+import java.util.List;
 import javax.validation.constraints.NotNull;
 
 @Validated
@@ -59,6 +60,9 @@ public class Employee {
     @Valid
     @NotNull
     private User user;
+
+    /** Only filled by the v2 search, which is the one that carries each jurisdiction's roles. */
+    private List<Jurisdiction> jurisdictions;
 
 
 }

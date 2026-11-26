@@ -1,5 +1,6 @@
 package facility.repository;
 
+import facility.util.QueryBuilderUtil;
 import facility.web.models.AuditDetails;
 import facility.web.models.MobileChangeRequest;
 import facility.web.models.MobileChangeRequestSearchCriteria;
@@ -149,6 +150,12 @@ public class MobileChangeRequestRepository {
         if (!CollectionUtils.isEmpty(criteria.getStatus())) {
             where.append(" AND status IN (").append(placeholders(criteria.getStatus().size())).append(")");
             criteria.getStatus().forEach(s -> params.add(s.name()));
+        }
+        if (criteria.getBoundaryCodeCeiling() != null) {
+            // One array parameter: a state-level CRM covers thousands of facilities. An empty set
+            // renders as {} and matches nothing, which is the right answer for no jurisdiction.
+            where.append(" AND boundary_code = ANY (?::text[])");
+            params.add(QueryBuilderUtil.toPgTextArrayLiteral(criteria.getBoundaryCodeCeiling()));
         }
         return where.toString();
     }
