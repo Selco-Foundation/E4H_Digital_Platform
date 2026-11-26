@@ -22,6 +22,7 @@ import '../data/nosql/cache_operation_checkpoint.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/nosql/cache_submission_job.dart';
+import '../data/nosql/cache_warranty_card.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset/asset.dart';
@@ -39,6 +40,7 @@ import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../repositories/operation_progress_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
+import '../repositories/warranty_card_repo.dart';
 import '../utils/operation_progress.dart';
 import '../utils/utils.dart';
 import 'app_logger.dart';
@@ -1126,6 +1128,10 @@ Future<void> _performSubmissionForActivityFacility({
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
+    final warrantyCards = await isar.cacheWarrantyCards
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findAll();
 
     savedLocally = true;
 
@@ -1139,6 +1145,8 @@ Future<void> _performSubmissionForActivityFacility({
     final assetHandoverDocumentItems = assetHandoverDocuments
         .where((item) => item.filePath.isNotEmpty)
         .toList();
+    final warrantyCardItems =
+        warrantyCards.where((item) => item.filePath.isNotEmpty).toList();
     final assetPhotoItems = assetsByType.values
         .expand((items) => items)
         .where((a) => a.photoPath.isNotEmpty)
@@ -1147,6 +1155,7 @@ Future<void> _performSubmissionForActivityFacility({
         installationImageItems.length +
         completionCertificateItems.length +
         assetHandoverDocumentItems.length +
+        warrantyCardItems.length +
         assetPhotoItems.length;
 
     await _runUploadStage<CacheMediaUpload>(
@@ -1334,6 +1343,46 @@ Future<void> _performSubmissionForActivityFacility({
       },
     );
 
+    await _runUploadStage<CacheWarrantyCard>(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      stageKey: 'uploading_asset_media',
+      completedSteps: 4,
+      items: warrantyCardItems,
+      totalItems: totalAssetMediaUploads,
+      service: service,
+      initialStageProgressCurrent: workflowMediaItems.length +
+          assetPhotoItems.length +
+          installationImageItems.length +
+          completionCertificateItems.length +
+          assetHandoverDocumentItems.length,
+      concurrency: 3,
+      run: (entry) async {
+        final itemKey = entry.id.toString();
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'warranty_card_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(entry.filePath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'warranty_card_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
     final workflowDocuments = <Document>[];
     for (final media
         in workflowMedia.where((item) => item.filePath.isNotEmpty)) {
@@ -1425,6 +1474,30 @@ Future<void> _performSubmissionForActivityFacility({
           documentType: 'ASSET_HANDOVER_DOCUMENT',
           fileStore: remoteId,
           documentUid: 'ASSET-HANDOVER-DOCUMENT-${entry.fileType}-${entry.id}',
+          geoLocation: GeoLocation(
+            latitude: entry.latitude,
+            longitude: entry.longitude,
+          ),
+        ),
+      );
+    }
+
+    final warrantyCardsPayload = <Document>[];
+    for (final entry in warrantyCardItems) {
+      final checkpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'warranty_card_upload',
+        itemKey: entry.id.toString(),
+      );
+      final remoteId = checkpoint?.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      warrantyCardsPayload.add(
+        Document(
+          documentType: warrantyCardDocumentType,
+          fileStore: remoteId,
+          documentUid: '$warrantyCardUidPrefix${entry.fileType}-${entry.id}',
           geoLocation: GeoLocation(
             latitude: entry.latitude,
             longitude: entry.longitude,
@@ -1707,6 +1780,7 @@ Future<void> _performSubmissionForActivityFacility({
           ...installationImageDocuments,
           ...completionCertificateDocuments,
           ...assetHandoverDocumentsPayload,
+          ...warrantyCardsPayload,
           ...completionDocuments,
         ],
       );
@@ -1758,6 +1832,9 @@ Future<void> _performSubmissionForActivityFacility({
         activityFacilityId: activityFacilityId,
       );
       await AssetHandoverDocumentRepository(isar).clearProject(
+        activityFacilityId: activityFacilityId,
+      );
+      await WarrantyCardRepository(isar).clearProject(
         activityFacilityId: activityFacilityId,
       );
       await workflowRepo.deleteWorkflowMediaDocs(
@@ -1904,6 +1981,9 @@ Future<void> _performRejectionForActivityFacility({
         activityFacilityId: activityFacilityId,
       );
       await AssetHandoverDocumentRepository(isar).clearProject(
+        activityFacilityId: activityFacilityId,
+      );
+      await WarrantyCardRepository(isar).clearProject(
         activityFacilityId: activityFacilityId,
       );
       await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(

@@ -30,6 +30,7 @@ import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/asset_handover_document_repo.dart';
 import '../repositories/installation_completion_certificate_repo.dart';
 import '../repositories/installation_images_repo.dart';
+import '../repositories/warranty_card_repo.dart';
 import '../router/app_router.dart';
 import '../utils/document_upload_validation.dart';
 import '../utils/extensions.dart';
@@ -273,6 +274,17 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     if (_currentProjectId == null) return false;
 
     final repo = AssetHandoverDocumentRepository(
+      context.read<CacheAssetBloc>().isar,
+    );
+    return repo.hasCachedFiles(
+      activityFacilityId: _currentProjectId!,
+    );
+  }
+
+  Future<bool> _hasWarrantyCard() async {
+    if (_currentProjectId == null) return false;
+
+    final repo = WarrantyCardRepository(
       context.read<CacheAssetBloc>().isar,
     );
     return repo.hasCachedFiles(
@@ -607,6 +619,21 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                       null) {
                                                     _showRequiredDocumentPopup(
                                                       missingDocumentMessage,
+                                                    );
+                                                    return;
+                                                  }
+                                                  if (!_isRectification &&
+                                                      !await _hasWarrantyCard()) {
+                                                    if (!mounted) return;
+                                                    _showRequiredDocumentPopup(
+                                                      MissingRequiredDocumentMessage(
+                                                        titleKey: i18
+                                                            .overallAssetSummary
+                                                            .requiredWarrantyCard,
+                                                        messageKey: i18
+                                                            .overallAssetSummary
+                                                            .uploadRequiredWarrantyCard,
+                                                      ),
                                                     );
                                                     return;
                                                   }

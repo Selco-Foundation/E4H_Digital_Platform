@@ -34,6 +34,7 @@ const bomButtons = BomButtons();
 const installationImages = InstallationImages();
 const installationCompletionCertificate = InstallationCompletionCertificate();
 const assetHandoverDocument = AssetHandoverDocument();
+const warrantyCard = WarrantyCard();
 const overallAssetSummary = OverallAssetSummary();
 const submitForApproval = SubmitForApproval();
 const pdfViewer = PdfViewer();
@@ -475,6 +476,7 @@ class BomButtons {
   String get installationCompletionCertificate =>
       'BOM_BUTTON_INSTALLATION_COMPLETION_CERTIFICATE';
   String get assetHandoverDocument => 'BOM_BUTTON_ASSET_HANDOVER_DOCUMENT';
+  String get warrantyCard => 'BOM_BUTTON_WARRANTY_CARD';
 }
 
 class InstallationImages {
@@ -523,6 +525,21 @@ class AssetHandoverDocument {
   String get uploadSuccess => 'ASSET_HANDOVER_DOCUMENT_UPLOAD_SUCCESS';
 }
 
+class WarrantyCard {
+  const WarrantyCard();
+  String get title => 'WARRANTY_CARD_TITLE';
+  String get uploadPrompt => 'WARRANTY_CARD_UPLOAD_PROMPT';
+  String get uploadInstructions => 'WARRANTY_CARD_UPLOAD_INSTRUCTIONS';
+  String get uploadPdf => 'WARRANTY_CARD_UPLOAD_PDF';
+  String get uploadRequired => 'WARRANTY_CARD_UPLOAD_REQUIRED';
+  String get maxFilesAllowed => 'WARRANTY_CARD_MAX_FILES_ALLOWED';
+  String get filePathUnavailable => 'WARRANTY_CARD_FILE_PATH_UNAVAILABLE';
+  String get onlyPdfAllowed => 'WARRANTY_CARD_ONLY_PDF_ALLOWED';
+  String get acceptedFormats => 'WARRANTY_CARD_ACCEPTED_FORMATS';
+  String get maxFileSize => 'WARRANTY_CARD_MAX_FILE_SIZE';
+  String get uploadSuccess => 'WARRANTY_CARD_UPLOAD_SUCCESS';
+}
+
 class OverallAssetSummary {
   const OverallAssetSummary();
   String get allAssetsSubmittedSuccessfully =>
@@ -542,6 +559,10 @@ class OverallAssetSummary {
       'OVERALL_ASSET_SUMMARY_REQUIRED_INSTALLATION_DOCUMENTS';
   String get uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument =>
       'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE_AND_ASSET_HANDOVER_DOCUMENT';
+  String get requiredWarrantyCard =>
+      'OVERALL_ASSET_SUMMARY_REQUIRED_WARRANTY_CARD';
+  String get uploadRequiredWarrantyCard =>
+      'OVERALL_ASSET_SUMMARY_UPLOAD_REQUIRED_WARRANTY_CARD';
 }
 
 class SubmitForApproval {
@@ -563,6 +584,10 @@ class SubmitForApproval {
       'SUBMIT_FOR_APPROVAL_REQUIRED_INSTALLATION_DOCUMENTS';
   String get uploadRequiredInstallationCompletionCertificateAndAssetHandoverDocument =>
       'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_INSTALLATION_COMPLETION_CERTIFICATE_AND_ASSET_HANDOVER_DOCUMENT';
+  String get requiredWarrantyCard =>
+      'SUBMIT_FOR_APPROVAL_REQUIRED_WARRANTY_CARD';
+  String get uploadRequiredWarrantyCard =>
+      'SUBMIT_FOR_APPROVAL_UPLOAD_REQUIRED_WARRANTY_CARD';
   String get summary => 'SUBMIT_FOR_APPROVAL_SUMMARY';
   String get installationCompletionReport =>
       'SUBMIT_FOR_APPROVAL_INSTALLATION_COMPLETION_REPORT';

@@ -410,6 +410,17 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    WarrantyCardRoute.name: (routeData) {
+      final args = routeData.argsAs<WarrantyCardRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: WarrantyCardPage(
+          key: args.key,
+          origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
+        ),
+      );
+    },
     WelcomeRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -1656,6 +1667,49 @@ class VideoPlayerRouteArgs {
   @override
   String toString() {
     return 'VideoPlayerRouteArgs{path: $path, key: $key}';
+  }
+}
+
+/// generated route for
+/// [WarrantyCardPage]
+class WarrantyCardRoute extends PageRouteInfo<WarrantyCardRouteArgs> {
+  WarrantyCardRoute({
+    Key? key,
+    required FormOrigin origin,
+    required String activityFacilityId,
+    List<PageRouteInfo>? children,
+  }) : super(
+          WarrantyCardRoute.name,
+          args: WarrantyCardRouteArgs(
+            key: key,
+            origin: origin,
+            activityFacilityId: activityFacilityId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'WarrantyCardRoute';
+
+  static const PageInfo<WarrantyCardRouteArgs> page =
+      PageInfo<WarrantyCardRouteArgs>(name);
+}
+
+class WarrantyCardRouteArgs {
+  const WarrantyCardRouteArgs({
+    this.key,
+    required this.origin,
+    required this.activityFacilityId,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  final String activityFacilityId;
+
+  @override
+  String toString() {
+    return 'WarrantyCardRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
   }
 }
 

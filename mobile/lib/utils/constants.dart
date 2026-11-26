@@ -14,6 +14,7 @@ import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_asset_handover_document.dart';
+import '../data/nosql/cache_warranty_card.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_installation_completion_certificate.dart';
@@ -68,6 +69,7 @@ class Constants {
           CacheAddNewAssetSchema,
           CacheMediaUploadSchema,
           CacheAssetHandoverDocumentSchema,
+          CacheWarrantyCardSchema,
           CacheActivityFacilityWorkflowSchema,
           CacheUnsubmittedActivityFacilitySchema,
           CacheSyncRecordSchema,
