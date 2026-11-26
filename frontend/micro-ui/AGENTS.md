@@ -114,8 +114,6 @@ src/
 - Existing key prefixes: `CS_` (most UI copy), `ES_`, `RMS_`, `WF_`
   (workflow actions/states), `INCIDENT_`, `SERVICEDEFS_`. Match the prefix
   of neighbouring keys.
-- Record new keys in the E4H localization tracking repo, as described in the
-  shared file.
 
 ## Running locally
 
@@ -143,7 +141,6 @@ agent session yet; check them the first time you run the app.
    - The developer signs in. The agent never enters credentials.
 4. Browser rules are the same as installation-ui:
    - Use a browser on the **same machine as the dev server** for `localhost`.
-   - Over remote desktop, pick the host's Chrome.
 
 ## PWA
 

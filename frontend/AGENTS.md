@@ -163,32 +163,9 @@ Labels come from the localization service, in modules per app
     localization change, remove those keys (or clear site storage, which
     logs the user out) and reload.
 
-### Personal localization tracking repo
-
-New keys are recorded in a small personal git repo outside this codebase. It
-is a staging record the developer later uploads from; it is not the
-localization service.
-
-- **Location:** read the path from `E4H_LOCALIZATION_REPO` (conventionally
-  `~/Selco/Localizations/E4H`). Check it is set and points at a git repo.
-  - If not, **stop and ask**. Don't create one silently.
-  - The agent's shell is non-interactive, so a variable exported in
-    `~/.bashrc` usually isn't visible to it. Use
-    `REPO="${E4H_LOCALIZATION_REPO:-<path confirmed with the developer>}"`.
-- **Layout:** `<repo>/<module>/<locale>.json` (for example
-  `rainmaker-common/en_IN.json`). Each file holds one JSON array of
-  `{code, message, module, locale}`, which is the localization service's
-  upload shape.
-- **Adding a key:**
-  - Search the **whole file** for the code first.
-  - If it exists with a different message, flag the conflict instead of
-    overwriting it.
-  - New entries go at the **top** of the array (newest first).
-- **Removing a key:** when a key becomes unused, remove its entry.
-- **Committing:** commit to the repo once per feature or session. It has no
-  remote.
-- **Never** write translations into files inside this project, and never
-  call the localization service API.
+- **New keys:** list every new key with its English message in your summary.
+  Never write translations into files inside this project, and never call the
+  localization service API.
 
 ## Git
 
@@ -196,7 +173,6 @@ localization service.
   `refactor:`, `simplify:`, `docs:` or `chore:` (lowercase, colon, space).
 - One logical change per commit. Split bundled fixes into separate commits,
   even when they ship in one PR.
-- **No `Co-Authored-By` trailer** unless the developer asks for one.
 - Amend or force-push only when asked, and say first that a force-push will
   be needed.
 - Before finalizing a feature, remove dead code **the feature itself
@@ -218,7 +194,7 @@ Branches: `develop` (integration) → `staging` (UAT) → `main` (production).
   - Title: short, prefixed with the module or area, for example
     `QC: show rectification badge on worklist`.
   - Body: a `## Summary` section of plain bullet points. No test-plan
-    section and no attribution footer.
+    section.
 - **Promoting to `staging`, then `main`:** after the PR is merged into
   `develop`:
   1. `git fetch origin`.

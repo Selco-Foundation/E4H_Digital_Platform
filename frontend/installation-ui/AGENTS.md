@@ -202,10 +202,5 @@ Run commands from `web/micro-ui-internals`.
 
 - The browser must be on the **same machine as the dev server** for
   `localhost` to work.
-- If the developer works over remote desktop, a browser extension can be
-  connected on their own computer as well as on the host.
-  - Use `list_connected_browsers` and pick the host's Chrome.
-  - If only the other computer's browser is available, `http://<host-LAN-IP>:3000`
-    works, but it needs its own login (sessions are per origin).
 - Never submit the login form or tick the Terms/Privacy checkboxes. Ask
   the developer to sign in.
