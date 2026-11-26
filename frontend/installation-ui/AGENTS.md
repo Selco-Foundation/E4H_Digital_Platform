@@ -101,21 +101,11 @@ Use existing DIGIT components before writing your own:
 
 ## Mutation shape
 
-```js
-const handleAction = async () => {
-  setActionLoading(true);
-  try {
-    await SomeService.doThing(...);
-    await revalidate();
-    setToast({ key: "success", label: t("…") });
-  } catch (error) {
-    console.error("Error doing thing", error);
-    setToast({ key: "error", label: CommonUtils.getApiErrorMessage(error) || t("…") });
-  } finally {
-    setActionLoading(false);
-  }
-};
-```
+An action handler sets `actionLoading`, then in `try` calls the service,
+awaits `revalidate()` and shows a success `Toast`. In `catch` it logs with
+`console.error` and shows an error `Toast` with
+`CommonUtils.getApiErrorMessage(error) || t("…")`. In `finally` it clears
+`actionLoading`.
 
 Add error handling only at real boundaries: API calls and user input.
 
