@@ -94,9 +94,8 @@ Use existing DIGIT components before writing your own:
 
 An action handler sets `actionLoading`, then in `try` calls the service,
 awaits `revalidate()` and shows a success `Toast`. In `catch` it logs with
-`console.error` and shows an error `Toast` with
-`CommonUtils.getApiErrorMessage(error) || t("…")`. In `finally` it clears
-`actionLoading`.
+`console.error` and shows the error `Toast` described above. In `finally` it
+clears `actionLoading`.
 
 Add error handling only at real boundaries: API calls and user input.
 

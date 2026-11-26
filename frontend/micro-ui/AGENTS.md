@@ -54,22 +54,13 @@ existing layout:
 - `im/src/services/` exists but holds one legacy file, `Video.js`, which
   `ComplaintDetails.js` imports directly. Don't add to it. New services go in
   `libraries` as above.
-
-- The shared service and hook rules still apply:
-  - A service makes one call and returns the raw response.
-  - The hook builds the criteria, calls the service, and maps the response.
-  - Query keys list every param that should trigger a refetch.
-  - Hooks return `revalidate`.
+- The shared service and hook rules still apply.
 - **Workflow and ticket updates** go through Redux thunks in
   `im/src/redux/actions/` (for example `updateComplaints` → `Digit.PGRService.update`).
   Keep new ticket mutations in that pattern; don't call the service directly
   from a component.
 - **Changing `libraries` or `react-components` means rebuilding them too.**
-  `im` imports their built output, not their source. See
-  [Running locally](#running-locally).
-- New backend path prefixes also need an entry in `example/src/setupProxy.js`
-  (existing: `/im-services`, `/facility-service`, `/rms-service`, `/vendor`,
-  `/egov-hrms`, …).
+  `im` imports their built output, not their source.
 
 ## `im` module layout
 
