@@ -55,15 +55,9 @@ Naming:
 
 Use existing DIGIT components before writing your own:
 
-- **Wizards:** `FormComposerV2` + `Stepper`.
-  - `Stepper` comes from `@egovernments/digit-ui-components`.
-  - `FormComposerV2` is imported from both packages: mostly
-    `@egovernments/digit-ui-react-components`, sometimes
-    `@egovernments/digit-ui-components`. Match the import already used in
-    the module or file you're editing.
-  - Step configs are keyed by step number.
-  - Custom step components are registered by name in `Module.js` and
-    referenced as `component: "PMSomething"`.
+- **Wizards:** `FormComposerV2` + `Stepper`. Custom step components are
+  registered by name in `Module.js` and referenced as
+  `component: "PMSomething"`.
 - **Tables:** `Table` from `@egovernments/digit-ui-react-components`.
   - Columns are `{ id, Header, Cell }`. Each table defines its own local
     `GetCell`/`GetHead` helpers.
@@ -79,11 +73,8 @@ Use existing DIGIT components before writing your own:
   `qc/.../FacilityTable/Filter.js`.
 - **Modals:** `PopUp` as the backdrop, with a styled `<div>` dialog: title
   row with a close button, description, content, then right-aligned
-  Cancel + primary buttons.
-  - Add a `singleAction` prop to hide Cancel for dialogs that only need
-    acknowledging.
-  - Any action that can't be undone (approve, reject, bulk approve, delete)
-    must go through a confirmation modal.
+  Cancel + primary buttons. Any action that can't be undone (approve,
+  reject, bulk approve, delete) must go through a confirmation modal.
 - **Loading:**
   - `Loader` while a page or section is loading.
   - While an action is running, show a full-screen semi-transparent overlay
