@@ -78,6 +78,12 @@ public class BomPdfService {
             "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
     );
 
+    /** facility_category value of Anganwadi facilities (any other category is a health facility). */
+    private static final String FACILITY_CATEGORY_ANGANWADI = "ANGANWADI";
+    private static final String ANGANWADI_LABEL = "Anganwadi";
+    private static final String ANGANWADI_SECTION_TITLE = "Anganwadi Name & Address";
+    private static final String HEALTH_FACILITY_SECTION_TITLE = "Health Facility Name & Address";
+
     private static final String SR_NO_KEY = "srNo";
     private static final String SERIAL_NUMBER_KEY = "serialNumber";
 
@@ -185,15 +191,17 @@ public class BomPdfService {
         String projectName = activityFacility.getFieldPlan() != null && activityFacility.getFieldPlan().getProject() != null
                 ? (activityFacility.getFieldPlan().getProject().getName() != null ? activityFacility.getFieldPlan().getProject().getName() : null) : null;
 
+        boolean anganwadi = isAnganwadi(facility);
         data.put("health_facility_name", facility != null ? facility.getFacilityName() : null);
-        data.put("health_facility_address", facility != null && facility.getAddress() != null
-                ? facility.getAddress().getAddressLine1() : null);
+        data.put("facility_section_title", anganwadi ? ANGANWADI_SECTION_TITLE : HEALTH_FACILITY_SECTION_TITLE);
         data.put("vendor_name", activityFacility.getStaffVendorName());
         data.put("project_number", activityFacility.getFieldPlan() != null && activityFacility.getFieldPlan().getProject() != null
                 ? (activityFacility.getFieldPlan().getProject().getProjectNumber() != null ? activityFacility.getFieldPlan().getProject().getProjectNumber() : null) : null);
-        data.put("health_facility_type", facility != null ? facility.getFacilityType() : null);
+        data.put("facility_type", anganwadi ? ANGANWADI_LABEL : (facility != null ? facility.getFacilityType() : null));
         data.put("project_state", boundary != null
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getState()) : null);
+        data.put("project_district", boundary != null
+                ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getDistrict()) : null);
         data.put("project_block", boundary != null
                 ? boundaryLocalizationUtil.localizedNameOrCode(boundaryNames, boundary.getBlock()) : null);
         data.put("project_date", resolveProjectDate(requestInfo, activityFacility).format(PROJECT_DATE_FORMATTER));
@@ -207,6 +215,15 @@ public class BomPdfService {
         }
 
         return data;
+    }
+
+    /**
+     * Anganwadi facilities carry facility_category ANGANWADI; every other category (HEALTH, or none)
+     * is reported as a health facility.
+     */
+    private boolean isAnganwadi(Facility facility) {
+        return facility != null && facility.getFacilityCategory() != null
+                && FACILITY_CATEGORY_ANGANWADI.equalsIgnoreCase(facility.getFacilityCategory().trim());
     }
 
     /**
@@ -410,12 +427,12 @@ public class BomPdfService {
                 || APPENDABLE_DOCUMENT_TYPES.contains(documentType);
     }
 
-    /* State/block names for one boundary, resolved in a single localization call. */
+    /* State/district/block names for one boundary, resolved in a single localization call. */
     private Map<String, String> localizeBoundary(Boundary boundary, RequestInfo requestInfo) {
         if (boundary == null) {
             return Map.of();
         }
-        List<String> boundaryCodes = Stream.of(boundary.getState(), boundary.getBlock())
+        List<String> boundaryCodes = Stream.of(boundary.getState(), boundary.getDistrict(), boundary.getBlock())
                 .filter(Objects::nonNull)
                 .toList();
         return boundaryLocalizationUtil.localizeBoundaryCodes(boundaryCodes, requestInfo);
