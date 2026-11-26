@@ -138,7 +138,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             label: "ORG_POC_NAME",
             key: "orgPocName",
             type: "text",
-            isMandatory: !createdOrganization?.id,
+            isMandatory: true,
             populators: {
               name: "orgPocName",
               error: t("CORE_COMMON_REQUIRED")
@@ -149,7 +149,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             label: "ORG_POC_PHONE",
             key: "orgPocPhone",
             type: "text",
-            isMandatory: !createdOrganization?.id,
+            isMandatory: true,
             populators: {
               name: "orgPocPhone",
               validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: "Enter a valid mobile number" } },
@@ -161,7 +161,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             label: "ORG_POC_EMAIL",
             key: "orgPocEmail",
             type: "text",
-            isMandatory: !createdOrganization?.id,
+            isMandatory: true,
             populators: {
               name: "orgPocEmail",
               validation: { pattern: { value: Digit.Utils.getPattern("Email"), message: t("CS_PROFILE_EMAIL_ERRORMSG") } },
@@ -173,7 +173,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             label: "ORG_POC_USERNAME",
             key: "orgPocUsername",
             type: "text",
-            isMandatory: !createdOrganization?.id,
+            isMandatory: true,
             populators: {
               name: "orgPocUsername",
               error: t("CORE_COMMON_REQUIRED")
