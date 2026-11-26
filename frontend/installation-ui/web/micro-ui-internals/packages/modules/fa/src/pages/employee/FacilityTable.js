@@ -308,7 +308,7 @@ const FacilityTable = () => {
               }}
             >
               <CustomDownloadIcon fill={"#d35400"} height="20" width="16" />
-              <span>{t("FA_DOWNLOAD_VISIBLE_FACILITIES")}</span>
+              <span>{t("CORE_COMMON_DOWNLOAD")}</span>
             </button>
           </div>
           {renderFacilities()}
