@@ -117,30 +117,16 @@ src/
 
 ## Running locally
 
-Run these from `web/micro-ui-internals`. Steps 1–2 haven't been run in an
-agent session yet; check them the first time you run the app.
+Follow the shared steps in `../AGENTS.md`. Specific to this app (not yet run
+in an agent session; check them the first time):
 
-1. Set up `example/.env`.
-   - `REACT_APP_PROXY_API` (dev: `https://e4h-dev.selcofoundation.org`),
-     `REACT_APP_GLOBAL`, `REACT_APP_PROXY_ASSETS`, `REACT_APP_USER_TYPE`.
-   - `REACT_APP_GLOBAL` points at a global config file that is currently
-     shared across environments. It may be split per environment later, so
-     read the context path and tenant from it rather than hardcoding them.
-2. Build what you changed, in both formats. This is the same trap as
-   installation-ui.
-   - CRA loads `dist/index.modern.js`, but each package's `yarn build` writes
-     only the CJS `index.js`.
-   - Run `npx microbundle-crl --no-compress --format modern,cjs` in each
-     changed package: `libraries`, `react-components`, `modules/im`, and/or
-     `modules/core`.
-   - Alternatively, run the matching root watch scripts: `yarn dev:libraries`,
-     `dev:components`, `dev:im`, `dev:core`.
-3. Start the dev server: `cd example && DISABLE_ESLINT_PLUGIN=true BROWSER=none yarn start`.
-   - The context path comes from the global config (`digit-ui` in the UAT
-     config).
-   - The developer signs in. The agent never enters credentials.
-4. Browser rules are the same as installation-ui:
-   - Use a browser on the **same machine as the dev server** for `localhost`.
+- `REACT_APP_GLOBAL` points at a global config file that is currently shared
+  across environments. It may be split per environment later, so read the
+  context path and tenant from it rather than hardcoding them. The context
+  path is `digit-ui` in the UAT config.
+- Packages to rebuild: `libraries`, `react-components`, `modules/im` and/or
+  `modules/core`. Watch scripts: `yarn dev:libraries`, `dev:components`,
+  `dev:im`, `dev:core`.
 
 ## PWA
 

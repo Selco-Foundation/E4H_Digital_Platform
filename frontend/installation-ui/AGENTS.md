@@ -172,35 +172,11 @@ Add error handling only at real boundaries: API calls and user input.
 
 ## Running locally
 
-Run commands from `web/micro-ui-internals`.
+Follow the shared steps in `../AGENTS.md`. Specific to this app:
 
-1. `yarn install` (first time only).
-2. Set up `example/.env`: `REACT_APP_PROXY_API`, `REACT_APP_GLOBAL`,
-   `REACT_APP_PROXY_ASSETS`, `REACT_APP_USER_TYPE`. The dev backend is
-   `https://e4h-dev.selcofoundation.org`.
-3. Build the modules. **This is a common trap.**
-   - CRA loads each module through `package.json`'s `module` field, which
-     points at `dist/index.modern.js`.
-   - A module's `yarn build` writes only the CJS `dist/index.js`. After a
-     `yarn build`, the app keeps running the old modern bundle, and nothing
-     tells you.
-   - Fix it by running `npx microbundle-crl --no-compress --format modern,cjs`
-     in each module you changed, or by using the root `yarn start` (watch
-     mode, both formats).
-   - A login crash with "Element type is invalid … check the render method
-     of `FieldV1`" means `core`'s modern bundle is stale.
-4. Start the dev server: `cd example && DISABLE_ESLINT_PLUGIN=true BROWSER=none yarn start`.
-   Without the flag the dev server fails with
-   `Failed to load config "react-app"`.
-5. Open `http://localhost:3000/e4hhub/employee`. `/` redirects to
-   `/digit-ui`, which redirects to the login page.
-   - The developer signs in. The agent never enters credentials.
-   - API calls are proxied by `example/src/setupProxy.js`. A new backend
-     path prefix must be added there, or local calls 404.
-
-### Driving it in a browser (agents)
-
-- The browser must be on the **same machine as the dev server** for
-  `localhost` to work.
-- Never submit the login form or tick the Terms/Privacy checkboxes. Ask
-  the developer to sign in.
+- Packages to rebuild are the modules under `packages/modules/`. The root
+  `yarn start` builds them all, then watches them in both formats.
+- A login crash with "Element type is invalid … check the render method of
+  `FieldV1`" means `core`'s modern bundle is stale.
+- Open `http://localhost:3000/e4hhub/employee`. `/` redirects to
+  `/digit-ui`, which redirects to the login page.
