@@ -83,12 +83,14 @@ public class ScheduledVisitRepository extends GenericRepository<ScheduledVisit> 
     /**
      * visitId -> every active assignee uuid on that visit, oldest assignment first.
      *
-     * <p>Deliberately separate from {@link #getScheduledVisit}: that search scopes non-PROJECT_MANAGER
-     * callers with {@code sva.assigned_user = <caller>}, and because the same {@code sva} alias feeds
-     * the {@code jsonb_agg} that builds the assignments column, the visits it returns list only the
-     * caller's own assignment. That is the intended API behaviour and is left alone - but the search
-     * index needs the real, complete roster (the AMC field staff is usually not the caller), so the
-     * index path reads it straight from the table with no caller scoping.
+     * <p>Deliberately separate from {@link #getScheduledVisit}: that search scopes a caller who is
+     * neither a project manager nor this service itself with {@code sva.assigned_user = <caller>}
+     * (a project manager is held to the projects they are staff on instead), and because the same
+     * {@code sva} alias feeds the {@code jsonb_agg} that builds the assignments column, the visits
+     * that scoped search returns list only the caller's own assignment. That is the intended API
+     * behaviour and is left alone - but the search index needs the real, complete roster (the AMC
+     * field staff is usually not the caller), so the index path reads it straight from the table
+     * with no caller scoping.
      *
      * <p>Ordered by created_time so "first field staff wins" in the mapped-vendor enrichment is stable
      * across reruns rather than dependent on whatever order the rows happen to come back in.
