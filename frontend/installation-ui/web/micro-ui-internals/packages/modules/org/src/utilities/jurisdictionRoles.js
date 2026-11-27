@@ -74,30 +74,40 @@ export const pruneAssignmentGroups = (assignment, heldGroups) => {
 export const describeAllRoles = (heldGroups) =>
   (heldGroups || []).map((group) => group?.name).filter(Boolean).join(" + ");
 
-/**
- * Roles that cover an area and never a single facility: CRM, State SPOC and Tech POC. They may be
- * granted at country, state, district or block level, but a facility-level grant for them is a
- * mistake - nobody is CRM for one health centre.
+/*
+ * How each role relates to jurisdiction comes from its `Organisation.OrgRoles` record:
+ *
+ * - `jurisdictionScoped: false` - jurisdiction doesn't decide what the role sees. Reviewers and
+ *   field staff are limited by assignment, and the admins see every user. Such a role isn't
+ *   offered under "Applies to" and isn't level-checked.
+ * - `allowedJurisdictionLevels: [...]` - the boundary types the role may be granted at, for
+ *   example CRM above facility level, and the vendor at facility level only.
+ *
+ * A missing field means no restriction, so a record without them behaves as before.
  */
-export const AREA_ONLY_ROLE_CODES = ["COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"];
+
+const orgRoleFor = (code, orgRoles) => (orgRoles || []).find((role) => role?.code === code);
+
+const isScopedCode = (code, orgRoles) => orgRoleFor(code, orgRoles)?.jurisdictionScoped !== false;
 
 /**
- * Roles that work at a single facility and never across an area: the vendor. A vendor is mapped to
- * the facilities they service, so any grant above facility level for them is a mistake.
+ * Whether a group belongs in the "Applies to" options: true when any role it grants is scoped by
+ * jurisdiction. A group made only of unscoped roles has nothing to narrow.
  */
-export const FACILITY_ONLY_ROLE_CODES = ["COMPLAINT_RESOLVER"];
+export const isScopedGroup = (group, orgRoles) => (group?.roleCodes || []).some((code) => isScopedCode(code, orgRoles));
 
 /**
- * The codes from `restrictedCodes` that a jurisdiction applies to. A jurisdiction with no roles
- * applies to every role the user holds, so it is checked against `userRoles` instead.
+ * The roles a jurisdiction applies to that may not be granted at its level, as OrgRoles entries
+ * (or `{ code }` where OrgRoles has none).
+ *
+ * A jurisdiction with no roles applies to every role the user holds, so it is checked against
+ * `userRoles` instead.
  */
-const appliedRolesAmong = (restrictedCodes, jurisdiction, userRoles) => {
+export const rolesNotAllowedAtLevel = (jurisdiction, userRoles, orgRoles) => {
   const applied = jurisdiction?.roles?.length ? jurisdiction.roles : userRoles;
-  return [...new Set((applied || []).map((role) => role?.code || role).filter((code) => restrictedCodes.includes(code)))];
+  const codes = [...new Set((applied || []).map((role) => role?.code || role).filter(Boolean))];
+  return codes
+    .map((code) => orgRoleFor(code, orgRoles) || { code })
+    .filter((role) => role.jurisdictionScoped !== false)
+    .filter((role) => Array.isArray(role.allowedJurisdictionLevels) && !role.allowedJurisdictionLevels.includes(jurisdiction?.boundaryType));
 };
-
-/** The area-only role codes a jurisdiction applies to. */
-export const areaOnlyRolesOf = (jurisdiction, userRoles) => appliedRolesAmong(AREA_ONLY_ROLE_CODES, jurisdiction, userRoles);
-
-/** The facility-only role codes a jurisdiction applies to. */
-export const facilityOnlyRolesOf = (jurisdiction, userRoles) => appliedRolesAmong(FACILITY_ONLY_ROLE_CODES, jurisdiction, userRoles);
