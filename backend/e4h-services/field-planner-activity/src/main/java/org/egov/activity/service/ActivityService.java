@@ -325,10 +325,7 @@ public class ActivityService {
         List<ActivityFacility> activityFacilities = scopeToAssignedUser
                 ? activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince)
                 : activityFacilityRepository.getActivitiesFacilityUnscoped(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
-        if (scopeToAssignedUser) {
-            // Internal re-reads skip this: they are not shown to anyone, and the write path asks the guard itself.
-            reviewerActionGuard.markCanAct(request.getRequestInfo(), activityFacilities);
-        }
+        markCanActIfScoped(request, activityFacilities, scopeToAssignedUser);
         List<String> fieldPlanIds = activityFacilities.stream()
                 .map(ActivityFacility::getFieldPlanId)
                 .filter(Objects::nonNull)
@@ -998,10 +995,7 @@ public class ActivityService {
 
             //             // only those activity facilities whose status is SUBMITTED_BY_SUPERVISOR
             List<ActivityFacility> activityFacilitiesList = activityFacilities.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
-            if (reviewerActionGuard.isReviewerAction(facilityBulkApproveRequest.getWorkflow().getAction())) {
-                // "Select all" means all of the caller's own: a project manager who can see more must not approve it.
-                activityFacilitiesList = activityFacilitiesList.stream().filter(f -> Boolean.TRUE.equals(f.getCanAct())).toList();
-            }
+            activityFacilitiesList = onlyActionableByCaller(facilityBulkApproveRequest, activityFacilitiesList);
             log.debug("Filtered {} activity facilities with SUBMITTED_BY_SUPERVISOR status from {} total", activityFacilitiesList.size(), activityFacilities.size());
 
             finalActivityFacilities = activityFacilitiesList.size();
@@ -1061,6 +1055,27 @@ public class ActivityService {
             result.put("totalActivityFacilities", totalActivityFacilities);
         }
         return result;
+    }
+
+    /**
+     * Internal re-reads skip {@code canAct}: they are not shown to anyone, and the write path asks
+     * the guard itself.
+     */
+    private void markCanActIfScoped(ActivityFacilitySearchRequest request, List<ActivityFacility> activityFacilities, boolean scoped) {
+        if (scoped) {
+            reviewerActionGuard.markCanAct(request.getRequestInfo(), activityFacilities);
+        }
+    }
+
+    /**
+     * "Select all" means all of the caller's own: a project manager who can see more must not
+     * approve it. Only reviewer actions are narrowed; any other action keeps the whole list.
+     */
+    private List<ActivityFacility> onlyActionableByCaller(FacilityBulkApproveRequest request, List<ActivityFacility> facilities) {
+        if (!reviewerActionGuard.isReviewerAction(request.getWorkflow().getAction())) {
+            return facilities;
+        }
+        return facilities.stream().filter(f -> Boolean.TRUE.equals(f.getCanAct())).toList();
     }
 
     private boolean hasSubmittedBySupervisorStatus(ActivityFacility activityFacility) {
