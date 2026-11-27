@@ -1,6 +1,7 @@
 package org.egov.amc.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.util.SystemRequestInfo;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
@@ -203,7 +204,7 @@ public class AmcVisitRegenerationService {
                 .amcConfigurationIds(List.of(configuration.getId()))
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                .RequestInfo(requestInfo)
+                .RequestInfo(SystemRequestInfo.of(requestInfo))
                 .searchCriteria(criteria)
                 .build();
         List<ScheduledVisit> visits = scheduledVisitRepository.getScheduledVisit(

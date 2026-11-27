@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.amc.config.AMCServiceConfiguration;
+import org.egov.amc.util.SystemRequestInfo;
 import org.egov.amc.web.models.ScheduledVisitSearchCriteria;
 import org.egov.amc.web.models.ScheduledVisitSearchRequest;
+import org.egov.common.contract.request.User;
 import org.egov.common.models.core.URLParams;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
@@ -130,6 +132,7 @@ public class ScheduledVisitQueryBuilder {
         if (userInfo.getRoles() != null) {
             isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
         }
+        boolean isSystemCaller = isSystemCaller(userInfo);
 
 //        if (!isProjectManager) {
 //            queryBuilder.append("JOIN project_staff ps ON ps.projectid = prj.id ");
@@ -137,7 +140,7 @@ public class ScheduledVisitQueryBuilder {
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
         long nowMillis = System.currentTimeMillis();
-        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, nowMillis, userUuid, isProjectManager);
+        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, nowMillis, userUuid, isProjectManager, isSystemCaller);
 
         // Visits of a soft-deleted configuration must disappear with it - otherwise a field agent
         // would keep seeing visits to carry out for a contract that no longer exists. The rows stay in
@@ -168,7 +171,7 @@ public class ScheduledVisitQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset(), criteria.getSortDirection());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ScheduledVisitSearchCriteria criteria, StringBuilder queryBuilder, long nowMillis, String userUuid, boolean isProjectManager) {
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ScheduledVisitSearchCriteria criteria, StringBuilder queryBuilder, long nowMillis, String userUuid, boolean isProjectManager, boolean isSystemCaller) {
 
         if (!CollectionUtils.isEmpty(criteria.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -301,8 +304,12 @@ public class ScheduledVisitQueryBuilder {
             preparedStmtList.add(lastChangedSince);
         }
 
-        // Check if not project manager role
-        if (!isProjectManager) {
+        // Whose visits the caller sees:
+        //  - this service, acting for itself (SystemRequestInfo): every visit - the index sync, reindexing
+        //    and the lookups behind visit generation need the whole set, not one person's view of it;
+        //  - a project manager: the visits of the projects they are staff on;
+        //  - anyone else: the visits assigned to them.
+        if (!isSystemCaller) {
             if (StringUtils.isBlank(userUuid)) {
                 throw new CustomException(
                         "INVALID_USER",
@@ -311,7 +318,12 @@ public class ScheduledVisitQueryBuilder {
             }
 
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sva.assigned_user = ? ");
+            if (isProjectManager) {
+                queryBuilder.append(" EXISTS (SELECT 1 FROM project_staff ps WHERE ps.projectid = sv.project_id " +
+                        "AND ps.staffid = ? AND (ps.isdeleted IS NULL OR ps.isdeleted = false)) ");
+            } else {
+                queryBuilder.append(" sva.assigned_user = ? ");
+            }
             preparedStmtList.add(userUuid);
         }
     }
@@ -375,4 +387,17 @@ public class ScheduledVisitQueryBuilder {
         return builder.toString();
     }
 
+
+    /**
+     * True for this service's own identity, as {@link SystemRequestInfo} builds it: user type SYSTEM
+     * and the SYSTEM_USER role. Both are required, so a SYSTEM-typed user without the role, or the
+     * role on an ordinary user, is still scoped.
+     */
+    private static boolean isSystemCaller(User userInfo) {
+        return userInfo != null
+                && SystemRequestInfo.SYSTEM_USER_TYPE.equalsIgnoreCase(userInfo.getType())
+                && userInfo.getRoles() != null
+                && userInfo.getRoles().stream().anyMatch(role -> role != null
+                        && SystemRequestInfo.SYSTEM_USER_ROLE.equalsIgnoreCase(role.getCode()));
+    }
 }

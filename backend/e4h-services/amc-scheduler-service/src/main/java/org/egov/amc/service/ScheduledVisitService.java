@@ -3,6 +3,7 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.util.SystemRequestInfo;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.service.enrichment.ScheduledVisitEnrichment;
@@ -190,7 +191,7 @@ public class ScheduledVisitService {
                     .includeExpired(true)
                     .build();
             ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                    .RequestInfo(requestInfo)
+                    .RequestInfo(SystemRequestInfo.of(requestInfo))
                     .searchCriteria(criteria)
                     .build();
             List<ScheduledVisit> visits = searchScheduledVisit(searchRequest, limit, offset, tenantId, false, null);
@@ -326,12 +327,15 @@ public class ScheduledVisitService {
      * visitId -> the assignee uuids the mapped-vendor lookup should consider, read from the
      * assignments table rather than from {@code visit.getAssignments()}.
      *
-     * <p>The visits reaching the index come from {@link #searchScheduledVisit}, which scopes
-     * non-PROJECT_MANAGER callers to their own assignment row - and since that same row feeds the
-     * query's {@code jsonb_agg}, the assignments hanging off the visit are just the caller's. Indexing
-     * off that list means the mapped vendor can only ever be the caller, and a visit scheduled by an
-     * AMC SPOC on behalf of field staff resolves to nothing. The API keeps that scoping (callers must
-     * not see each other's assignments); the index simply reads the full roster separately.
+     * <p>A visit that comes from {@link #searchScheduledVisit} on behalf of a user is scoped: a caller
+     * who is not a project manager sees only their own assignment row, and since that same row feeds
+     * the query's {@code jsonb_agg}, the assignments hanging off the visit are just the caller's
+     * (a project manager is held to the visits of their projects instead). Indexing off that list
+     * means the mapped vendor can only ever be the caller, and a visit scheduled by an AMC SPOC on
+     * behalf of field staff resolves to nothing. The API keeps that scoping (callers must not see
+     * each other's assignments); the index reads the full roster separately. The index sync's own
+     * search runs as this service ({@code SystemRequestInfo}), which is not scoped at all, but this
+     * lookup stays on the table so the roster does not depend on that.
      *
      * <p>Falls back to the in-memory assignments per visit when the table has no rows for it - on the
      * create path the visit has only just been pushed onto the persister topic and is not in the
@@ -521,7 +525,7 @@ public class ScheduledVisitService {
                 .visitNumbers(visitNumbers)
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                .RequestInfo(request.getRequestInfo())
+                .RequestInfo(SystemRequestInfo.of(request.getRequestInfo()))
                 .searchCriteria(criteria)
                 .build();
         List<ScheduledVisit> existingVisits = scheduledVisitsRepository.getScheduledVisit(
@@ -547,7 +551,7 @@ public class ScheduledVisitService {
                 .amcConfigurationIds(List.of(amcConfiguration.getId()))
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                .RequestInfo(requestInfo)
+                .RequestInfo(SystemRequestInfo.of(requestInfo))
                 .searchCriteria(criteria)
                 .build();
         List<ScheduledVisit> visits = scheduledVisitsRepository.getScheduledVisit(
@@ -1231,7 +1235,7 @@ public class ScheduledVisitService {
                 .statuses(List.of(DRAFT_STATUS, SCHEDULED_STATUS))
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                .RequestInfo(requestInfo)
+                .RequestInfo(SystemRequestInfo.of(requestInfo))
                 .searchCriteria(criteria)
                 .build();
 

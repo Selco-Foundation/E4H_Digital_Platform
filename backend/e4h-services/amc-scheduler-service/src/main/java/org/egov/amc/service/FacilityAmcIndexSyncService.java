@@ -2,6 +2,7 @@ package org.egov.amc.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.util.SystemRequestInfo;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
 import org.egov.amc.repository.ScheduledVisitRepository;
@@ -42,7 +43,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.egov.amc.util.AmcConstants.PROJECT_MANAGER;
 
 /**
  * Pushes a snapshot of a facility's AMC data (installation date, applicability, frequency,
@@ -791,55 +791,24 @@ public class FacilityAmcIndexSyncService {
     }
 
     /**
-     * The caller's {@code RequestInfo} with {@code PROJECT_MANAGER} added, for the scheduled-visit
-     * repository search only.
+     * This service's own identity, for the scheduled-visit repository search only.
      *
-     * <p>{@code ScheduledVisitQueryBuilder} scopes that search to the caller: without
-     * {@code PROJECT_MANAGER} it appends {@code sva.assigned_user = <userInfo.uuid>}. That is
-     * correct for a field agent browsing their own worklist and wrong for an index sync, which has
-     * to see every visit of the configuration regardless of who triggered it. Without this, a vendor
-     * submitting one visit report indexes a snapshot holding only the cycles assigned to them and
-     * blanks the rest to "Not Applicable" - silently, because an over-filtered search is an empty
-     * result rather than an error.
+     * <p>{@code ScheduledVisitQueryBuilder} scopes that search to the caller: a field agent sees the
+     * visits assigned to them and a project manager those of their projects. That is right for a
+     * worklist and wrong for an index sync, which has to see every visit of the configuration
+     * regardless of who triggered it. Without this, a vendor submitting one visit report indexes a
+     * snapshot holding only the cycles assigned to them and blanks the rest to "Not Applicable" -
+     * silently, because an over-filtered search is an empty result rather than an error.
      *
-     * <p>The caller's object is copied rather than mutated: the same {@code RequestInfo} is reused
-     * by the workflow and HRMS calls later in the sync, which should keep the real caller's roles.
+     * <p>The query builder lets {@link SystemRequestInfo} (type SYSTEM, role SYSTEM_USER) see
+     * everything. The caller's own object is not mutated: the same {@code RequestInfo} is reused by
+     * the workflow and HRMS calls later in the sync, which should keep the real caller's roles.
      */
     private RequestInfo requestInfoForVisitSearch(RequestInfo requestInfo, String tenantId) {
         if (requestInfo == null || requestInfo.getUserInfo() == null) {
             return buildFacilityServiceSystemRequestInfo(tenantId);
         }
-        User caller = requestInfo.getUserInfo();
-        List<Role> roles = new ArrayList<>(caller.getRoles() == null ? List.of() : caller.getRoles());
-        boolean alreadyProjectManager = roles.stream()
-                .anyMatch(role -> role != null && PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
-        if (alreadyProjectManager) {
-            return requestInfo;
-        }
-
-        roles.add(Role.builder().name("Project manager").code(PROJECT_MANAGER).tenantId(tenantId).build());
-        User elevated = User.builder()
-                .id(caller.getId())
-                .uuid(caller.getUuid())
-                .userName(caller.getUserName())
-                .name(caller.getName())
-                .mobileNumber(caller.getMobileNumber())
-                .emailId(caller.getEmailId())
-                .type(caller.getType())
-                .roles(roles)
-                .tenantId(caller.getTenantId())
-                .build();
-        return RequestInfo.builder()
-                .apiId(requestInfo.getApiId())
-                .ver(requestInfo.getVer())
-                .ts(requestInfo.getTs())
-                .action(requestInfo.getAction())
-                .did(requestInfo.getDid())
-                .key(requestInfo.getKey())
-                .msgId(requestInfo.getMsgId())
-                .authToken(requestInfo.getAuthToken())
-                .userInfo(elevated)
-                .build();
+        return SystemRequestInfo.of(requestInfo);
     }
 
     private RequestInfo buildFacilityServiceSystemRequestInfo(String tenantId) {
