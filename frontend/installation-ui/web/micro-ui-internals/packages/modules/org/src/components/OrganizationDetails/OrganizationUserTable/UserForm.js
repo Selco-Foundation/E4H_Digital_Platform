@@ -13,6 +13,7 @@ import {
   isScopedGroup,
   pruneAssignmentGroups,
   rolesNotAllowedAtLevel,
+  allRolesUnscoped,
 } from "../../../utilities/jurisdictionRoles";
 
 /**
@@ -422,6 +423,27 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         }
       }
 
+      const orgRoles = mdmsResponse?.Organisation?.OrgRoles;
+
+      // A user whose every role is outside jurisdiction scoping has nothing to scope, but HRMS
+      // and vendor-registry still require one active jurisdiction. Send a Country-level "all
+      // roles" grant for them rather than make the admin pick one that means nothing.
+      if (!jurisdictions.some((jurisdiction) => jurisdiction.isActive) && allRolesUnscoped(userRoles, orgRoles)) {
+        const country = boundaryData?.countries?.[0]?.code;
+        if (!country) {
+          setFormToast({ key: "error", label: t("ORG_ASSIGNMENT_BOUNDARY_REQUIRED") });
+          return;
+        }
+        jurisdictions.push({
+          hierarchy: "SELCO",
+          boundary: country,
+          boundaryType: "Country",
+          tenantId: tenantId,
+          isActive: true,
+          roles: [],
+        });
+      }
+
       // Rule 4 (Q9): a user with no active jurisdiction sees nothing. This holds on update as
       // well as create - removing the last assignment is the easiest way to produce such a
       // user, and the backend refuses it too (ORG_USER_JURISDICTION_REQUIRED).
@@ -434,7 +456,6 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       // vendor at facility level only). Checked on every active row, saved ones included, so a
       // stored grant at a disallowed level has to be moved or scoped to other roles before the
       // user can be saved.
-      const orgRoles = mdmsResponse?.Organisation?.OrgRoles;
       for (const jurisdiction of jurisdictions) {
         if (!jurisdiction.isActive) continue;
         const [notAllowed] = rolesNotAllowedAtLevel(jurisdiction, userRoles, orgRoles);
@@ -454,7 +475,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     } else {
       setFormToast({ key: "error", label: t("USER_CREATION_SELECT_ROLE_ERROR") });
     }
-  }, [assignments, mdmsResponse, savedAssignments, createdUser]);
+  }, [assignments, mdmsResponse, savedAssignments, createdUser, boundaryData]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
     if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
