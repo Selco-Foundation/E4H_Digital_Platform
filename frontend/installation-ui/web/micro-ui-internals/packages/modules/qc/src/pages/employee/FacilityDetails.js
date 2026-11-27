@@ -10,6 +10,7 @@ import useFacilityDetails, { getAssetAggregation } from "../../hooks/useFacility
 import useAsset from "../../hooks/useAsset";
 import InfoCard from "../../components/FacilityDetails/InfoCard";
 import InstallationImageReviewCard from "../../components/FacilityDetails/InstallationImageReviewCard";
+import WarrantyCardReviewCard from "../../components/FacilityDetails/WarrantyCardReviewCard";
 import { getInstallationImageCriteriaBySystemType } from "../../utilities/installationImages";
 
 import { getInstallationReportFilename } from "../../utilities/installationReportDownload";
@@ -119,6 +120,7 @@ const FacilityDetails = ({t}) => {
       installationReportDocuments: documentAggregation.installationReportDocuments?.length ? documentAggregation.installationReportDocuments : prev.installationReportDocuments,
       installationCompletionCertificate: documentAggregation.installationCompletionCertificate?.length ? documentAggregation.installationCompletionCertificate : prev.installationCompletionCertificate,
       assetHandoverDocument: documentAggregation.assetHandoverDocument?.length ? documentAggregation.assetHandoverDocument : prev.assetHandoverDocument,
+      warrantyCard: documentAggregation.warrantyCard?.length ? documentAggregation.warrantyCard : prev.warrantyCard,
       bomCompletionReport: documentAggregation.bomCompletionReport || prev.bomCompletionReport,
     }));
   };
@@ -159,6 +161,9 @@ const FacilityDetails = ({t}) => {
       "INSTALLATION_COMPLETION_CERTIFICATE",
       "ASSET_HANDOVER_DOCUMENT",
     ].includes(document.documentType?.toUpperCase())
+  ));
+  const hasWarrantyCard = facilityData?.workflow?.[0]?.documents?.some((document) => (
+    document.documentType?.toUpperCase() === "WARRANTY_CARD"
   ));
 
   if (facilityDataLoading || fieldPlanDataLoading) {
@@ -239,6 +244,15 @@ const FacilityDetails = ({t}) => {
           isReport={true}
           isLoadingContent={loadingDocumentSections.INSTALLATION_COMPLETION_REPORT}
           onExpand={() => loadSectionDocuments("INSTALLATION_COMPLETION_REPORT")}
+        />
+      )}
+
+      {(hasWarrantyCard &&
+        <WarrantyCardReviewCard
+          t={t}
+          files={aggregatedDocuments.warrantyCard || []}
+          isLoadingContent={loadingDocumentSections.WARRANTY_CARD}
+          onExpand={() => loadSectionDocuments("WARRANTY_CARD")}
         />
       )}
 

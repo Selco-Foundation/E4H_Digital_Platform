@@ -65,6 +65,7 @@ const emptyDocumentAggregation = {
   installationReportDocuments: [],
   installationCompletionCertificate: [],
   assetHandoverDocument: [],
+  warrantyCard: [],
 };
 
 const isReportDocument = (documentType) => {
@@ -89,6 +90,10 @@ const shouldLoadDocument = (documentType, section) => {
     return isReportDocument(type);
   }
 
+  if (selectedSection === "WARRANTY_CARD") {
+    return type === "WARRANTY_CARD";
+  }
+
   if (selectedSection.includes("INSTALLATION_IMAGE")) {
     return type.includes("INSTALLATION_IMAGE") && selectedSection === `INSTALLATION_IMAGE_${type.split("-")[1]}`;
   }
@@ -108,6 +113,7 @@ export const getAssetAggregation = async (workflow, section) => {
     installationReportDocuments: [],
     installationCompletionCertificate: [],
     assetHandoverDocument: [],
+    warrantyCard: [],
   };
   const installationImages = [];
   const workflowDocuments = [];
@@ -201,6 +207,15 @@ export const getAssetAggregation = async (workflow, section) => {
         documentRequired = true;
         documentAggregation.assetHandoverDocument = [
           ...documentAggregation.assetHandoverDocument,
+          {
+            fileUrl,
+            ...fileDetails,
+          }
+        ];
+      } else if (documentType.toUpperCase() === "WARRANTY_CARD") {
+        documentRequired = true;
+        documentAggregation.warrantyCard = [
+          ...documentAggregation.warrantyCard,
           {
             fileUrl,
             ...fileDetails,
