@@ -120,3 +120,20 @@ export const allRolesUnscoped = (userRoles, orgRoles) => {
   const codes = (userRoles || []).map((role) => role?.code || role).filter(Boolean);
   return codes.length > 0 && codes.every((code) => !isScopedCode(code, orgRoles));
 };
+
+/**
+ * The jurisdiction-scoped roles the user holds that no active jurisdiction covers, as OrgRoles
+ * entries (or `{ code }` where OrgRoles has none).
+ *
+ * A jurisdiction covers a role when it applies to all roles or names it. Without this a scoped
+ * role could be saved with no grant of its own, riding on another role's grant.
+ */
+export const scopedRolesWithoutJurisdiction = (jurisdictions, userRoles, orgRoles) => {
+  const active = (jurisdictions || []).filter((jurisdiction) => jurisdiction?.isActive);
+  const codes = [...new Set((userRoles || []).map((role) => role?.code || role).filter(Boolean))];
+  return codes
+    .filter((code) => isScopedCode(code, orgRoles))
+    .filter((code) => !active.some((jurisdiction) =>
+      appliesToAllRoles(jurisdiction) || jurisdiction.roles.some((role) => (role?.code || role) === code)))
+    .map((code) => orgRoleFor(code, orgRoles) || { code });
+};
