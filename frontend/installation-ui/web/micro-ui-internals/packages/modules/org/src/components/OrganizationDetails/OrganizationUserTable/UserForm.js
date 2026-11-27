@@ -8,11 +8,11 @@ import CustomEditIcon from "../../Custom/CustomEditIcon";
 import AppliesToSelector from "./AppliesToSelector";
 import {
   appliesToAllRoles,
-  areaOnlyRolesOf,
-  facilityOnlyRolesOf,
   buildRolesFromGroups,
   collapseRoleCodesToGroups,
+  isScopedGroup,
   pruneAssignmentGroups,
+  rolesNotAllowedAtLevel,
 } from "../../../utilities/jurisdictionRoles";
 
 /**
@@ -430,25 +430,24 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         return;
       }
 
-      // CRM, State SPOC and Tech POC cover an area, so they may not be granted at a single
-      // facility. Checked on every active row, saved ones included, so a stored facility grant
-      // for these roles has to be moved up or scoped to other roles before the user can be saved.
-      const facilityGrantForAreaRole = jurisdictions.find((jurisdiction) =>
-        jurisdiction.isActive && jurisdiction.boundaryType === "Facility" && areaOnlyRolesOf(jurisdiction, userRoles).length
-      );
-      if (facilityGrantForAreaRole) {
-        setFormToast({ key: "error", label: t("ORG_FACILITY_JURISDICTION_NOT_ALLOWED_FOR_ROLE") });
-        return;
-      }
-
-      // The reverse for the vendor: they service individual facilities, so every active row that
-      // applies to them, an "All roles" row included, must be at facility level.
-      const areaGrantForFacilityRole = jurisdictions.find((jurisdiction) =>
-        jurisdiction.isActive && jurisdiction.boundaryType !== "Facility" && facilityOnlyRolesOf(jurisdiction, userRoles).length
-      );
-      if (areaGrantForFacilityRole) {
-        setFormToast({ key: "error", label: t("ORG_AREA_JURISDICTION_NOT_ALLOWED_FOR_VENDOR") });
-        return;
+      // Each role may only be granted at the levels its OrgRoles record allows (for example the
+      // vendor at facility level only). Checked on every active row, saved ones included, so a
+      // stored grant at a disallowed level has to be moved or scoped to other roles before the
+      // user can be saved.
+      const orgRoles = mdmsResponse?.Organisation?.OrgRoles;
+      for (const jurisdiction of jurisdictions) {
+        if (!jurisdiction.isActive) continue;
+        const [notAllowed] = rolesNotAllowedAtLevel(jurisdiction, userRoles, orgRoles);
+        if (notAllowed) {
+          setFormToast({
+            key: "error",
+            label: t("ORG_JURISDICTION_LEVEL_NOT_ALLOWED_FOR_ROLE", {
+              role: notAllowed.name || notAllowed.code,
+              level: jurisdiction.boundaryType,
+            }),
+          });
+          return;
+        }
       }
 
       onFormSubmit(formattedFormData, jurisdictions);
@@ -800,7 +799,9 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                   <AppliesToSelector
                     t={t}
                     value={assignment.roles}
-                    options={selectedRoleGroups}
+                    // Only roles jurisdiction applies to. Pruning still runs against every held
+                    // group, so a saved grant scoped to a hidden role keeps it.
+                    options={selectedRoleGroups.filter((group) => isScopedGroup(group, mdmsResponse?.Organisation?.OrgRoles))}
                     onChange={(roles) => setAssignmentRoles(index, roles)}
                   />
                 </div>
