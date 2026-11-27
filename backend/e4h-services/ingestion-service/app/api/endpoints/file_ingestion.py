@@ -39,7 +39,8 @@ from starlette.responses import JSONResponse, StreamingResponse
 import requests
 
 from app.core.logging import AppLogger
-from app.decorators.rbac_validator import get_authorized_request_info
+from app.decorators.rbac_validator import get_authorized_request_info, get_caller_scope
+from app.utils.caller_scope import CallerScope, UNRESTRICTED
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
@@ -187,6 +188,32 @@ DB_CONFIG = {
 FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
 
 
+def _boundary_code_of(row) -> str:
+    raw_code = row.get('Boundary Code (Mandatory)')
+    return '' if pd.isna(raw_code) else str(raw_code).strip()
+
+
+def _outside_jurisdiction_error(row) -> str:
+    return (f"State '{str(row.get('State (Mandatory)', '') or '').strip()}' "
+            f"District '{str(row.get('District (Mandatory)', '') or '').strip()}' "
+            f"Block '{str(row.get('Block (Mandatory)', '') or '').strip()}' is outside your jurisdiction")
+
+
+def _fail_rows_outside_jurisdiction(df: pd.DataFrame, caller_scope: CallerScope) -> None:
+    """Fails each row whose resolved boundary lies outside the caller's jurisdiction.
+
+    The boundary code is cleared, as for a code the boundary service does not know, so the row is
+    not validated further against a place the caller may not use."""
+    if caller_scope.unrestricted:
+        return
+    for index, row in df.iterrows():
+        code = _boundary_code_of(row)
+        if code and not caller_scope.allows(code):
+            df.at[index, 'Boundary Code (Mandatory)'] = ''
+            df.at[index, 'status'] = 'FAILED'
+            df.at[index, 'error'] = _outside_jurisdiction_error(row)
+
+
 def _bulk_create_facilities_for_ingestion(
         df: pd.DataFrame,
         facility_client: FacilityServiceClient,
@@ -195,8 +222,11 @@ def _bulk_create_facilities_for_ingestion(
         facility_schema: List[Dict],
         are_facilities_onm_ready: bool,
         vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]],
+        caller_scope: CallerScope = UNRESTRICTED,
 ) -> None:
-    """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service)."""
+    """Validate rows and bulk-create facilities in chunks (vendor jurisdictions handled by facility-service).
+
+    A row whose boundary lies outside `caller_scope` fails on its own, like any other bad row."""
     pending_creates: List[tuple] = []
 
     rows_to_process = df[df['status'] != 'success']
@@ -214,8 +244,10 @@ def _bulk_create_facilities_for_ingestion(
             row, index, df, facility_schema,
         )
         coordinate_errs = collect_coordinate_errors_for_row(row)
+        scope_errs = [] if caller_scope.allows(_boundary_code_of(row)) else [_outside_jurisdiction_error(row)]
         pre_errs = list(dict.fromkeys([
             *hfr_nin_errs, *anganwadi_poc_errs, *identifier_conflicts.get(index, []), *coordinate_errs,
+            *scope_errs,
         ]))
         if pre_errs:
             df.at[index, 'status'] = 'failed'
@@ -522,6 +554,8 @@ async def validate_facilities_excel_sheet(
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
+    # Refused up front, before the sheet is read: who the caller is comes from the auth token.
+    caller_scope = get_caller_scope(request_info_obj)
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
 
@@ -614,6 +648,9 @@ async def validate_facilities_excel_sheet(
                         df.at[index, 'Boundary Code (Mandatory)'] = ''
                         df.at[index, 'status'] = 'FAILED'
                         df.at[index, 'error'] = f"Boundary code for State '{state_val}' District '{district_val}' Block '{block_val}' not found"
+
+        # ----------------- Keep to the caller's jurisdiction ----------------- #
+        _fail_rows_outside_jurisdiction(df, caller_scope)
 
         # ----------------- Run Validation ----------------- #
         validation_errors = facility_validation(
@@ -727,6 +764,9 @@ async def upload_facilities_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
+    # Checked again here rather than trusting that the sheet was validated: this is the call that
+    # creates the facilities, and the caller comes from the auth token.
+    caller_scope = get_caller_scope(request_info)
     mdms_client = MDMSClient(mdms_url)
 
     try:
@@ -776,6 +816,7 @@ async def upload_facilities_excel_sheet(
                 facility_schema=facility_schema,
                 are_facilities_onm_ready=are_facilities_onm_ready,
                 vendor_mapping_cache=vendor_mapping_cache,
+                caller_scope=caller_scope,
             )
 
         writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)

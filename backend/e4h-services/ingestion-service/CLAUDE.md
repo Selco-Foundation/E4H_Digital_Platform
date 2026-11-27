@@ -14,7 +14,7 @@ uv run -m app.main       # run on :8080
 uv add <package>         # add a dependency (updates pyproject.toml + uv.lock)
 ```
 
-Running needs a `.env` with the service URLs (`MDMS_URL`, `BOUNDARY_SERVICE_URL`, `FACILITY_SERVICE_URL`, `PROJECT_SERVICE_URL`, `FIELDPLAN_SERVICE_URL`, `FIELDPLAN_ACTIVITY_SERVICE_URL`, `HRMS_SERVICE_URL`, `IM_SERVICES_URL`, `AMC_SCHEDULER_SERVICE_URL`, `VENDOR_SERVICE_URL`, `FILESTORE_SERVICE_URL`, `LOCALIZATION_SERVICE_URL`), DB settings (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`), `TIME_OUT` and `ENVIRONMENT`. Point them at `kubectl port-forward`ed services. There is no test suite; `Ingestion.postman_collection.json` is the API test artifact.
+Running needs a `.env` with the service URLs (`MDMS_URL`, `BOUNDARY_SERVICE_URL`, `FACILITY_SERVICE_URL`, `PROJECT_SERVICE_URL`, `FIELDPLAN_SERVICE_URL`, `FIELDPLAN_ACTIVITY_SERVICE_URL`, `HRMS_SERVICE_URL`, `USER_SERVICE_URL`, `IM_SERVICES_URL`, `AMC_SCHEDULER_SERVICE_URL`, `VENDOR_SERVICE_URL`, `FILESTORE_SERVICE_URL`, `LOCALIZATION_SERVICE_URL`), DB settings (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`), `TIME_OUT` and `ENVIRONMENT`. Point them at `kubectl port-forward`ed services. Unit tests live in `tests/` and use the standard library only: `.venv/bin/python -m unittest discover -s tests -t .` from the service root. `Ingestion.postman_collection.json` is the API test artifact.
 
 ## Structure
 
