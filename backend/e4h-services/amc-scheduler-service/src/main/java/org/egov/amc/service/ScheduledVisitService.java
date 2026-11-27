@@ -571,6 +571,7 @@ public class ScheduledVisitService {
         ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
                 .ids(List.of(request.getVisitId()))
                 .tenantId(tenantId)
+                .scopeProjectManagerToStaffProjects(true)
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
                 .RequestInfo(request.getRequestInfo())
@@ -619,7 +620,8 @@ public class ScheduledVisitService {
             throw new CustomException("UPDATE_WORKFLOW", "User ID is not found in requestInfo");
 
         // 1. Fetch the existing visit
-        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(List.of(request.getVisitId())).tenantId(request.getRequestInfo().getUserInfo().getTenantId()).build();
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(List.of(request.getVisitId())).tenantId(request.getRequestInfo().getUserInfo().getTenantId())
+                .scopeProjectManagerToStaffProjects(true).build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
         List<ScheduledVisit> scheduledVisitsList = searchScheduledVisit(searchRequest, 10, 0, request.getRequestInfo().getUserInfo().getTenantId(), false, null);
         if(scheduledVisitsList==null || scheduledVisitsList.isEmpty())
@@ -926,7 +928,8 @@ public class ScheduledVisitService {
     /* Construct ScheduledVisit Request object for search which contains asset_amc id and tenantId */
     private ScheduledVisitSearchRequest getSearchScheduledVisitRequest(List<ScheduledVisit> scheduleVisit, RequestInfo requestInfo) {
         List<String> scheduledVisitsIds = scheduleVisit.stream().map(ScheduledVisit::getId).toList();
-        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(scheduledVisitsIds).tenantId(scheduleVisit.get(0).getTenantId()).build();
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(scheduledVisitsIds).tenantId(scheduleVisit.get(0).getTenantId())
+                .scopeProjectManagerToStaffProjects(true).build();
         return ScheduledVisitSearchRequest.builder()
                 .RequestInfo(requestInfo)
                 .searchCriteria(criteria)
@@ -1000,6 +1003,8 @@ public class ScheduledVisitService {
             throw new CustomException("AMC_SUMMARY_ERROR", "facilityIds is mandatory for AMC summary search");
         }
         scheduledVisitsValidator.validateSearchScheduledVisitRequest(request, amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(), tenantId);
+        // Made for a signed-in user: a project manager is held to the projects they are staff on.
+        request.getSearchCriteria().setScopeProjectManagerToStaffProjects(true);
 
         List<String> facilityIds = request.getSearchCriteria().getFacilityIds();
         List<ScheduledVisit> scheduledVisits = scheduledVisitsRepository.getScheduledVisit(

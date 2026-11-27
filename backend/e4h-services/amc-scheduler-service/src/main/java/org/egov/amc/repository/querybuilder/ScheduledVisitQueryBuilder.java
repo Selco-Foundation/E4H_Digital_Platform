@@ -301,8 +301,9 @@ public class ScheduledVisitQueryBuilder {
             preparedStmtList.add(lastChangedSince);
         }
 
-        // Check if not project manager role
-        if (!isProjectManager) {
+        // Everyone else sees the visits assigned to them. A project manager sees every visit, unless
+        // the search is made for a signed-in user: then only those of the projects they are staff on.
+        if (!isProjectManager || criteria.isScopeProjectManagerToStaffProjects()) {
             if (StringUtils.isBlank(userUuid)) {
                 throw new CustomException(
                         "INVALID_USER",
@@ -311,7 +312,12 @@ public class ScheduledVisitQueryBuilder {
             }
 
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sva.assigned_user = ? ");
+            if (isProjectManager) {
+                queryBuilder.append(" EXISTS (SELECT 1 FROM project_staff ps WHERE ps.projectid = sv.project_id " +
+                        "AND ps.staffid = ? AND (ps.isdeleted IS NULL OR ps.isdeleted = false)) ");
+            } else {
+                queryBuilder.append(" sva.assigned_user = ? ");
+            }
             preparedStmtList.add(userUuid);
         }
     }
