@@ -111,3 +111,12 @@ export const rolesNotAllowedAtLevel = (jurisdiction, userRoles, orgRoles) => {
     .filter((role) => role.jurisdictionScoped !== false)
     .filter((role) => Array.isArray(role.allowedJurisdictionLevels) && !role.allowedJurisdictionLevels.includes(jurisdiction?.boundaryType));
 };
+
+/**
+ * True when every role the user holds is outside jurisdiction scoping, so no jurisdiction
+ * decides anything for them. An empty list is false: no roles is not "all unscoped".
+ */
+export const allRolesUnscoped = (userRoles, orgRoles) => {
+  const codes = (userRoles || []).map((role) => role?.code || role).filter(Boolean);
+  return codes.length > 0 && codes.every((code) => !isScopedCode(code, orgRoles));
+};
