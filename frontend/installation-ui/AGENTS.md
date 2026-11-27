@@ -55,15 +55,9 @@ Naming:
 
 Use existing DIGIT components before writing your own:
 
-- **Wizards:** `FormComposerV2` + `Stepper`.
-  - `Stepper` comes from `@egovernments/digit-ui-components`.
-  - `FormComposerV2` is imported from both packages: mostly
-    `@egovernments/digit-ui-react-components`, sometimes
-    `@egovernments/digit-ui-components`. Match the import already used in
-    the module or file you're editing.
-  - Step configs are keyed by step number.
-  - Custom step components are registered by name in `Module.js` and
-    referenced as `component: "PMSomething"`.
+- **Wizards:** `FormComposerV2` + `Stepper`. Custom step components are
+  registered by name in `Module.js` and referenced as
+  `component: "PMSomething"`.
 - **Tables:** `Table` from `@egovernments/digit-ui-react-components`.
   - Columns are `{ id, Header, Cell }`. Each table defines its own local
     `GetCell`/`GetHead` helpers.
@@ -79,11 +73,8 @@ Use existing DIGIT components before writing your own:
   `qc/.../FacilityTable/Filter.js`.
 - **Modals:** `PopUp` as the backdrop, with a styled `<div>` dialog: title
   row with a close button, description, content, then right-aligned
-  Cancel + primary buttons.
-  - Add a `singleAction` prop to hide Cancel for dialogs that only need
-    acknowledging.
-  - Any action that can't be undone (approve, reject, bulk approve, delete)
-    must go through a confirmation modal.
+  Cancel + primary buttons. Any action that can't be undone (approve,
+  reject, bulk approve, delete) must go through a confirmation modal.
 - **Loading:**
   - `Loader` while a page or section is loading.
   - While an action is running, show a full-screen semi-transparent overlay
@@ -103,9 +94,8 @@ Use existing DIGIT components before writing your own:
 
 An action handler sets `actionLoading`, then in `try` calls the service,
 awaits `revalidate()` and shows a success `Toast`. In `catch` it logs with
-`console.error` and shows an error `Toast` with
-`CommonUtils.getApiErrorMessage(error) || t("…")`. In `finally` it clears
-`actionLoading`.
+`console.error` and shows the error `Toast` described above. In `finally` it
+clears `actionLoading`.
 
 Add error handling only at real boundaries: API calls and user input.
 
@@ -156,14 +146,3 @@ Add error handling only at real boundaries: API calls and user input.
   that read a flag should accept both shapes.
 - **QC actions:** the action bar renders only at `SUBMITTED_BY_SUPERVISOR`.
   Approve sends `APPROVE`; Reject sends `REJECT_AND_ASSIGN_FOR_FIELD_QC`.
-
-## Running locally
-
-Follow the shared steps in `../AGENTS.md`. Specific to this app:
-
-- Packages to rebuild are the modules under `packages/modules/`. The root
-  `yarn start` builds them all, then watches them in both formats.
-- A login crash with "Element type is invalid … check the render method of
-  `FieldV1`" means `core`'s modern bundle is stale.
-- Open `http://localhost:3000/e4hhub/employee`. `/` redirects to
-  `/digit-ui`, which redirects to the login page.
