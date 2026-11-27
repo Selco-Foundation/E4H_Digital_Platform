@@ -14,6 +14,7 @@ import {
   pruneAssignmentGroups,
   rolesNotAllowedAtLevel,
   allRolesUnscoped,
+  scopedRolesWithoutJurisdiction,
 } from "../../../utilities/jurisdictionRoles";
 
 /**
@@ -426,8 +427,9 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       const orgRoles = mdmsResponse?.Organisation?.OrgRoles;
 
       // A user whose every role is outside jurisdiction scoping has nothing to scope, but HRMS
-      // and vendor-registry still require one active jurisdiction. Send a Country-level "all
-      // roles" grant for them rather than make the admin pick one that means nothing.
+      // and vendor-registry still require one active jurisdiction. Send a Country-level grant for
+      // them rather than make the admin pick one that means nothing. It names the user's roles
+      // instead of being "all roles", so a scoped role added later is not silently covered by it.
       if (!jurisdictions.some((jurisdiction) => jurisdiction.isActive) && allRolesUnscoped(userRoles, orgRoles)) {
         const country = boundaryData?.countries?.[0]?.code;
         if (!country) {
@@ -440,7 +442,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           boundaryType: "Country",
           tenantId: tenantId,
           isActive: true,
-          roles: [],
+          roles: userRoles,
         });
       }
 
@@ -469,6 +471,16 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           });
           return;
         }
+      }
+
+      // Every jurisdiction-scoped role needs a grant that covers it, not just any active grant.
+      const [uncovered] = scopedRolesWithoutJurisdiction(jurisdictions, userRoles, orgRoles);
+      if (uncovered) {
+        setFormToast({
+          key: "error",
+          label: t("ORG_JURISDICTION_REQUIRED_FOR_ROLE", { role: uncovered.name || uncovered.code }),
+        });
+        return;
       }
 
       onFormSubmit(formattedFormData, jurisdictions);
