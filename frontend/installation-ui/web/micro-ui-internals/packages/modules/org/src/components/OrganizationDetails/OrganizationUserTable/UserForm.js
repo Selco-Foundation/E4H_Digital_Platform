@@ -61,7 +61,6 @@ const resolveCascadeBoundary = (assignment) => {
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
-  const { info } = Digit.UserService.getUser()
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [assignments, setAssignments] = useState([]);
@@ -71,7 +70,6 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const [pageOffset, setPageOffset] = useState(0);
   const [jurisdictionSearch, setJurisdictionSearch] = useState("");
   const [debouncedJurisdictionSearch, setDebouncedJurisdictionSearch] = useState("");
-  const isPlatformOrgAdmin = (info?.roles || []).map((role) => role?.code).includes("ORG_PLATFORM_ADMIN");
   const [totalAssignmentsToDisplay, setTotalAssignmentsToDisplay] = useState(0);
   const [selectedRoleGroups, setSelectedRoleGroups] = useState([]);
 
@@ -730,169 +728,167 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           onClose={() => setFormToast(null)}
         />
       )}
-      {isPlatformOrgAdmin && (
-        <div style={{ marginBottom: "30px", padding: "10px" }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: "24px",
-            fontWeight: "bold",
-            marginBottom: "20px",
-          }}>
-            {t("ASSIGNMENTS")}
-          </h2>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-            {createdUser?.orgUserId && (
-              <TextInput
-                t={t}
-                onChange={(e) => setJurisdictionSearch(e.target.value)}
-                placeholder={t("SEARCH_ASSIGNMENTS")}
-                textInputStyle={{ maxWidth: "300px", marginBottom: "0" }}
-                style={{ marginBottom: "0" }}
-              />
-            )}
-            <Button
-              variation="secondary"
-              label={t("ADD_ASSIGNMENT")}
-              onButtonClick={handleAssignmentAddition}
-              style={{
-                backgroundColor: "white",
-                border: "1px solid #d35400",
-                color: "#d35400",
-                padding: "8px 20px",
-                cursor: "pointer",
-                fontWeight: "bold",
-                fontSize: "16px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                gap: "5px",
-                height: "40px",
-              }}
+      <div style={{ marginBottom: "30px", padding: "10px" }}>
+        <h2 style={{
+          margin: 0,
+          fontSize: "24px",
+          fontWeight: "bold",
+          marginBottom: "20px",
+        }}>
+          {t("ASSIGNMENTS")}
+        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+          {createdUser?.orgUserId && (
+            <TextInput
+              t={t}
+              onChange={(e) => setJurisdictionSearch(e.target.value)}
+              placeholder={t("SEARCH_ASSIGNMENTS")}
+              textInputStyle={{ maxWidth: "300px", marginBottom: "0" }}
+              style={{ marginBottom: "0" }}
             />
-          </div>
-          {assignments
-            .map((assignment, index) => !assignment.isDeleted && (
-              <div
-                className={"org-user-assignment"}
-                style={{
-                  border: "1px solid #ccc",
-                  padding: "20px 20px 0",
-                  marginBottom: "10px",
-                  borderRadius: "10px",
-                }}
-              >
-                <div style={{display: "flex", justifyContent: "space-between", marginBottom: "10px"}}>
-                  <h2 style={{
-                    margin: 0,
-                    fontSize: "18px",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}>
-                    {assignment.id ? t("EDIT_ASSIGNMENT") + ":" : t("NEW_ASSIGNMENT") + ":"}
-                    {assignment.id && (
-                      <span style={{
-                        backgroundColor: "#EEEEEE",
-                        color: "#505A5F",
-                        padding: "4px 12px",
-                        borderRadius: "4px",
-                        fontSize: "13px",
-                        fontWeight: 500,
-                      }}>
-                        {t("ORG_ASSIGNMENT_SAVED_EARLIER")}
-                      </span>
-                    )}
-                  </h2>
-                  {assignment.id ? (
-                    <Button
-                      variation="secondary"
-                      label={t("CORE_COMMON_DONE")}
-                      onButtonClick={() => returnSavedAssignmentToTable(index)}
-                      style={{ height: "32px" }}
-                    />
-                  ) : (
-                    <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
-                      <CustomDustbinIcon colourFill={"#bc210a"} />
-                    </button>
-                  )}
-                </div>
-                <FormComposerV2
-                  key={JSON.stringify({ ...assignment, roles: undefined })}
-                  defaultValues={assignment}
-                  config={assignmentsConfig(false)}
-                  onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
-                  label={""}
-                  heading={""}
-                  cardStyle={{ boxShadow: "none" }}
-                  submitInForm={false}
-                />
-                <div style={{ padding: "0 0 20px" }}>
-                  <div style={{ fontWeight: 700, marginBottom: "8px" }}>{t("ORG_ASSIGNMENT_APPLIES_TO")}</div>
-                  <AppliesToSelector
-                    t={t}
-                    value={assignment.roles}
-                    // Only roles jurisdiction applies to. Pruning still runs against every held
-                    // group, so a saved grant scoped to a hidden role keeps it.
-                    options={selectedRoleGroups.filter((group) => isScopedGroup(group, mdmsResponse?.Organisation?.OrgRoles))}
-                    onChange={(roles) => setAssignmentRoles(index, roles)}
-                  />
-                </div>
-              </div>
-            ))
-          }
-          {!!savedAssignmentsToDisplay?.length ? (
-            <Fragment>
-              <div
-                style={{
-                  backgroundColor: "white",
-                }}
-              >
-                <div
-                  className={"health-facility-table-wrapper"}
-                  style={{
-                    margin: "0",
-                    overflow: "auto",
-                  }}
-                >
-                  <Table
-                    t={t}
-                    customTableWrapperClassName={"user-jurisdictions-table"}
-                    data={savedAssignmentsToDisplay}
-                    columns={columns}
-                    getCellProps={() => {
-                      return {
-                        style: {
-                          maxWidth: "100%",
-                          padding: "17.24px 18px",
-                          fontSize: "15px",
-                        },
-                      };
-                    }}
-                    onNextPage={onNextPage}
-                    onPrevPage={onPrevPage}
-                    currentPage={Math.floor(pageOffset / pageSize)}
-                    totalRecords={totalAssignmentsToDisplay}
-                    onPageSizeChange={onPageSizeChange}
-                    pageSizeLimit={pageSize}
-                  />
-                </div>
-              </div>
-            </Fragment>
-          ) : (!assignments?.length && createdUser?.orgUserId) && (
-            <div style={{
+          )}
+          <Button
+            variation="secondary"
+            label={t("ADD_ASSIGNMENT")}
+            onButtonClick={handleAssignmentAddition}
+            style={{
+              backgroundColor: "white",
+              border: "1px solid #d35400",
+              color: "#d35400",
+              padding: "8px 20px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "16px",
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              height: "200px",
-              fontSize: "18px",
-              color: "#666"
-            }}>
-              {t("NO_ASSIGNMENTS_FOUND")}
-            </div>
-          )}
+              gap: "5px",
+              height: "40px",
+            }}
+          />
         </div>
-      )}
+        {assignments
+          .map((assignment, index) => !assignment.isDeleted && (
+            <div
+              className={"org-user-assignment"}
+              style={{
+                border: "1px solid #ccc",
+                padding: "20px 20px 0",
+                marginBottom: "10px",
+                borderRadius: "10px",
+              }}
+            >
+              <div style={{display: "flex", justifyContent: "space-between", marginBottom: "10px"}}>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                }}>
+                  {assignment.id ? t("EDIT_ASSIGNMENT") + ":" : t("NEW_ASSIGNMENT") + ":"}
+                  {assignment.id && (
+                    <span style={{
+                      backgroundColor: "#EEEEEE",
+                      color: "#505A5F",
+                      padding: "4px 12px",
+                      borderRadius: "4px",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                    }}>
+                      {t("ORG_ASSIGNMENT_SAVED_EARLIER")}
+                    </span>
+                  )}
+                </h2>
+                {assignment.id ? (
+                  <Button
+                    variation="secondary"
+                    label={t("CORE_COMMON_DONE")}
+                    onButtonClick={() => returnSavedAssignmentToTable(index)}
+                    style={{ height: "32px" }}
+                  />
+                ) : (
+                  <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
+                    <CustomDustbinIcon colourFill={"#bc210a"} />
+                  </button>
+                )}
+              </div>
+              <FormComposerV2
+                key={JSON.stringify({ ...assignment, roles: undefined })}
+                defaultValues={assignment}
+                config={assignmentsConfig(false)}
+                onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
+                label={""}
+                heading={""}
+                cardStyle={{ boxShadow: "none" }}
+                submitInForm={false}
+              />
+              <div style={{ padding: "0 0 20px" }}>
+                <div style={{ fontWeight: 700, marginBottom: "8px" }}>{t("ORG_ASSIGNMENT_APPLIES_TO")}</div>
+                <AppliesToSelector
+                  t={t}
+                  value={assignment.roles}
+                  // Only roles jurisdiction applies to. Pruning still runs against every held
+                  // group, so a saved grant scoped to a hidden role keeps it.
+                  options={selectedRoleGroups.filter((group) => isScopedGroup(group, mdmsResponse?.Organisation?.OrgRoles))}
+                  onChange={(roles) => setAssignmentRoles(index, roles)}
+                />
+              </div>
+            </div>
+          ))
+        }
+        {!!savedAssignmentsToDisplay?.length ? (
+          <Fragment>
+            <div
+              style={{
+                backgroundColor: "white",
+              }}
+            >
+              <div
+                className={"health-facility-table-wrapper"}
+                style={{
+                  margin: "0",
+                  overflow: "auto",
+                }}
+              >
+                <Table
+                  t={t}
+                  customTableWrapperClassName={"user-jurisdictions-table"}
+                  data={savedAssignmentsToDisplay}
+                  columns={columns}
+                  getCellProps={() => {
+                    return {
+                      style: {
+                        maxWidth: "100%",
+                        padding: "17.24px 18px",
+                        fontSize: "15px",
+                      },
+                    };
+                  }}
+                  onNextPage={onNextPage}
+                  onPrevPage={onPrevPage}
+                  currentPage={Math.floor(pageOffset / pageSize)}
+                  totalRecords={totalAssignmentsToDisplay}
+                  onPageSizeChange={onPageSizeChange}
+                  pageSizeLimit={pageSize}
+                />
+              </div>
+            </div>
+          </Fragment>
+        ) : (!assignments?.length && createdUser?.orgUserId) && (
+          <div style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "200px",
+            fontSize: "18px",
+            color: "#666"
+          }}>
+            {t("NO_ASSIGNMENTS_FOUND")}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
