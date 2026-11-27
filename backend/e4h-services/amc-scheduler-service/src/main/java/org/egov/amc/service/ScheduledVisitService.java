@@ -39,6 +39,8 @@ import static org.egov.amc.util.AmcConstants.*;
 @Slf4j
 public class ScheduledVisitService {
 
+    private final VisitReviewerGuard visitReviewerGuard;
+
     /**
      * Number of visits whose workflow history is fetched per egov-workflow-v2 search during a reindex.
      * Kept well under the service's 100-record page cap (a visit has only a handful of transitions) so a
@@ -75,8 +77,9 @@ public class ScheduledVisitService {
             Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, ActualVisitDateEnricher actualVisitDateEnricher, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil,
             FacilityPocPhoneUtil facilityPocPhoneUtil, AmcVisitReportPdfService amcVisitReportPdfService,
             LocalizationUtil localizationUtil, AmcAnalyticsService amcAnalyticsService,
-            FacilityAmcIndexSyncService facilityAmcIndexSyncService, MappedVendorUtil mappedVendorUtil) {
+            FacilityAmcIndexSyncService facilityAmcIndexSyncService, MappedVendorUtil mappedVendorUtil, VisitReviewerGuard visitReviewerGuard) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
+            this.visitReviewerGuard = visitReviewerGuard;
         this.requestRepository = requestRepository;
         this.producer = producer;
             this.amcServiceConfiguration = scheduledVisitsConfiguration;
@@ -628,6 +631,10 @@ public class ScheduledVisitService {
         // (out of REJECTED).
         String priorStatus = existingVisit.getStatus();
 
+        // workflow-v2 checks the caller's role, never whether they are the assigned reviewer, and a
+        // project manager's search returns visits they are not assigned to.
+        visitReviewerGuard.requireAssignedReviewer(request.getRequestInfo(), existingVisit, request.getWorkflow().getAction());
+
         // Step 2: if action is SUBMIT_VISIT_REPORT, check if send OTP is successful or not
         if (SUBMIT_VISIT_REPORT_ACTION.equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to update visit report on existing visit
@@ -973,6 +980,10 @@ public class ScheduledVisitService {
                     log.error("Error while calling HRMS service for userId: {}, visitId: {}", assignment.getAssignedUser(), scheduledVisit.getId(), e);
                 }
             }
+        }
+        // After the assignees are in place: whether the caller may take the reviewer's actions.
+        for (ScheduledVisit scheduledVisit : amcConfigurationList) {
+            visitReviewerGuard.markCanAct(request.getRequestInfo(), scheduledVisit);
         }
         log.info("Completed enrichment of scheduled visits");
         return amcConfigurationList;

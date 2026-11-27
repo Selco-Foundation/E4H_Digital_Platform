@@ -45,6 +45,8 @@ public class AmcConstants {
     public static final String NUMBER_OF_SESSIONS = "numberOfSessions";
     public static final String OR = " OR ";
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
+    public static final String AMC_REVIEWER = "AMC_REVIEWER";
+    public static final String PENDING_APPROVAL = "PENDING_APPROVAL";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
     /** Workflow document type of the AMC visit report PDF generated on report submission. */
