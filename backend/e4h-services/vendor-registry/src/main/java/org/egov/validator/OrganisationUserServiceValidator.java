@@ -15,6 +15,7 @@ import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.FacilityUtil;
 import org.egov.util.HRMSUtils;
+import org.egov.util.JurisdictionRoleRules;
 import org.egov.util.JurisdictionScopeResolver;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
@@ -250,8 +251,18 @@ public class OrganisationUserServiceValidator {
         }
         // Every create sets a password, so it is a password set as far as scope goes.
         passwordScopeGuard.require(request.getRequestInfo(), organisation.getId(), null, orgUser.getRoles());
-        // A user with no jurisdiction can see nothing, so creation must supply one rather than
-        // fall back to a country-wide grant.
+        // The per-role jurisdiction rules from OrgRoles MDMS, the same ones the org user form applies.
+        // Not for roles this service chose itself (the PoC admin), which carries its own grant.
+        if (!systemAssignedRoles) {
+            List<JurisdictionRoleRules.RoleRule> roleRules = getOrgRoleRules(request.getRequestInfo());
+            // A user none of whose roles is scoped by jurisdiction gets a country-wide grant naming
+            // those roles, so the API accepts what the form does without an assignment.
+            orgUser.setJurisdictions(JurisdictionRoleRules.withDefaultCountryGrant(
+                    orgUser.getJurisdictions(), orgUser.getRoles(), roleRules, configuration.getGlobalTenantId()));
+            JurisdictionRoleRules.enforce(orgUser.getJurisdictions(), orgUser.getRoles(), roleRules);
+        }
+        // Any other user with no jurisdiction can see nothing, so creation must supply one rather
+        // than fall back to a country-wide grant.
         requireAtLeastOneActiveJurisdiction(orgUser.getJurisdictions(), true);
 
         // A phone match alone does not make this the same person: a deleted user's number can be
@@ -645,6 +656,10 @@ public class OrganisationUserServiceValidator {
         // HRMS Update
         // -----------------------------------------
         if (changes.shouldUpdateHRMS()) {
+            // The per-role jurisdiction rules only matter when roles or jurisdictions change, so an
+            // unrelated edit (name, email) is not held up by grants that predate them.
+            List<JurisdictionRoleRules.RoleRule> roleRules = (changes.isRolesChanged() || changes.isJurisdictionChanged())
+                    ? getOrgRoleRules(request.getRequestInfo()) : null;
             // Mobile special handling
             if (changes.isMobileChanged()) {
                 log.error("phone number is being updated. Old phoneNumber {} with new phoneNumber {}", existingOrgUser.getUser().getMobileNumber(), orgUser.getMobileNumber());
@@ -726,12 +741,30 @@ public class OrganisationUserServiceValidator {
                  * therefore erase every jurisdiction outside the caller's area, silently, with
                  * nothing on screen to suggest it had happened.
                  */
-                List<Jurisdiction> merged = new ArrayList<>(hrmsUtils.buildJurisdictions(orgUser.getJurisdictions()));
+                // A user none of whose roles is scoped by jurisdiction may have no assignment: give
+                // them a country-wide grant naming their roles, as on create. Skipped when the
+                // caller cannot see grants that already keep the user covered.
+                List<Jurisdiction> requested = orgUser.getJurisdictions();
+                boolean outsideActive = outsideCallerScope.stream()
+                        .anyMatch(j -> j != null && !Boolean.FALSE.equals(j.getIsActive()));
+                if (!outsideActive) {
+                    requested = JurisdictionRoleRules.withDefaultCountryGrant(requested,
+                            withoutDefaultEmployeeRole(employee.getUser().getRoles()), roleRules,
+                            configuration.getGlobalTenantId());
+                }
+                List<Jurisdiction> merged = new ArrayList<>(hrmsUtils.buildJurisdictions(requested));
                 merged.addAll(outsideCallerScope);
                 // Checked on the merged list: a caller may legitimately remove their whole slice
                 // from someone who still works elsewhere, but nobody may be left with none.
                 requireAtLeastOneActiveJurisdiction(merged, false);
                 employee.setJurisdictions(merged);
+            }
+
+            // The final roles against the final jurisdictions. Before the pruning below, which turns a
+            // grant whose roles were all removed into an "all roles" one and would hide the gap.
+            if (roleRules != null) {
+                JurisdictionRoleRules.enforce(employee.getJurisdictions(),
+                        withoutDefaultEmployeeRole(employee.getUser().getRoles()), roleRules);
             }
 
             // After both branches above: roles may have been trimmed without the jurisdiction
@@ -808,6 +841,9 @@ public class OrganisationUserServiceValidator {
      * but gives them the whole country, which is the opposite of what an admin who removed
      * every assignment intended. Requiring one here means the fallback is no longer reached
      * from the API, and an admin is told instead of over-granted.
+     *
+     * The exception is a user none of whose roles is scoped by jurisdiction: they are given a
+     * country-wide grant naming their roles before this runs ({@link JurisdictionRoleRules#withDefaultCountryGrant}).
      *
      * `listIsAuthoritative` distinguishes the two callers. On create the list is the whole
      * truth, so absent means none. On update a null list means "jurisdictions unchanged" - the
@@ -966,6 +1002,31 @@ public class OrganisationUserServiceValidator {
                     throw new CustomException("INVALID_ROLES", "Invalid role assigned to the employee "+orgRolesReqSet);
                 }
             }
+        }
+    }
+
+    /** The roles minus the EMPLOYEE role this service adds to everyone, which OrgRoles does not describe. */
+    private static List<Role> withoutDefaultEmployeeRole(List<Role> roles) {
+        if (roles == null) {
+            return List.of();
+        }
+        return roles.stream()
+                .filter(role -> role != null && !EMPLOYEE_ROLE_CODE.equalsIgnoreCase(role.getCode()))
+                .toList();
+    }
+
+    /** What each OrgRoles record says about jurisdiction. Fails closed if MDMS cannot be read. */
+    public List<JurisdictionRoleRules.RoleRule> getOrgRoleRules(RequestInfo requestInfo) {
+        Object mdmsData = mdmsUtil.mDMSCall(requestInfo, configuration.getGlobalTenantId());
+        final String jsonPathForOrgRoles = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_ROLES + "[*]";
+        try {
+            List<Map<String, Object>> orgRolesRes = JsonPath.read(mdmsData, jsonPathForOrgRoles);
+            return orgRolesRes.stream()
+                    .map(item -> mapper.convertValue(item, JurisdictionRoleRules.RoleRule.class))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Failed to read OrgRoles for jurisdiction rules: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
     }
 
