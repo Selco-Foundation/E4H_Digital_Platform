@@ -58,8 +58,45 @@ class OrgAdminScopeResolverTest {
 
     @Test
     void otherCallersAreNotRestrictedOnThisAxis() {
-        assertFalse(resolver.resolve(caller("VENDOR_ADMIN")).restricted());
+        assertFalse(resolver.resolve(caller("PROJECT_MANAGER")).restricted());
         verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void vendorAdminIsBoundToTheirVendorOrg() {
+        when(userRepository.getActiveOrgLinksForUser(CALLER)).thenReturn(List.of(new UserOrgLink("vendor-1", "VENDOR")));
+        OrgAdminScopeResolver.OrgScope scope = resolver.resolve(caller("VENDOR_ADMIN"));
+        assertTrue(scope.restricted());
+        assertTrue(scope.allows("vendor-1"));
+        assertFalse(scope.allows("vendor-2"));
+    }
+
+    @Test
+    void vendorAdminInAPlatformOrgIsRefused() {
+        when(userRepository.getActiveOrgLinksForUser(CALLER)).thenReturn(List.of(new UserOrgLink("org-1", "PLATFORM")));
+        CustomException e = assertThrows(CustomException.class, () -> resolver.resolve(caller("VENDOR_ADMIN")));
+        assertEquals("VENDOR_ADMIN_UNRESOLVED", e.getCode());
+    }
+
+    @Test
+    void vendorAdminWithNoOrSeveralOrgsIsRefused() {
+        when(userRepository.getActiveOrgLinksForUser(CALLER)).thenReturn(List.of());
+        assertThrows(CustomException.class, () -> resolver.resolve(caller("VENDOR_ADMIN")));
+        when(userRepository.getActiveOrgLinksForUser(CALLER)).thenReturn(List.of(
+                new UserOrgLink("vendor-1", "VENDOR"), new UserOrgLink("vendor-2", "VENDOR")));
+        assertThrows(CustomException.class, () -> resolver.resolve(caller("VENDOR_ADMIN")));
+    }
+
+    @Test
+    void platformAdminWinsOverVendorAdmin() {
+        assertFalse(resolver.resolve(caller("VENDOR_ADMIN", "ORG_PLATFORM_ADMIN")).restricted());
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void orgAdminWinsOverVendorAdmin() {
+        when(userRepository.getActiveOrgLinksForUser(CALLER)).thenReturn(List.of(new UserOrgLink("org-1", "PLATFORM")));
+        assertEquals("org-1", resolver.resolve(caller("VENDOR_ADMIN", "ORG_ADMIN")).orgId());
     }
 
     @Test

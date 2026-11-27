@@ -270,4 +270,14 @@ class JurisdictionScopeResolverTest {
         // Left on this axis an ORG_ADMIN, who holds no VENDOR_ADMIN grants, would reach nobody.
         assertTrue(resolver.resolve(caller("ORG_ADMIN")).unscoped());
     }
+
+    @Test
+    void aRoleListedAsUnscopedInConfigIsUnscoped() {
+        when(config.getJurisdictionUnscopedRoles()).thenReturn(List.of("ORG_PLATFORM_ADMIN", "VENDOR_ADMIN"));
+
+        JurisdictionScopeResolver.Scope scope = resolver.resolve(caller("VENDOR_ADMIN"));
+
+        assertTrue(scope.unscoped());
+        org.mockito.Mockito.verifyNoInteractions(hrmsUtils);
+    }
 }

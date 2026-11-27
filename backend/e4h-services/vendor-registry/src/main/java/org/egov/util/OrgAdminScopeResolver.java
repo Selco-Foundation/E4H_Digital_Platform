@@ -18,19 +18,23 @@ import java.util.Objects;
 import static org.egov.util.OrganisationConstant.ORG_ADMIN_ROLE_CODE;
 import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
 import static org.egov.util.OrganisationConstant.PLATFORM_ORG_TYPE;
+import static org.egov.util.OrganisationConstant.VENDOR_ADMIN;
+import static org.egov.util.OrganisationConstant.VENDOR_ORG_TYPE;
 
 /**
- * The one organisation an ORG_ADMIN caller may act on.
+ * The one organisation an ORG_ADMIN or VENDOR_ADMIN caller may act on.
  *
- * ORG_ADMIN is tied to exactly one Platform Org: it sees that org and its users, and nothing else -
- * not other Platform Orgs, not any Vendor Org. ORG_PLATFORM_ADMIN is unrestricted, and wins when a
- * caller holds both. Every other caller is not restricted on this axis.
+ * ORG_ADMIN is tied to exactly one Platform Org, and VENDOR_ADMIN to exactly one Vendor Org: each
+ * sees that org and its users, and nothing else. ORG_PLATFORM_ADMIN is unrestricted, and wins when
+ * a caller holds it. A caller holding both ORG_ADMIN and VENDOR_ADMIN is treated as ORG_ADMIN.
+ * Every other caller is not restricted on this axis.
  *
- * This is deliberately organisation based, not jurisdiction based. It is a different axis from the
- * VENDOR_ADMIN scoping in {@link JurisdictionScopeResolver}; the two are not combined.
+ * This is deliberately organisation based, not jurisdiction based. A VENDOR_ADMIN is not narrowed
+ * by jurisdiction ({@link JurisdictionScopeResolver} treats it as unscoped): a jurisdiction can span
+ * many vendor orgs, so it says nothing about whose users the caller may administer.
  *
- * **This fails closed.** An ORG_ADMIN whose organisation cannot be resolved to exactly one active
- * Platform Org is refused, never shown everything.
+ * **This fails closed.** A restricted caller whose organisation cannot be resolved to exactly one
+ * active org of the expected type is refused, never shown everything.
  */
 @Component
 @Slf4j
@@ -99,15 +103,28 @@ public class OrgAdminScopeResolver {
         return holdsRole(requestInfo, ORG_ADMIN_ROLE_CODE) && !holdsRole(requestInfo, ORG_PLATFORM_ADMIN_ROLE_CODE);
     }
 
+    /** True for a VENDOR_ADMIN restricted to their own Vendor Org: no ORG_PLATFORM_ADMIN, no ORG_ADMIN. */
+    public static boolean isVendorAdmin(RequestInfo requestInfo) {
+        return holdsRole(requestInfo, VENDOR_ADMIN) && !holdsRole(requestInfo, ORG_PLATFORM_ADMIN_ROLE_CODE)
+                && !holdsRole(requestInfo, ORG_ADMIN_ROLE_CODE);
+    }
+
+    /** True for any caller restricted to one organisation. */
+    public static boolean isOrgRestricted(RequestInfo requestInfo) {
+        return isOrgAdmin(requestInfo) || isVendorAdmin(requestInfo);
+    }
+
     /** Resolved once per HTTP request, then reused by the service and validator calls behind it. */
     public OrgScope resolve(RequestInfo requestInfo) {
-        if (!isOrgAdmin(requestInfo)) {
+        if (!isOrgRestricted(requestInfo)) {
             return OrgScope.unrestricted();
         }
+        boolean vendor = isVendorAdmin(requestInfo);
+        String unresolvedCode = vendor ? "VENDOR_ADMIN_UNRESOLVED" : "ORG_ADMIN_UNRESOLVED";
 
         String callerUuid = requestInfo.getUserInfo().getUuid();
         if (StringUtils.isBlank(callerUuid)) {
-            throw new CustomException("ORG_ADMIN_UNRESOLVED", "User UUID is required to resolve the caller's organisation");
+            throw new CustomException(unresolvedCode, "User UUID is required to resolve the caller's organisation");
         }
 
         RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
@@ -116,29 +133,33 @@ public class OrgAdminScopeResolver {
             return cached;
         }
 
-        OrgScope scope = new OrgScope(resolveCallerOrg(callerUuid));
+        OrgScope scope = new OrgScope(resolveCallerOrg(callerUuid, vendor));
         if (attributes != null) {
             attributes.setAttribute(cacheKey, scope, RequestAttributes.SCOPE_REQUEST);
         }
         return scope;
     }
 
-    private String resolveCallerOrg(String callerUuid) {
+    private String resolveCallerOrg(String callerUuid, boolean vendor) {
+        String role = vendor ? VENDOR_ADMIN : ORG_ADMIN_ROLE_CODE;
+        String expectedType = vendor ? VENDOR_ORG_TYPE : PLATFORM_ORG_TYPE;
+        String unresolvedCode = vendor ? "VENDOR_ADMIN_UNRESOLVED" : "ORG_ADMIN_UNRESOLVED";
+
         List<OrganisationUserRepository.UserOrgLink> links = userRepository.getActiveOrgLinksForUser(callerUuid);
         List<String> orgIds = links.stream().map(OrganisationUserRepository.UserOrgLink::organizationId).distinct().toList();
 
         if (orgIds.size() != 1) {
-            log.error("ORG_ADMIN {} is linked to {} active organisations; refusing", callerUuid, orgIds.size());
-            throw new CustomException("ORG_ADMIN_UNRESOLVED",
-                    "Your account is not linked to exactly one organisation");
+            log.error("{} {} is linked to {} active organisations; refusing", role, callerUuid, orgIds.size());
+            throw new CustomException(unresolvedCode, "Your account is not linked to exactly one organisation");
         }
 
         OrganisationUserRepository.UserOrgLink link = links.get(0);
-        if (!PLATFORM_ORG_TYPE.equals(StringUtils.trim(link.orgType()))) {
-            log.error("ORG_ADMIN {} belongs to organisation {} of type {}, not a Platform Org; refusing",
-                    callerUuid, link.organizationId(), link.orgType());
-            throw new CustomException("ORG_ADMIN_UNRESOLVED",
-                    "The organisation admin role is only valid in a Platform organisation");
+        if (!expectedType.equals(StringUtils.trim(link.orgType()))) {
+            log.error("{} {} belongs to organisation {} of type {}, not a {} Org; refusing",
+                    role, callerUuid, link.organizationId(), link.orgType(), expectedType);
+            throw new CustomException(unresolvedCode, vendor
+                    ? "The vendor admin role is only valid in a Vendor organisation"
+                    : "The organisation admin role is only valid in a Platform organisation");
         }
         return link.organizationId();
     }

@@ -43,7 +43,7 @@ class PasswordScopeGuardTest {
     }
 
     private void callerIn(String orgId, String orgType) {
-        when(userRepository.getActiveOrgLinksForUser("caller")).thenReturn(List.of(new UserOrgLink(orgId, orgType)));
+        when(orgAdminScopeResolver.resolve(any())).thenReturn(new OrgAdminScopeResolver.OrgScope(orgId));
     }
 
     private void targetIn(String uuid, String orgId) {
@@ -125,17 +125,8 @@ class PasswordScopeGuardTest {
     }
 
     @Test
-    void vendorAdminOutsideAVendorOrgIsRefused() {
-        callerIn("platform-A", "PLATFORM");
-        assertEquals("VENDOR_ADMIN_UNRESOLVED", refusal(caller("VENDOR_ADMIN"), "platform-A", "u1", roles("EMPLOYEE")));
-    }
-
-    @Test
-    void vendorAdminWithNoOrMoreThanOneOrgIsRefused() {
-        when(userRepository.getActiveOrgLinksForUser("caller")).thenReturn(List.of());
-        assertEquals("VENDOR_ADMIN_UNRESOLVED", refusal(caller("VENDOR_ADMIN"), "vendor-A", null, roles()));
-        when(userRepository.getActiveOrgLinksForUser("caller"))
-                .thenReturn(List.of(new UserOrgLink("vendor-A", "VENDOR"), new UserOrgLink("vendor-B", "VENDOR")));
+    void vendorAdminWhoseOrgCannotBeResolvedIsRefused() {
+        when(orgAdminScopeResolver.resolve(any())).thenThrow(new CustomException("VENDOR_ADMIN_UNRESOLVED", "unresolved"));
         assertEquals("VENDOR_ADMIN_UNRESOLVED", refusal(caller("VENDOR_ADMIN"), "vendor-A", null, roles()));
     }
 

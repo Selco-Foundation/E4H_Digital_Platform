@@ -37,6 +37,7 @@ public class OrganisationConstant {
      */
     public static final String ORG_PLATFORM_ADMIN_ROLE_CODE = "ORG_PLATFORM_ADMIN";
     public static final String PLATFORM_ORG_TYPE = "PLATFORM";
+    public static final String VENDOR_ORG_TYPE = "VENDOR";
     public static final String ORG_CITIZEN_TYPE = "CITIZEN";
 
     // localization contants

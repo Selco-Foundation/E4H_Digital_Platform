@@ -468,16 +468,16 @@ public class OrganisationUserServiceValidator {
     }
 
     private void requireCallerAdministers(RequestInfo requestInfo, Employee employee, String mobileNumber) {
-        // An ORG_ADMIN is not scoped by jurisdiction, so the check below would let them through for
+        // An ORG_ADMIN or VENDOR_ADMIN is not scoped by jurisdiction, so the check below would let them through for
         // anyone. Their rule is the organisation: the existing account must already belong to their
         // own org, and must not be a platform admin - otherwise entering that person's mobile number
         // would set their password and take the account over.
-        if (OrgAdminScopeResolver.isOrgAdmin(requestInfo)) {
+        if (OrgAdminScopeResolver.isOrgRestricted(requestInfo)) {
             OrgAdminScopeResolver.OrgScope orgScope = orgAdminScopeResolver.resolve(requestInfo);
             String uuid = employee.getUser() != null ? employee.getUser().getUuid() : null;
             boolean inOwnOrg = uuid != null && userRepository.isUserLinkedToOrg(uuid, orgScope.orgId());
             if (!inOwnOrg || holdsRole(employee.getUser(), ORG_PLATFORM_ADMIN_ROLE_CODE)) {
-                log.error("ORG_ADMIN attempted to create over existing user with phone {} outside their organisation or a platform admin", mobileNumber);
+                log.error("Org-restricted caller attempted to create over existing user with phone {} outside their organisation or a platform admin", mobileNumber);
                 throw new CustomException("USER_OUT_OF_SCOPE",
                         "A user with this mobile number already exists and cannot be added by you");
             }
