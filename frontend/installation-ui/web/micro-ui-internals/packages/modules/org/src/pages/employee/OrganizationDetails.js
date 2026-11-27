@@ -89,6 +89,7 @@ const OrganizationDetails = () => {
             orgPocPhone: formData.orgPocPhone,
             orgPocEmail: formData.orgPocEmail,
             orgPocUsername: formData.orgPocUsername,
+              ...(formData.orgPocPassword ? {orgPocPassword : formData.orgPocPassword} : {}),
             isActive: true,
             orgAddress: [],
           },
