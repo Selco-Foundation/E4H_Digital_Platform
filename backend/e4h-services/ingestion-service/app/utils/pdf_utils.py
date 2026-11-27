@@ -2,8 +2,8 @@ from io import BytesIO
 from typing import List, Optional
 
 from PIL import Image
-from pypdf import PageObject, PdfReader, PdfWriter, Transformation
-from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+from pypdf import PageObject, PdfReader, PdfWriter
+from pypdf.generic import ContentStream, DecodedStreamObject, DictionaryObject, NameObject, RectangleObject
 
 from app.core.logging import AppLogger
 
@@ -49,21 +49,38 @@ def _escape_pdf_text(text: str) -> bytes:
     return encoded.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
 
 
-def _with_heading(page: PageObject, heading: str) -> PageObject:
+def _add_heading(page: PageObject, heading: str) -> None:
     """
-    Returns a copy of `page` with a band added on top holding `heading` in Helvetica-Bold.
-    The original content is kept unscaled below the band, so nothing on the page is covered.
+    Grows `page` upwards by a band and draws `heading` in it in Helvetica-Bold. The original content
+    keeps its size and position, so nothing on the page is covered.
+
+    `page` must already belong to a PdfWriter (the one returned by `writer.add_page`): since pypdf 7
+    a page's content can only be rewritten once it is attached to a writer.
     """
     page.transfer_rotation_to_content()
-    box = page.mediabox
+    # The visible area is the CropBox (pypdf falls back to the MediaBox when there is none).
+    box = page.cropbox
+    left, bottom = float(box.left), float(box.bottom)
     width, height = float(box.width), float(box.height)
 
     font_size = max(HEADING_MIN_FONT_SIZE, width * HEADING_FONT_RATIO)
     band = max(font_size * 2, width * HEADING_BAND_RATIO)
     margin = width * HEADING_MARGIN_RATIO
 
-    new_page = PageObject.create_blank_page(width=width, height=height + band)
-    new_page.merge_transformed_page(page, Transformation().translate(-float(box.left), -float(box.bottom)))
+    # Content outside the visible area was hidden by the page boxes; clip it so it does not
+    # reappear in the band once the page grows.
+    contents = page.get_contents()
+    if contents is not None:
+        clipped = ContentStream(None, None)
+        clipped.set_data(b"q %.4f %.4f %.4f %.4f re W n\n" % (left, bottom, width, height)
+                         + contents.get_data() + b"\nQ\n")
+        page.replace_contents(clipped)
+
+    page.mediabox = RectangleObject([left, bottom, left + width, bottom + height + band])
+    # Remaining boxes would cut the new band off; drop them so every viewer shows the full page.
+    for box_name in ("/CropBox", "/TrimBox", "/BleedBox", "/ArtBox"):
+        if box_name in page:
+            del page[NameObject(box_name)]
 
     heading_page = PageObject.create_blank_page(width=width, height=height + band)
     font = DictionaryObject({
@@ -75,16 +92,15 @@ def _with_heading(page: PageObject, heading: str) -> PageObject:
     heading_page[NameObject("/Resources")] = DictionaryObject({
         NameObject("/Font"): DictionaryObject({NameObject("/FHeading"): font}),
     })
-    baseline = height + (band - font_size) / 2 + font_size * 0.2
+    baseline = bottom + height + (band - font_size) / 2 + font_size * 0.2
     content = DecodedStreamObject()
     content.set_data(
-        b"BT /FHeading %.2f Tf %.2f %.2f Td (" % (font_size, margin, baseline)
+        b"BT /FHeading %.2f Tf %.2f %.2f Td (" % (font_size, left + margin, baseline)
         + _escape_pdf_text(heading)
         + b") Tj ET"
     )
     heading_page[NameObject("/Contents")] = content
-    new_page.merge_page(heading_page)
-    return new_page
+    page.merge_page(heading_page)
 
 
 def append_documents_to_pdf(parent_pdf_bytes: bytes, document_bytes_list: List[bytes],
@@ -104,9 +120,9 @@ def append_documents_to_pdf(parent_pdf_bytes: bytes, document_bytes_list: List[b
         try:
             reader = PdfReader(BytesIO(_to_pdf_bytes(document_bytes)))
             for page_index, page in enumerate(reader.pages):
+                added_page = writer.add_page(page)
                 if page_index == 0 and heading and heading.strip():
-                    page = _with_heading(page, heading.strip())
-                writer.add_page(page)
+                    _add_heading(added_page, heading.strip())
         except Exception as e:
             logger.error(f"Error appending document at index {index} to parent PDF: {e}", exc_info=True)
             raise
