@@ -82,10 +82,22 @@ export const describeAllRoles = (heldGroups) =>
 export const AREA_ONLY_ROLE_CODES = ["COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"];
 
 /**
- * The area-only role codes a jurisdiction applies to. A jurisdiction with no roles applies to every
- * role the user holds, so it is checked against `userRoles` instead.
+ * Roles that work at a single facility and never across an area: the vendor. A vendor is mapped to
+ * the facilities they service, so any grant above facility level for them is a mistake.
  */
-export const areaOnlyRolesOf = (jurisdiction, userRoles) => {
+export const FACILITY_ONLY_ROLE_CODES = ["COMPLAINT_RESOLVER"];
+
+/**
+ * The codes from `restrictedCodes` that a jurisdiction applies to. A jurisdiction with no roles
+ * applies to every role the user holds, so it is checked against `userRoles` instead.
+ */
+const appliedRolesAmong = (restrictedCodes, jurisdiction, userRoles) => {
   const applied = jurisdiction?.roles?.length ? jurisdiction.roles : userRoles;
-  return [...new Set((applied || []).map((role) => role?.code || role).filter((code) => AREA_ONLY_ROLE_CODES.includes(code)))];
+  return [...new Set((applied || []).map((role) => role?.code || role).filter((code) => restrictedCodes.includes(code)))];
 };
+
+/** The area-only role codes a jurisdiction applies to. */
+export const areaOnlyRolesOf = (jurisdiction, userRoles) => appliedRolesAmong(AREA_ONLY_ROLE_CODES, jurisdiction, userRoles);
+
+/** The facility-only role codes a jurisdiction applies to. */
+export const facilityOnlyRolesOf = (jurisdiction, userRoles) => appliedRolesAmong(FACILITY_ONLY_ROLE_CODES, jurisdiction, userRoles);
