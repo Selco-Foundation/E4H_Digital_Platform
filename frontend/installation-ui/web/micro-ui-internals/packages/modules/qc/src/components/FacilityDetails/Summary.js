@@ -169,7 +169,7 @@ const Summary = ({
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {selectedFacility?.status && selectedFacility?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
+          {selectedFacility?.status && selectedFacility?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && selectedFacility?.canAct && (
             <button
               style={{
                 border: "1px solid #d35400",

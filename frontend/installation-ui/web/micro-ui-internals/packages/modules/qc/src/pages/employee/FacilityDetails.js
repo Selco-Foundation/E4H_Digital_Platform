@@ -264,7 +264,7 @@ const FacilityDetails = ({t}) => {
         );
       })}
 
-      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
+      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && facilityDetails?.canAct && (
         <QCActions
           t={t}
           revalidateData={revalidateData}

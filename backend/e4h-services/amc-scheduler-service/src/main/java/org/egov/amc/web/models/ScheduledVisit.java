@@ -1,5 +1,6 @@
 package org.egov.amc.web.models;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.egov.common.contract.models.AuditDetails;
@@ -46,6 +47,14 @@ public class ScheduledVisit {
     private List<ProcessInstance> processInstances;
     private List<Transaction> transactions;
     private List<ScheduledVisitAssignment> assignments;
+    /**
+     * Whether the caller is an AMC reviewer assigned to this visit, and so may take the reviewer's
+     * actions on it. Computed on search for a caller holding the reviewer role (absent for anyone
+     * else); never read from a request.
+     */
+    @JsonProperty(value = "canAct", access = JsonProperty.Access.READ_ONLY)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean canAct;
     private Map<String, Object> additionalDetails;
     private AuditDetails auditDetails;
 }

@@ -12,6 +12,8 @@ const formatFacilities = (facilities) => {
       district: row?.activityFacility?.facility?.boundary?.district,
       assigned: row?.activityFacility?.staffVendorName,
       isRectificationSite: isRectificationSite(row?.activityFacility?.additionalDetails),
+      // Whether the signed-in user is the reviewer this installation is assigned to; decided by the backend.
+      canAct: row?.activityFacility?.canAct === true,
   }));
 }
 

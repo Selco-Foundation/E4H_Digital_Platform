@@ -18,14 +18,25 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Repository
 @Slf4j
 public class ActivityAssignmentRepository extends GenericRepository<ActivityAssignment> {
+
+    private static final String FIELD_PLAN_ID = "field_plan_id";
+
+    /** A fixed statement: the plan ids travel as one bound array, so nothing is concatenated into the SQL. */
+    private static final String FIND_ASSIGNED_PLAN_ACTIVITIES =
+            "SELECT field_plan_id, activity_id FROM activity_assignments "
+                    + "WHERE assigned_to = ? AND role ->> 'code' = ? AND COALESCE(isdeleted, false) = false "
+                    + "AND field_plan_id = ANY(?)";
+
 
     private final ActivityAssignmentQueryBuilder queryBuilder;
     private final JdbcTemplate jdbcTemplate;
@@ -114,7 +125,7 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
 
         Map<String, String> pocNumbersByFieldPlanId = new HashMap<>();
         jdbcTemplate.query(query, rs -> {
-            pocNumbersByFieldPlanId.put(rs.getString("field_plan_id"), rs.getString("poc_number"));
+            pocNumbersByFieldPlanId.put(rs.getString(FIELD_PLAN_ID), rs.getString("poc_number"));
         }, fieldPlanIds.toArray());
 
         return pocNumbersByFieldPlanId;
@@ -138,9 +149,36 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
 
         Map<String, String> assignedToByFieldPlanId = new HashMap<>();
         jdbcTemplate.query(query, rs -> {
-            assignedToByFieldPlanId.put(rs.getString("field_plan_id"), rs.getString("assigned_to"));
+            assignedToByFieldPlanId.put(rs.getString(FIELD_PLAN_ID), rs.getString("assigned_to"));
         }, params.toArray());
 
         return assignedToByFieldPlanId;
+    }
+
+    /**
+     * The plan-activities `assignedTo` holds under `role`, as "fieldPlanId|activityId" keys,
+     * restricted to the given plans.
+     *
+     * Read from the assignments themselves rather than from {@code activity_facility_users}, which
+     * records who may see a facility but not under which role they were assigned.
+     */
+    public Set<String> findAssignedPlanActivityKeys(String assignedTo, String role, Collection<String> fieldPlanIds) {
+        if (assignedTo == null || assignedTo.isBlank() || role == null || role.isBlank()
+                || fieldPlanIds == null || fieldPlanIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<String> keys = new HashSet<>();
+        jdbcTemplate.query(FIND_ASSIGNED_PLAN_ACTIVITIES, ps -> {
+            ps.setString(1, assignedTo);
+            ps.setString(2, role);
+            ps.setArray(3, ps.getConnection().createArrayOf("text", fieldPlanIds.toArray(new String[0])));
+        }, rs -> {
+            keys.add(planActivityKey(rs.getString(FIELD_PLAN_ID), rs.getString("activity_id")));
+        });
+        return keys;
+    }
+
+    public static String planActivityKey(String fieldPlanId, String activityId) {
+        return fieldPlanId + "|" + activityId;
     }
 }

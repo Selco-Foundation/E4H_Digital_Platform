@@ -110,7 +110,7 @@ const VisitDetails = ({t}) => {
         isDocument={true}
       />
 
-      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "PENDING_APPROVAL" && (
+      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "PENDING_APPROVAL" && facilityDetails?.canAct && (
         <AMCReviewerActions
           t={t}
           revalidateData={revalidateData}

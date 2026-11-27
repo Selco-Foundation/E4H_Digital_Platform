@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.web.models.*;
 import org.egov.common.models.core.URLParams;
+import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -130,12 +131,25 @@ public class ActivityAssignmentQueryBuilder {
             preparedStmtList.add(lastChangedSince);
         }
 
-        // Check if not project manager role
-        if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" aa.assigned_to = ? ");
-            preparedStmtList.add(userUuid);
+        /*
+         * Whose assignments the caller may see.
+         *
+         * A project manager sees the plans of the projects they are staff on, the same rule the
+         * project service applies to its own search; anyone else sees only what is assigned to them.
+         * A blank uuid is refused rather than skipped: skipping would hand every assignment in the
+         * tenant to a caller we cannot identify.
+         */
+        if (StringUtils.isBlank(userUuid)) {
+            throw new CustomException("INVALID_USER", "User UUID is required to search activity assignments");
         }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        if (isProjectManager) {
+            queryBuilder.append(" EXISTS (SELECT 1 FROM project_staff ps WHERE ps.projectid = fp.project_id " +
+                    "AND ps.staffid = ? AND (ps.isdeleted IS NULL OR ps.isdeleted = false)) ");
+        } else {
+            queryBuilder.append(" aa.assigned_to = ? ");
+        }
+        preparedStmtList.add(userUuid);
 
         // Check if fp name is provided
         if (StringUtils.isNotBlank(activityAssignment.getFieldPlanCode())) {

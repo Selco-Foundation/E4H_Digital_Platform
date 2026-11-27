@@ -47,6 +47,14 @@ public class ActivityFacility {
     @JsonProperty("linkedUsers")
     private List<String> linkedUsers = null;
 
+    /**
+     * Whether the caller is the installation reviewer assigned to this facility's plan-activity, and
+     * so may take the reviewer's actions on it. Computed on search for the caller; never read from a
+     * request.
+     */
+    @JsonProperty(value = "canAct", access = JsonProperty.Access.READ_ONLY)
+    private Boolean canAct = null;
+
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 

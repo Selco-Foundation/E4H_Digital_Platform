@@ -142,7 +142,7 @@ const FacilityTable = ({ t }) => {
     if(!prevMainCheck) {
       setSelectedFacilities(
         fetchedData
-          .filter((row) => row?.status === "SUBMITTED_BY_SUPERVISOR")
+          .filter((row) => row?.status === "SUBMITTED_BY_SUPERVISOR" && row?.canAct)
           .map((row) => row.id)
       );
     } else {
@@ -181,7 +181,7 @@ const FacilityTable = ({ t }) => {
         </div>
       ),
       Cell: ({ row }) => {
-        return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" ? (
+        return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" && row.original["canAct"] ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CustomCheckBox
               checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}
