@@ -207,6 +207,8 @@ const fetchVisitDetails = async (filter, limit, offset) => {
       block: geography.block,
       district: geography.district,
       status: visitData?.status,
+      // Whether the signed-in user is the reviewer this visit is assigned to; decided by the backend.
+      canAct: visitData?.canAct === true,
       ...facilityAmcSummary,
       // Prefer the current visit's number when cadence data is available; summary API is the fallback.
       amcNumber: visitAmcNumber !== "-" ? visitAmcNumber : facilityAmcSummary.amcNumber || "-",
