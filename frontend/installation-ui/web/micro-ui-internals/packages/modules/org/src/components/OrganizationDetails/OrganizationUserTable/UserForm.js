@@ -9,6 +9,7 @@ import AppliesToSelector from "./AppliesToSelector";
 import {
   appliesToAllRoles,
   areaOnlyRolesOf,
+  facilityOnlyRolesOf,
   buildRolesFromGroups,
   collapseRoleCodesToGroups,
   pruneAssignmentGroups,
@@ -437,6 +438,16 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       );
       if (facilityGrantForAreaRole) {
         setFormToast({ key: "error", label: t("ORG_FACILITY_JURISDICTION_NOT_ALLOWED_FOR_ROLE") });
+        return;
+      }
+
+      // The reverse for the vendor: they service individual facilities, so every active row that
+      // applies to them, an "All roles" row included, must be at facility level.
+      const areaGrantForFacilityRole = jurisdictions.find((jurisdiction) =>
+        jurisdiction.isActive && jurisdiction.boundaryType !== "Facility" && facilityOnlyRolesOf(jurisdiction, userRoles).length
+      );
+      if (areaGrantForFacilityRole) {
+        setFormToast({ key: "error", label: t("ORG_AREA_JURISDICTION_NOT_ALLOWED_FOR_VENDOR") });
         return;
       }
 
