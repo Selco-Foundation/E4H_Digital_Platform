@@ -69,10 +69,6 @@ public class ScheduledVisitController {
             @ApiParam(value = "Details for the visit.", required = true) @Valid @RequestBody ScheduledVisitSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
-        // A project manager searching here sees the visits of their own projects, not every visit.
-        if (request.getSearchCriteria() != null) {
-            request.getSearchCriteria().setScopeProjectManagerToStaffProjects(true);
-        }
         List<ScheduledVisit> scheduledVisits = scheduledVisitService.searchScheduledVisit(
                 request,
                 urlParams.getLimit(),

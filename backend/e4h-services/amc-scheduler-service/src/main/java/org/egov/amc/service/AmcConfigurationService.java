@@ -3,6 +3,7 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.util.SystemRequestInfo;
 import org.egov.amc.repository.AssetAmcRepository;
 import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.web.models.*;
@@ -299,7 +300,7 @@ public class AmcConfigurationService {
                 .statuses(List.of("APPROVED"))
                 .build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
-                .RequestInfo(requestInfo)
+                .RequestInfo(SystemRequestInfo.of(requestInfo))
                 .searchCriteria(searchCriteria)
                 .build();
         List<ScheduledVisit> visits = scheduledVisitRepository.getScheduledVisit(
@@ -565,7 +566,7 @@ public class AmcConfigurationService {
 
     private Integer getCompletedVisits(RequestInfo requestInfo, AmcConfiguration amcConfiguration) {
         ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder().facilityIds(List.of(amcConfiguration.getFacilityId())).statuses(List.of("APPROVED")).build();
-        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().RequestInfo(requestInfo).searchCriteria(searchCriteria).build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().RequestInfo(SystemRequestInfo.of(requestInfo)).searchCriteria(searchCriteria).build();
         Integer count = scheduledVisitRepository.getScheduledVisitCount(searchRequest, amcConfiguration.getTenantId(), null, null);
         return count;
     }

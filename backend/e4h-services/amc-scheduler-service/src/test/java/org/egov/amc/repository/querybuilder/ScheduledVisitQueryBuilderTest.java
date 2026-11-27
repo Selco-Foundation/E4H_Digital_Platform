@@ -1,6 +1,7 @@
 package org.egov.amc.repository.querybuilder;
 
 import org.egov.amc.config.AMCServiceConfiguration;
+import org.egov.amc.util.SystemRequestInfo;
 import org.egov.amc.web.models.ScheduledVisitSearchCriteria;
 import org.egov.amc.web.models.ScheduledVisitSearchRequest;
 import org.egov.common.contract.request.RequestInfo;
@@ -25,10 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Whose AMC visits the visit search returns.
  *
- * Everyone but a project manager sees the visits assigned to them. A project manager sees every
- * visit unless the search is made for a signed-in user, when they see only the visits of projects
- * they are staff on. Internal searches keep the old behaviour: several of them (reindexing, the
- * facility index sync) need every visit and would silently come back empty if scoped.
+ * This service acting for itself (the index sync, reindexing, the lookups behind visit generation)
+ * sees every visit. A project manager sees the visits of projects they are staff on, and everyone
+ * else the visits assigned to them. Nobody gets an unfiltered list by being unidentified.
  */
 class ScheduledVisitQueryBuilderTest {
 
@@ -47,31 +47,33 @@ class ScheduledVisitQueryBuilderTest {
         builder = new ScheduledVisitQueryBuilder(config);
     }
 
-    private static ScheduledVisitSearchRequest request(String uuid, boolean scopeProjectManager, String... roleCodes) {
-        User user = new User();
-        user.setUuid(uuid);
-        user.setRoles(Arrays.stream(roleCodes).map(c -> Role.builder().code(c).build()).collect(Collectors.toList()));
-        RequestInfo requestInfo = new RequestInfo();
-        requestInfo.setUserInfo(user);
+    private static ScheduledVisitSearchRequest request(RequestInfo requestInfo) {
         return ScheduledVisitSearchRequest.builder()
                 .RequestInfo(requestInfo)
-                .searchCriteria(ScheduledVisitSearchCriteria.builder()
-                        .tenantId("in")
-                        .scopeProjectManagerToStaffProjects(scopeProjectManager)
-                        .build())
+                .searchCriteria(ScheduledVisitSearchCriteria.builder().tenantId("in").build())
                 .build();
     }
 
-    private String query(ScheduledVisitSearchRequest request, List<Object> binds) {
+    private static RequestInfo caller(String uuid, String type, String... roleCodes) {
+        User user = new User();
+        user.setUuid(uuid);
+        user.setType(type);
+        user.setRoles(Arrays.stream(roleCodes).map(c -> Role.builder().code(c).build()).collect(Collectors.toList()));
+        RequestInfo requestInfo = new RequestInfo();
+        requestInfo.setUserInfo(user);
+        return requestInfo;
+    }
+
+    private String query(RequestInfo requestInfo, List<Object> binds) {
         URLParams params = URLParams.builder().limit(10).offset(0).tenantId("in").includeDeleted(false).build();
-        return builder.getScheduledVisitSearchQuery(request, params, binds);
+        return builder.getScheduledVisitSearchQuery(request(requestInfo), params, binds);
     }
 
     @Test
     @DisplayName("a reviewer sees only visits assigned to them")
     void reviewerIsScopedToTheirAssignments() {
         List<Object> binds = new ArrayList<>();
-        String sql = query(request(UUID, true, "AMC_REVIEWER"), binds);
+        String sql = query(caller(UUID, "EMPLOYEE", "AMC_REVIEWER"), binds);
 
         assertTrue(sql.contains(ASSIGNEE_CLAUSE));
         assertFalse(sql.contains("project_staff"));
@@ -79,10 +81,10 @@ class ScheduledVisitQueryBuilderTest {
     }
 
     @Test
-    @DisplayName("a project manager searching for themselves sees only visits of projects they are staff on")
+    @DisplayName("a project manager sees only visits of projects they are staff on")
     void projectManagerIsScopedToTheirProjects() {
         List<Object> binds = new ArrayList<>();
-        String sql = query(request(UUID, true, "PROJECT_MANAGER"), binds);
+        String sql = query(caller(UUID, "EMPLOYEE", "PROJECT_MANAGER"), binds);
 
         assertTrue(sql.contains(STAFF_CLAUSE), sql);
         assertTrue(sql.contains("(ps.isdeleted IS NULL OR ps.isdeleted = false)"));
@@ -93,17 +95,19 @@ class ScheduledVisitQueryBuilderTest {
     @Test
     @DisplayName("a project manager who is also a reviewer is held to their projects, not to assignments")
     void projectManagerWinsWhenBothRolesAreHeld() {
-        String sql = query(request(UUID, true, "PROJECT_MANAGER", "AMC_REVIEWER"), new ArrayList<>());
+        String sql = query(caller(UUID, "EMPLOYEE", "PROJECT_MANAGER", "AMC_REVIEWER"), new ArrayList<>());
 
         assertTrue(sql.contains(STAFF_CLAUSE));
         assertFalse(sql.contains(ASSIGNEE_CLAUSE));
     }
 
     @Test
-    @DisplayName("an internal search keeps seeing every visit for a project manager")
-    void internalSearchIsNotScoped() {
+    @DisplayName("this service acting for itself sees every visit")
+    void systemCallerIsNotScoped() {
         List<Object> binds = new ArrayList<>();
-        String sql = query(request(UUID, false, "PROJECT_MANAGER"), binds);
+        RequestInfo asSystem = SystemRequestInfo.of(caller(UUID, "EMPLOYEE", "AMC_REVIEWER"));
+
+        String sql = query(asSystem, binds);
 
         assertFalse(sql.contains("project_staff"));
         assertFalse(sql.contains(ASSIGNEE_CLAUSE));
@@ -111,25 +115,48 @@ class ScheduledVisitQueryBuilderTest {
     }
 
     @Test
+    @DisplayName("a project manager passed through SystemRequestInfo is no longer scoped, and the original is untouched")
+    void systemIdentityReplacesTheProjectManagerRole() {
+        RequestInfo pm = caller(UUID, "EMPLOYEE", "PROJECT_MANAGER");
+
+        assertFalse(query(SystemRequestInfo.of(pm), new ArrayList<>()).contains("project_staff"));
+        assertTrue(query(pm, new ArrayList<>()).contains(STAFF_CLAUSE));
+    }
+
+    @Test
+    @DisplayName("the system identity needs both the SYSTEM type and the SYSTEM_USER role")
+    void systemCallerNeedsBothTypeAndRole() {
+        String typeOnly = query(caller(UUID, "SYSTEM", "AMC_REVIEWER"), new ArrayList<>());
+        String roleOnly = query(caller(UUID, "EMPLOYEE", "SYSTEM_USER"), new ArrayList<>());
+        String typeOnlyPm = query(caller(UUID, "SYSTEM", "PROJECT_MANAGER"), new ArrayList<>());
+
+        assertTrue(typeOnly.contains(ASSIGNEE_CLAUSE));
+        assertTrue(roleOnly.contains(ASSIGNEE_CLAUSE));
+        assertTrue(typeOnlyPm.contains(STAFF_CLAUSE));
+    }
+
+    @Test
     @DisplayName("the count query is scoped the same way as the list")
     void countQueryIsScopedToo() {
-        ScheduledVisitSearchRequest pm = request(UUID, true, "PROJECT_MANAGER");
         List<Object> binds = new ArrayList<>();
+        String pm = builder.getSearchCountQueryString(
+                request(caller(UUID, "EMPLOYEE", "PROJECT_MANAGER")), "in", null, false, binds);
+        String system = builder.getSearchCountQueryString(
+                request(SystemRequestInfo.of(caller(UUID, "EMPLOYEE", "PROJECT_MANAGER"))), "in", null, false, new ArrayList<>());
 
-        String sql = builder.getSearchCountQueryString(pm, "in", null, false, binds);
-
-        assertTrue(sql.startsWith("SELECT COUNT(DISTINCT sv.id)"));
-        assertTrue(sql.contains(STAFF_CLAUSE));
+        assertTrue(pm.startsWith("SELECT COUNT(DISTINCT sv.id)"));
+        assertTrue(pm.contains(STAFF_CLAUSE));
         assertTrue(binds.contains(UUID));
+        assertFalse(system.contains("project_staff"));
     }
 
     @Test
     @DisplayName("a caller we cannot identify gets an error, not every visit")
     void blankUuidIsRefused() {
-        CustomException refused = assertThrows(CustomException.class,
-                () -> query(request(" ", true, "PROJECT_MANAGER"), new ArrayList<>()));
-        assertEquals("INVALID_USER", refused.getCode());
-        assertThrows(CustomException.class,
-                () -> query(request(" ", false, "AMC_REVIEWER"), new ArrayList<>()));
+        for (String role : new String[]{"PROJECT_MANAGER", "AMC_REVIEWER"}) {
+            CustomException refused = assertThrows(CustomException.class,
+                    () -> query(caller(" ", "EMPLOYEE", role), new ArrayList<>()));
+            assertEquals("INVALID_USER", refused.getCode());
+        }
     }
 }

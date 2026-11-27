@@ -1,6 +1,5 @@
 package org.egov.amc.web.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.util.List;
@@ -35,11 +34,4 @@ public class ScheduledVisitSearchCriteria {
     private Boolean includeExpired;
     private boolean isActive;
     private boolean isCountQuery;
-    /**
-     * Held to the projects the caller is staff on, even for a project manager. Set by the service
-     * for a search made on behalf of a signed-in user; never read from a request. Internal searches
-     * (reindexing, index sync, visit generation) leave it off and see every visit, as before.
-     */
-    @JsonIgnore
-    private boolean scopeProjectManagerToStaffProjects;
 }
