@@ -36,8 +36,17 @@ public class BomService {
 
     // Order matters: documents are appended to the PDF in this documentType order.
     private static final List<String> APPENDABLE_DOCUMENT_TYPES = List.of(
-            "ASSET_HANDOVER_DOCUMENT", "INSTALLATION_COMPLETION_CERTIFICATE"
+            "ASSET_HANDOVER_DOCUMENT", "WARRANTY_CARD", "INSTALLATION_COMPLETION_CERTIFICATE"
     );
+
+    /**
+     * Heading printed above the first appended page of a documentType's section. ingestion-service
+     * draws it at the top of that document's first page; types without an entry get no heading.
+     */
+    private static final Map<String, String> APPENDED_SECTION_HEADINGS = Map.of(
+            "WARRANTY_CARD", "Warranty Card"
+    );
+    private static final String HEADING_KEY = "heading";
 
     private static final String DOCUMENTS_KEY = "documents";
     private static final String FILE_STORE_ID_KEY = "fileStoreId";
@@ -169,7 +178,7 @@ public class BomService {
     }
 
     /**
-     * Appends any INSTALLATION_COMPLETION_CERTIFICATE / ASSET_HANDOVER_DOCUMENT documents attached to the
+     * Appends any ASSET_HANDOVER_DOCUMENT / WARRANTY_CARD / INSTALLATION_COMPLETION_CERTIFICATE documents attached to the
      * BOM onto the end of the generated PDF via ingestion-service, returning the merged fileStoreId.
      * If no such documents are present, the original PDF fileStoreId is returned unchanged.
      */
@@ -211,11 +220,19 @@ public class BomService {
         }
 
         // Group by documentType in APPENDABLE_DOCUMENT_TYPES order (all ASSET_HANDOVER_DOCUMENT
-        // documents first, then all INSTALLATION_COMPLETION_CERTIFICATE), not source order.
+        // documents first, then all WARRANTY_CARD, then all INSTALLATION_COMPLETION_CERTIFICATE), not
+        // source order. Within a type the source (upload) order is kept.
         List<Map<String, Object>> ordered = new ArrayList<>();
         for (String documentType : APPENDABLE_DOCUMENT_TYPES) {
+            String heading = APPENDED_SECTION_HEADINGS.get(documentType);
             for (Map<String, Object> document : documents) {
                 if (document.get(FILE_STORE_ID_KEY) != null && documentType.equals(document.get("documentType"))) {
+                    if (heading != null) {
+                        // Only the section's first document carries the heading.
+                        document = new HashMap<>(document);
+                        document.put(HEADING_KEY, heading);
+                        heading = null;
+                    }
                     ordered.add(document);
                 }
             }
