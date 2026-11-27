@@ -249,9 +249,12 @@ class FacilityServiceClient:
 
         payload: Dict[str, Any] = {
             # Known gap, recorded in docs/jurisdiction/NEXT_STEPS.md: because this is a service
-            # call, an uploader can still build a template covering facilities outside their own
-            # area. Closing that needs ingestion to decide which role the uploader is acting as,
-            # which is a product question rather than a technical one.
+            # call, a template built from existing facilities can still cover facilities outside
+            # the uploader's own area. (The add-facilities template and upload are held to the
+            # caller's jurisdiction separately - see app/utils/caller_scope.py - but the templates
+            # that read facilities through this call are not.) Closing that needs ingestion to
+            # decide which role the uploader is acting as, which is a product question rather
+            # than a technical one.
             "RequestInfo": _as_system_request_info(request_info_payload),
             "Facility": {
                 "tenantIds": list(tenant_ids),

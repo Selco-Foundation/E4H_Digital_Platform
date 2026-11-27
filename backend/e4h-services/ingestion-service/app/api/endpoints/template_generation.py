@@ -13,7 +13,7 @@ from openpyxl.styles import Protection, PatternFill
 from openpyxl.utils import get_column_letter
 
 from app.core.logging import AppLogger
-from app.decorators.rbac_validator import get_authorized_request_info
+from app.decorators.rbac_validator import get_authorized_request_info, get_caller_scope
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
 from app.utils.excel_utils import write_boundary_template
@@ -680,8 +680,13 @@ async def get_facility_ingestion_template(
     block under any of them. This is what the UI sends - the whole country is a few dozen codes.
     `boundary_data`: the older JSON country -> state -> district -> block tree (each node's
     `boundaryCode` is what counts). Still accepted, but a tree of every block outgrows the
-    gateway's request-size limit (HTTP 413)."""
+    gateway's request-size limit (HTTP 413).
+
+    Whatever the selection, the template holds only blocks inside the caller's jurisdiction: a
+    state-only selection is cut down to the caller's own district(s), and a block outside them is
+    never offered. The caller comes from the auth token (see app/utils/caller_scope.py)."""
     request_info = request_info_from_json(request_info)
+    caller_scope = get_caller_scope(request_info)
     selected_boundaries: Optional[List[Boundary]] = None
     selected_codes: Optional[List[str]] = None
     if boundary_codes.strip():
@@ -718,6 +723,10 @@ async def get_facility_ingestion_template(
             logger.error(f"Error fetching data from external services: {e}")
             cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
+        template_boundaries = caller_scope.filter_blocks(template_boundaries)
+        if not template_boundaries and not caller_scope.unrestricted:
+            cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=403, detail="None of the selected boundaries is within your jurisdiction")
         if not template_boundaries and selected_codes is not None:
             cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=400, detail="boundary_codes match no blocks - select at least one block")
