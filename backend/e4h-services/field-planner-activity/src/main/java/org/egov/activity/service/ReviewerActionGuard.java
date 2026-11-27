@@ -94,10 +94,15 @@ public class ReviewerActionGuard {
                 .contains(planActivityKey(facility.getFieldPlanId(), facility.getActivityId()));
         if (!assigned) {
             log.error("Refusing {} on activity facility {}: caller is not its assigned installation reviewer",
-                    action, facility.getId());
+                    forLog(action), forLog(facility.getId()));
             throw new CustomException("NOT_ASSIGNED_REVIEWER",
                     "Only the installation reviewer assigned to this installation can " + action.toLowerCase(Locale.ROOT).replace('_', ' ') + " it");
         }
+    }
+
+    /** Request values are logged without line breaks, so one cannot forge a log line. */
+    private static String forLog(String value) {
+        return value == null ? null : value.replaceAll("[\\r\\n]", "_");
     }
 
     private Set<String> assignedKeys(RequestInfo requestInfo, List<ActivityFacility> facilities) {

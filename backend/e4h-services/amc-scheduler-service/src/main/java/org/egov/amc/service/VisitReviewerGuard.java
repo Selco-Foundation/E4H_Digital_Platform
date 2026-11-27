@@ -95,9 +95,14 @@ public class VisitReviewerGuard {
             return;
         }
         if (!isAssignedReviewer(requestInfo, visit)) {
-            log.error("Refusing {} on visit {}: caller is not its assigned AMC reviewer", action, visit.getId());
+            log.error("Refusing {} on visit {}: caller is not its assigned AMC reviewer", forLog(action), forLog(visit.getId()));
             throw new CustomException("NOT_ASSIGNED_REVIEWER",
                     "Only the AMC reviewer assigned to this visit can " + action.toLowerCase(Locale.ROOT).replace('_', ' ') + " it");
         }
+    }
+
+    /** Request values are logged without line breaks, so one cannot forge a log line. */
+    private static String forLog(String value) {
+        return value == null ? null : value.replaceAll("[\\r\\n]", "_");
     }
 }
