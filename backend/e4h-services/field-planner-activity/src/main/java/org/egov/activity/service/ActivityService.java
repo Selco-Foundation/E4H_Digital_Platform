@@ -59,6 +59,7 @@ public class ActivityService {
     private final ActivityAnalyticsService activityAnalyticsService;
     private final ActivityFacilityUserFanoutService facilityUserFanoutService;
     private final BomPdfService bomPdfService;
+    private final ReviewerActionGuard reviewerActionGuard;
 
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
@@ -66,7 +67,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService, ActivityFacilityUserFanoutService facilityUserFanoutService) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService, ActivityAnalyticsService activityAnalyticsService, BomPdfService bomPdfService, ActivityFacilityUserFanoutService facilityUserFanoutService, ReviewerActionGuard reviewerActionGuard) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -84,6 +85,7 @@ public class ActivityService {
             this.activityAnalyticsService = activityAnalyticsService;
             this.facilityUserFanoutService = facilityUserFanoutService;
             this.bomPdfService = bomPdfService;
+            this.reviewerActionGuard = reviewerActionGuard;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
@@ -323,6 +325,10 @@ public class ActivityService {
         List<ActivityFacility> activityFacilities = scopeToAssignedUser
                 ? activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince)
                 : activityFacilityRepository.getActivitiesFacilityUnscoped(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        if (scopeToAssignedUser) {
+            // Internal re-reads skip this: they are not shown to anyone, and the write path asks the guard itself.
+            reviewerActionGuard.markCanAct(request.getRequestInfo(), activityFacilities);
+        }
         List<String> fieldPlanIds = activityFacilities.stream()
                 .map(ActivityFacility::getFieldPlanId)
                 .filter(Objects::nonNull)
@@ -686,6 +692,10 @@ public class ActivityService {
         // state the action fired FROM to tell a submission apart from a re-submission.
         String priorStatus = existingActivityFacitlity.getStatus();
 
+        // workflow-v2 checks the caller's role, never whether they are the assigned reviewer.
+        reviewerActionGuard.requireAssignedReviewer(request.getRequestInfo(), existingActivityFacitlity,
+                request.getWorkflow().getAction());
+
         // On every (re)submission, the BOM installation report PDF is regenerated and attached to
         // the workflow's documents BEFORE the transition call - that call is the only place
         // documents travel to workflow-v2. Regenerating every time (rather than skipping when one
@@ -988,6 +998,10 @@ public class ActivityService {
 
             //             // only those activity facilities whose status is SUBMITTED_BY_SUPERVISOR
             List<ActivityFacility> activityFacilitiesList = activityFacilities.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
+            if (reviewerActionGuard.isReviewerAction(facilityBulkApproveRequest.getWorkflow().getAction())) {
+                // "Select all" means all of the caller's own: a project manager who can see more must not approve it.
+                activityFacilitiesList = activityFacilitiesList.stream().filter(f -> Boolean.TRUE.equals(f.getCanAct())).toList();
+            }
             log.debug("Filtered {} activity facilities with SUBMITTED_BY_SUPERVISOR status from {} total", activityFacilitiesList.size(), activityFacilities.size());
 
             finalActivityFacilities = activityFacilitiesList.size();

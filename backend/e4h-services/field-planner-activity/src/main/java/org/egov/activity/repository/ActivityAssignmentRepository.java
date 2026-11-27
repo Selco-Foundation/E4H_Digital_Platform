@@ -18,9 +18,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Repository
@@ -142,5 +144,37 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
         }, params.toArray());
 
         return assignedToByFieldPlanId;
+    }
+
+    /**
+     * The plan-activities `assignedTo` holds under `role`, as "fieldPlanId|activityId" keys,
+     * restricted to the given plans.
+     *
+     * Read from the assignments themselves rather than from {@code activity_facility_users}, which
+     * records who may see a facility but not under which role they were assigned.
+     */
+    public Set<String> findAssignedPlanActivityKeys(String assignedTo, String role, Collection<String> fieldPlanIds) {
+        if (assignedTo == null || assignedTo.isBlank() || role == null || role.isBlank()
+                || fieldPlanIds == null || fieldPlanIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        String placeholders = fieldPlanIds.stream().map(id -> "?").collect(Collectors.joining(", "));
+        String query = "SELECT field_plan_id, activity_id FROM activity_assignments "
+                + "WHERE assigned_to = ? AND role ->> 'code' = ? AND COALESCE(isdeleted, false) = false "
+                + "AND field_plan_id IN (" + placeholders + ")";
+        List<Object> params = new ArrayList<>();
+        params.add(assignedTo);
+        params.add(role);
+        params.addAll(fieldPlanIds);
+
+        Set<String> keys = new HashSet<>();
+        jdbcTemplate.query(query, rs -> {
+            keys.add(planActivityKey(rs.getString("field_plan_id"), rs.getString("activity_id")));
+        }, params.toArray());
+        return keys;
+    }
+
+    public static String planActivityKey(String fieldPlanId, String activityId) {
+        return fieldPlanId + "|" + activityId;
     }
 }
