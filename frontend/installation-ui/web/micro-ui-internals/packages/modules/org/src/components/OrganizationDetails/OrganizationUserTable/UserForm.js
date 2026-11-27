@@ -105,6 +105,9 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const roleGroups = (mdmsResponse?.Organisation?.OrgRoleGroups || [])
     .filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
 
+  // Selected roles that jurisdiction doesn't decide: left out of "Applies to", so the form says why.
+  const unscopedRoleGroups = selectedRoleGroups.filter((group) => !isScopedGroup(group, mdmsResponse?.Organisation?.OrgRoles));
+
   useEffect(() => {
     if (createdUser?.orgUserId && mdmsResponse) {
       const roleCodes = createdUser.roles.map(role => role.code);
@@ -737,6 +740,19 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         }}>
           {t("ASSIGNMENTS")}
         </h2>
+        {unscopedRoleGroups.length > 0 && (
+          <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", backgroundColor: "#E8F1F8", border: "1px solid #A6C8E3", color: "#0B3B63", padding: "10px 14px", marginBottom: "15px", fontSize: "15px" }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style={{ flex: "none", marginTop: "2px" }}>
+              <circle cx="9" cy="9" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <rect x="8.1" y="7.6" width="1.8" height="5.4" fill="currentColor" />
+              <circle cx="9" cy="5.4" r="1.1" fill="currentColor" />
+            </svg>
+            <div>
+              {t("ORG_ASSIGNMENT_UNSCOPED_ROLES_NOTE", { roles: unscopedRoleGroups.map((group) => group.name).join(", ") })}
+              {unscopedRoleGroups.length === selectedRoleGroups.length && ` ${t("ORG_ASSIGNMENT_UNSCOPED_ROLES_AUTO")}`}
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
           {createdUser?.orgUserId && (
             <TextInput
