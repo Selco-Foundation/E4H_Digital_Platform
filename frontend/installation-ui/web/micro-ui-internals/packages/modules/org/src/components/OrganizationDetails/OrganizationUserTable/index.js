@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import { Loader, Table, Toast } from "@egovernments/digit-ui-react-components";
+import { Loader, Table, Toast, TextInput, MultiSelectDropdown } from "@egovernments/digit-ui-react-components";
 import useOrganizationUser from "../../../hooks/useOrganizationUser";
 import OrganizationUserAdminActions from "./OrganizationUserAdminActions";
 import CustomEditIcon from "../../Custom/CustomEditIcon";
@@ -23,6 +23,9 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
   const queryClient = useQueryClient();
+  const [searchText, setSearchText] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState([]);
 
   useEffect(() => {
     if (toast) {
@@ -47,8 +50,19 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    const id = setTimeout(()=>setSearchName((searchText || "").trim()),350);
+    return () => clearTimeout(id);
+  },[searchText]);
+
+  useEffect(()=>{
+    setPageOffset(0);
+  },[searchName, selectedRoleGroups]);
+
+  const selectedRoleCodes = [...new Set(selectedRoleGroups.flatMap((group)=> group.roleCodes || []))];
+
   const { isLoading: organizationUserDataLoading, data: organizationUserData } = useOrganizationUser(
-    {organizationIds: [organizationId]}, pageSize, pageOffset
+    {organizationIds: [organizationId],name:searchName,roles: selectedRoleCodes}, pageSize, pageOffset
   );
 
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
@@ -217,9 +231,10 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
     }
 
     if (fetchedData.length === 0) {
+      const isFiltered = !!searchName || selectedRoleGroups.length>0;
       return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%", minHeight: "300px" }}>
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>{t("CS_NO_ORG_USERS_FOUND")}</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>{t(isFiltered ?"CS_NO_ORG_USERS_MATCH_SEARCH" : "CS_NO_ORG_USERS_FOUND")}</div>
         </div>
       );
     }
@@ -332,6 +347,28 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
         </div>
       )}
       <OrganizationUserAdminActions t={t} organizationId={organizationId} organizationType={organizationType} organizationSubType={organizationSubType} />
+      <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", margin: "0px 20px 0px", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 240px" }}>
+          <div className="filter-label">{t("ORG_USER_SEARCH_NAME")}</div>
+          <TextInput
+              value={searchText}
+              onChange={(e) => setSearchText((e && e.target && e.target.value) || "")}
+              placeholder={t("ORG_USER_SEARCH_NAME_PLACEHOLDER")}
+          />
+        </div>
+        <div style={{ flex: "1 1 240px" }}>
+          <div className="filter-label">{t("ORG_USER_FILTER_ROLE")}</div>
+          <MultiSelectDropdown
+              options={roleGroups}
+              optionsKey={"name"}
+              selected={selectedRoleGroups}
+              onSelect={(e) => setSelectedRoleGroups((e || []).map((row) => (row && row[1] ? row[1] : null)).filter(Boolean))}
+              defaultLabel={t("ORG_USER_FILTER_ROLE_PLACEHOLDER")}
+              defaultUnit={t("ORG_ASSIGNMENT_ROLES_SELECTED")}
+              config={{ isDropdownWithChip: true }}
+          />
+        </div>
+      </div>
       {renderOrganizationUsers()}
       {!!alert && (
         <ConfirmationAlert t={t} alert={alert} setAlert={setAlert} />

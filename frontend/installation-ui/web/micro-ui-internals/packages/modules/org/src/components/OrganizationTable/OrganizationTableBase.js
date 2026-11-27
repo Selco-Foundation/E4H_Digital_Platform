@@ -9,14 +9,14 @@ import useOrganizations from "../../hooks/useOrganization";
 
 const normalizeOrgFilter = (raw) => {
   const r = raw || {};
-  const n1 = r.organizationSearch && typeof r.organizationSearch.name === "string" ? r.organizationSearch.name : "";
-  const n2 = r.organizationSearchQuery && typeof r.organizationSearchQuery.name === "string" ? r.organizationSearchQuery.name : "";
-  const name = n1 || n2 || "";
-  const trimmed = (name || "").trim();
+  const n1 = r.organizationSearch && typeof r.organizationSearch.searchText === "string" ? r.organizationSearch.searchText : "";
+  const n2 = r.organizationSearchQuery && typeof r.organizationSearchQuery.searchText === "string" ? r.organizationSearchQuery.searchText : "";
+  const searchText = n1 || n2 || "";
+  const trimmed = (searchText || "").trim();
 
   return {
-    organizationSearch: { name: name || "" },
-    organizationSearchQuery: trimmed ? { name: trimmed } : {},
+    organizationSearch: { searchText: searchText || "" },
+    organizationSearchQuery: trimmed ? { searchText: trimmed } : {},
   };
 };
 
