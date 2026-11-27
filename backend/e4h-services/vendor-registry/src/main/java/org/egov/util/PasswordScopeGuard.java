@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.egov.util.OrganisationConstant.ORG_PLATFORM_ADMIN_ROLE_CODE;
-import static org.egov.util.OrganisationConstant.VENDOR_ADMIN;
 
 /**
  * Who may set whose password.
@@ -29,9 +28,8 @@ import static org.egov.util.OrganisationConstant.VENDOR_ADMIN;
  * is checked on each of them rather than trusted to the UI. The current password is never
  * required: the scope is what makes a reset safe.
  *
- * VENDOR_ADMIN is otherwise scoped by jurisdiction ({@link JurisdictionScopeResolver}). That
- * still applies; this adds the organisation on top for anything that sets a password, because a
- * jurisdiction can span many vendor orgs - a vendor PoC admin's spans the whole country.
+ * The caller's own organisation comes from {@link OrgAdminScopeResolver}, which restricts both
+ * ORG_ADMIN and VENDOR_ADMIN to one org for every org-user operation, not only passwords.
  *
  * **This fails closed.** A restricted caller whose own organisation cannot be resolved to exactly
  * one active org is refused.
@@ -39,8 +37,6 @@ import static org.egov.util.OrganisationConstant.VENDOR_ADMIN;
 @Component
 @Slf4j
 public class PasswordScopeGuard {
-
-    static final String VENDOR_ORG_TYPE = "VENDOR";
 
     private final OrgAdminScopeResolver orgAdminScopeResolver;
     private final OrganisationUserRepository userRepository;
@@ -66,15 +62,11 @@ public class PasswordScopeGuard {
         if (holds(targetRoles, ORG_PLATFORM_ADMIN_ROLE_CODE)) {
             refuse("Only a platform admin can set the password of a platform admin", targetUserUuid);
         }
-        String ownOrg;
-        if (OrgAdminScopeResolver.isOrgAdmin(requestInfo)) {
-            ownOrg = orgAdminScopeResolver.resolve(requestInfo).orgId();
-        } else if (OrgAdminScopeResolver.holdsRole(requestInfo, VENDOR_ADMIN)) {
-            ownOrg = resolveVendorOrg(requestInfo);
-        } else {
+        if (!OrgAdminScopeResolver.isOrgRestricted(requestInfo)) {
             refuse("You are not allowed to set passwords", targetUserUuid);
             return;
         }
+        String ownOrg = orgAdminScopeResolver.resolve(requestInfo).orgId();
         if (!Objects.equals(ownOrg, targetOrgId)) {
             refuse("You can only set passwords for users in your own organisation", targetUserUuid);
         }
@@ -82,26 +74,6 @@ public class PasswordScopeGuard {
                 .noneMatch(link -> ownOrg.equals(link.organizationId()))) {
             refuse("You can only set passwords for users in your own organisation", targetUserUuid);
         }
-    }
-
-    private String resolveVendorOrg(RequestInfo requestInfo) {
-        String callerUuid = requestInfo.getUserInfo() == null ? null : requestInfo.getUserInfo().getUuid();
-        if (StringUtils.isBlank(callerUuid)) {
-            throw new CustomException("VENDOR_ADMIN_UNRESOLVED", "User UUID is required to resolve the caller's organisation");
-        }
-        List<OrganisationUserRepository.UserOrgLink> links = userRepository.getActiveOrgLinksForUser(callerUuid);
-        List<String> orgIds = links.stream().map(OrganisationUserRepository.UserOrgLink::organizationId).distinct().toList();
-        if (orgIds.size() != 1) {
-            log.error("VENDOR_ADMIN {} is linked to {} active organisations; refusing", callerUuid, orgIds.size());
-            throw new CustomException("VENDOR_ADMIN_UNRESOLVED", "Your account is not linked to exactly one organisation");
-        }
-        OrganisationUserRepository.UserOrgLink link = links.get(0);
-        if (!VENDOR_ORG_TYPE.equals(StringUtils.trim(link.orgType()))) {
-            log.error("VENDOR_ADMIN {} belongs to organisation {} of type {}, not a Vendor Org; refusing",
-                    callerUuid, link.organizationId(), link.orgType());
-            throw new CustomException("VENDOR_ADMIN_UNRESOLVED", "The vendor admin role is only valid in a Vendor organisation");
-        }
-        return link.organizationId();
     }
 
     private static boolean holds(List<Role> roles, String code) {

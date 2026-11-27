@@ -206,7 +206,7 @@ public class Configuration {
      * environment may need to change without a release - and because getting it wrong in either
      * direction is visible immediately (a locked-out admin, or an unscoped one).
      */
-    @Value("${vendor.jurisdiction.unscoped.roles:ORG_PLATFORM_ADMIN}")
+    @Value("${vendor.jurisdiction.unscoped.roles:ORG_PLATFORM_ADMIN,VENDOR_ADMIN}")
     private List<String> jurisdictionUnscopedRoles;
 
     //Notification
