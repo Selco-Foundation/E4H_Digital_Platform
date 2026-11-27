@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import static org.egov.im.util.IMConstants.MDMS_COMPONENT;
 import static org.egov.im.util.IMConstants.MDMS_MASTER_SEM;
 import static org.egov.im.util.IMConstants.MDMS_MASTER_USER_TYPE;
 import static org.egov.im.util.IMConstants.MDMS_MODULE_NAME;
@@ -124,6 +125,7 @@ public class MDMSUtils {
         final String filterCode = "$.[?(@.active==true)]";
 
         pgrMasterDetails.add(MasterDetail.builder().name(MDMS_SERVICEDEF).filter(filterCode).build());
+        pgrMasterDetails.add(MasterDetail.builder().name(MDMS_COMPONENT).filter(filterCode).build());
 
         ModuleDetail pgrModuleDtls = ModuleDetail.builder().masterDetails(pgrMasterDetails)
                 .moduleName(MDMS_MODULE_NAME).build();

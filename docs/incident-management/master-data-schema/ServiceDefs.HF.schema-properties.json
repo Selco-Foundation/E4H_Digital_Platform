@@ -1,0 +1,5 @@
+{
+  "componentCode": { "type": "string" },
+  "channel": { "type": "string", "enum": ["HF", "CRM"] },
+  "order": { "type": "integer", "minimum": 1 }
+}

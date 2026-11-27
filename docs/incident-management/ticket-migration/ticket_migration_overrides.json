@@ -1,0 +1,100 @@
+{
+  "_comment": [
+    "Labels are matched first on the localized messages (SERVICEDEFS.<CODE>), then on ServiceDef names and codes.",
+    "These overrides are added on top, so the migration still resolves when an environment's localization is missing",
+    "or differs (checked against UAT localization + DEV ServiceDefs on 2026-11-20).",
+    "typeAliases: issue type label of Ticket Migration.xlsx -> menuPath / componentCode it stands for, per reporter type.",
+    "source: old label -> old serviceCodes it covers (added to the codes found by label). A code listed here is used",
+    "        even when the environment's MDMS no longer has it.",
+    "target: new label -> serviceCode to use, when the new ServiceDef label differs from the workbook."
+  ],
+  "typeAliases": {
+    "HCR": {
+      "Additional Support Required": [
+        "ADDITIONAL_SUPPORT"
+      ],
+      "Solar Panel": [
+        "PANEL",
+        "SOLAR_PANEL"
+      ],
+      "Cable": [
+        "CABLES",
+        "CABLE"
+      ]
+    },
+    "CRM": {
+      "Solar Panel": [
+        "PANEL"
+      ],
+      "Panel": [
+        "PANEL"
+      ]
+    }
+  },
+  "source": [
+    {"oldType": "Array Junction Box", "oldSubType": "Burnt", "codes": ["burned", "Burnedother", "Burnedshortcircuit", "Burnedduetolightning"]},
+    {"oldType": "Array Junction Box", "oldSubType": "Disconnected Cable", "codes": ["CableDisconnected"]},
+    {"oldType": "Array Junction Box", "oldSubType": "Mcb Failure", "codes": ["MCBOff"]},
+    {"oldType": "Array Junction Box", "oldSubType": "Tripped", "codes": ["Tripping"]},
+    {"oldType": "Battery", "oldSubType": "Battery Disconnected", "codes": ["BatteryDisconnected"]},
+    {"oldType": "Battery", "oldSubType": "Breakage Of Caps", "codes": ["BreakageofCaps", "Physicaldamagebatteries"]},
+    {"oldType": "Battery", "oldSubType": "Burnt", "codes": ["BurnedBattery", "BlastduetoLightning", "BlastedShortCircuit"]},
+    {"oldType": "Battery", "oldSubType": "Disconnected Cable", "codes": ["CableDisconnected", "LooseCablesBatteryConnections"]},
+    {"oldType": "Battery", "oldSubType": "Low Petroleum Gel", "codes": ["LowPetroleumBattery", "NoPetroleumGel"]},
+    {"oldType": "Battery", "oldSubType": "Low battery water", "codes": ["LowBatteryWaterLevel"]},
+    {"oldType": "Battery", "oldSubType": "Other", "codes": ["Other"]},
+    {"oldType": "Battery", "oldSubType": "Rack Issue", "codes": ["RackIssueBattery", "BatteryRackDamage"]},
+    {"oldType": "Cables", "oldSubType": "Burnt", "codes": ["burned"]},
+    {"oldType": "Cables", "oldSubType": "Damaged", "codes": ["CableCutDamage"]},
+    {"oldType": "Cables", "oldSubType": "Load Wiring Issues", "codes": ["LoadWiringissues", "LoadWiringIssue"]},
+    {"oldType": "Cables", "oldSubType": "Other", "codes": ["other", "Other"]},
+    {"oldType": "Change Over Switch", "oldSubType": "Damaged", "codes": ["Broken"]},
+    {"oldType": "Earthing Connection", "oldSubType": "Burnt", "codes": ["burned", "Burnedother", "Burnedshortcircuit", "Burnedduetolightning"]},
+    {"oldType": "Earthing Connection", "oldSubType": "Disconnected Cable", "codes": ["CableDisconnected"]},
+    {"oldType": "Earthing Connection", "oldSubType": "Other", "codes": ["other", "Other"]},
+    {"oldType": "Earthing Pit", "oldSubType": "Burnt", "codes": ["burned"]},
+    {"oldType": "Earthing Pit", "oldSubType": "Damaged", "codes": ["broken"]},
+    {"oldType": "GIPB", "oldSubType": "Disconnected Cable", "codes": ["CableDisconnected"]},
+    {"oldType": "GIPB", "oldSubType": "Mcb Failure", "codes": ["MCBOff"]},
+    {"oldType": "GIPB", "oldSubType": "Other", "codes": ["Other"]},
+    {"oldType": "GIPB", "oldSubType": "Tripped", "codes": ["Tripping"]},
+    {"oldType": "Grid", "oldSubType": "Reverse Voltage", "codes": ["ReverseVoltage", "LowVoltage"]},
+    {"oldType": "Inverter", "oldSubType": "Continuous Buzzer", "codes": ["BuzzerInverter", "ContinuousBuzzer"]},
+    {"oldType": "Inverter", "oldSubType": "Dismantled By HC", "codes": ["DisconnectedHealthCentre"]},
+    {"oldType": "Inverter", "oldSubType": "Display Issue", "codes": ["DisplayIssueInverter", "DisplayNotWorking"]},
+    {"oldType": "Inverter", "oldSubType": "Electric Shock", "codes": ["ElectricShock"]},
+    {"oldType": "Inverter", "oldSubType": "Error Code On Display", "codes": ["ErrorCodeDisplay", "Errorondisplay"]},
+    {"oldType": "Inverter", "oldSubType": "Fan Issue", "codes": ["FanIssueInverter", "FanNotWorking"]},
+    {"oldType": "Inverter", "oldSubType": "High Voltage", "codes": ["VoltageInverter"]},
+    {"oldType": "Inverter", "oldSubType": "Shutdown", "codes": ["ShutdownInverter", "ShutDownGrid", "ShutdownLightning"]},
+    {"oldType": "Inverter", "oldSubType": "Tripped", "codes": ["TrippedInverter", "TrippingExtraLoads", "TrippingMCBIssue", "TrippingGridIssues"]},
+    {"oldType": "Lightning Arrestor", "oldSubType": "Broken", "codes": ["LightningArrestorBroken"]},
+    {"oldType": "Lightning Arrestor", "oldSubType": "Burnt", "codes": ["burned"]},
+    {"oldType": "Lightning Arrestor", "oldSubType": "Other", "codes": ["others", "Other"]},
+    {"oldType": "Panel", "oldSubType": "Crack", "codes": ["CrackPanel", "CrackPanelOther", "CrackPanelMonkey", "CrackPanelTree", "CrackPanelStone"]},
+    {"oldType": "Panel", "oldSubType": "Disconnected Cable", "codes": ["DisconnectedCable"]},
+    {"oldType": "Panel", "oldSubType": "Dismantled By HC", "codes": ["DisplacedPanelHealthCentre"]},
+    {"oldType": "Panel", "oldSubType": "Displaced", "codes": ["DisplacedPanel"]},
+    {"oldType": "Panel", "oldSubType": "Dust", "codes": ["DustOnPanels"]},
+    {"oldType": "Panel", "oldSubType": "Hotspot", "codes": ["HotspotOnPanels"]},
+    {"oldType": "Panel", "oldSubType": "Low Generation", "codes": ["LowGeneration", "LowpowerGeneration"]},
+    {"oldType": "Panel", "oldSubType": "Other", "codes": ["OtherPanel"]},
+    {"oldType": "Panel", "oldSubType": "Running on Grid", "codes": ["RunningOnGrid"]},
+    {"oldType": "Panel", "oldSubType": "Shade", "codes": ["ShadePanel"]},
+    {"oldType": "RMS Device", "oldSubType": "Disconnected Cable", "codes": ["CableDisconnectedLoose"]},
+    {"oldType": "RMS Device", "oldSubType": "Display Issue", "codes": ["DisplayIssue", "DisplayOff"]},
+    {"oldType": "RMS Device", "oldSubType": "Physical Damage", "codes": ["PhysicalDamage", "DeviceBurnedBlasted"]},
+    {"oldType": "Reinstall", "oldSubType": "Solar System", "codes": ["ReinstallSolarSystem"]},
+    {"oldType": "Shifting", "oldSubType": "AJB", "codes": ["AjbShifting"]},
+    {"oldType": "Shifting", "oldSubType": "Battery", "codes": ["BatteryShifting"]},
+    {"oldType": "Shifting", "oldSubType": "Inverter", "codes": ["InverterShifting"]},
+    {"oldType": "Shifting", "oldSubType": "Lightning Arrestor", "codes": ["LightingArrestorShifting"]},
+    {"oldType": "Shifting", "oldSubType": "Panel", "codes": ["PanelShifting"]},
+    {"oldType": "Solar Water Heater", "oldSubType": "Burnt", "codes": ["BurnedBattery", "burnedother", "burnedshortcircuit", "Burnedduetolightning"]},
+    {"oldType": "Solar Water Heater", "oldSubType": "Disconnected Cable", "codes": ["CableDisconnected", "loosecables"]},
+    {"oldType": "Solar Water Pump", "oldSubType": "Burnt", "codes": ["BurnedPump"]},
+    {"oldType": "Solar Water Pump", "oldSubType": "Disconnected Cable", "codes": ["DisconnectedCable"]},
+    {"oldType": "Uninstall", "oldSubType": "Solar System", "codes": ["UninstallSolarSystem"]}
+  ],
+  "target": []
+}

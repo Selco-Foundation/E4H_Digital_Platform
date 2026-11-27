@@ -58,6 +58,9 @@ public class RequestSearchCriteria {
     @JsonProperty("incidentSubType")
     private Set<String> incidentSubType;
 
+    @JsonProperty("component")
+    private Set<String> component;
+
     @JsonProperty("district")
     private String district;
 

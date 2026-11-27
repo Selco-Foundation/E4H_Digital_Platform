@@ -4,6 +4,7 @@ import org.egov.im.repository.IMPriorityRepository;
 import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.egov.im.web.models.Incident;
 import org.egov.im.util.BusinessHoursUtil;
+import org.egov.im.util.HfServiceDefs;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
 import org.egov.im.web.models.workflow.ProcessInstance;
@@ -262,6 +263,38 @@ public class SLAService {
     private String getStringValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
+    }
+
+    /**
+     * Ticket priority. A ticket reported with a component (SEM 4.0 Ticket Reporting) takes the
+     * highest priority among its observations, read from their MDMS Incident.ServiceDefs entries of
+     * channel HF; any other ticket (CRM, RMS, created before) keeps the im_services_priority table
+     * lookup on incidentType/incidentSubType/systemFunctional.
+     */
+    public Priority resolvePriority(Incident incident, Object mdmsData) {
+        log.trace("SLAService::resolvePriority method invoked");
+        Priority observationPriority = getPriorityFromObservations(incident, mdmsData);
+        if (observationPriority != null) {
+            return observationPriority;
+        }
+        return getPriorityFromIMPriorityTable(incident);
+    }
+
+    private Priority getPriorityFromObservations(Incident incident, Object mdmsData) {
+        if (incident.getComponent() == null || incident.getComponent().isBlank()) {
+            return null;
+        }
+        List<Priority> priorities = HfServiceDefs.forObservations(mdmsData, incident).stream()
+                .map(HfServiceDefs::priorityOf)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+        if (priorities.isEmpty()) {
+            log.warn("No MDMS priority found for component: {} and observations: {}", incident.getComponent(), incident.getObservations());
+            return null;
+        }
+        Priority priority = imPriorityRepository.getMaxPriority(priorities);
+        log.debug("Priority {} resolved from observations {} of component {}", priority, incident.getObservations(), incident.getComponent());
+        return priority;
     }
 
     public Priority getPriorityFromIMPriorityTable(Incident incident) {

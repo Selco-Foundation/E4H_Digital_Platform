@@ -1,0 +1,44 @@
+{
+  "tenantId": "in",
+  "code": "Incident.Component",
+  "description": "Ticket component / issue chosen first when reporting a ticket (SEM 4.0 Ticket Reporting)",
+  "definition": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "string",
+        "pattern": "^[A-Z0-9_]+$"
+      },
+      "name": {
+        "type": "string"
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "FAULT",
+          "THEFT",
+          "SUPPORT_REQUEST"
+        ]
+      },
+      "order": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "active": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "code",
+      "name",
+      "category",
+      "order",
+      "active"
+    ],
+    "x-unique": [
+      "code"
+    ]
+  },
+  "isActive": true
+}

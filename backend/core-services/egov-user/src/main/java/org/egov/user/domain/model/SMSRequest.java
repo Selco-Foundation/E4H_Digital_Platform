@@ -16,4 +16,9 @@ public class SMSRequest {
 
     private String message;
 
+    // Read by egov-notification-sms: category OTP + expiryTime makes it drop stale OTP SMS.
+    private String category;
+
+    private Long expiryTime;
+
 }
